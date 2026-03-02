@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableVobSub>false</EnableVobSub>
+    <DefineConstants Condition="'$(EnableVobSub)' == 'true'">$(DefineConstants);ENABLE_VOBSUB</DefineConstants>
+
+    <!-- Assembly info → UtilsAssembly reads these -->
+    <PackageProjectUrl>https://gitlab/fkzys/subs2srs-gtk3</PackageProjectUrl>
+    <AssemblyTitle>subs2srs</AssemblyTitle>
+    <Product>Generate audio/snapshot/video cards from media and subtitles for Anki</Product>
+    <Company>Christopher Brochtrup</Company>
+    <Copyright>Copyright © 2009-2016 Christopher Brochtrup, 2026 GTK3 port</Copyright>
+    <Description>subs2srs GTK3 port</Description>
+    <Version>0.0.1</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="GtkSharp" Version="3.24.24.95" />
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0"
+                      Condition="'$(EnableVobSub)' == 'true'" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(EnableVobSub)' != 'true'">
+    <Compile Remove="SubtitleCreator/**" />
+    <Compile Remove="SubsParserVOBSUB.cs" />
+  </ItemGroup>
+</Project>

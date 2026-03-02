@@ -1,0 +1,838 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Gtk;
+using Action = System.Action;
+
+namespace subs2srs
+{
+    public class MainWindow : Window
+    {
+        // Main tab
+        private Entry _txtSubs1;
+        private Entry _txtSubs2;
+        private Entry _txtVideo;
+        private Entry _txtOutputDir;
+        private Entry _txtDeckName;
+        private SpinButton _spinEpisodeStart;
+        private ComboBoxText _comboEncodingSubs1;
+        private ComboBoxText _comboEncodingSubs2;
+        private ComboBoxText _comboAudioStream;
+        private RadioButton _radioTimingSubs1;
+        private RadioButton _radioTimingSubs2;
+        private CheckButton _chkTimeShift;
+        private SpinButton _spinTimeShiftSubs1;
+        private SpinButton _spinTimeShiftSubs2;
+        private CheckButton _chkSpan;
+        private Entry _txtSpanStart;
+        private Entry _txtSpanEnd;
+
+        // Audio tab
+        private CheckButton _chkGenerateAudio;
+        private RadioButton _radioAudioFromVideo;
+        private RadioButton _radioAudioExisting;
+        private Entry _txtAudioFile;
+        private ComboBoxText _comboAudioBitrate;
+        private CheckButton _chkAudioPad;
+        private SpinButton _spinAudioPadStart;
+        private SpinButton _spinAudioPadEnd;
+        private CheckButton _chkNormalize;
+
+        // Snapshot tab
+        private CheckButton _chkGenerateSnapshots;
+        private SpinButton _spinSnapshotWidth;
+        private SpinButton _spinSnapshotHeight;
+        private SpinButton _spinSnapshotCropBottom;
+
+        // Video tab
+        private CheckButton _chkGenerateVideo;
+        private SpinButton _spinVideoWidth;
+        private SpinButton _spinVideoHeight;
+        private SpinButton _spinVideoCropBottom;
+        private SpinButton _spinVideoBitrateVideo;
+        private ComboBoxText _comboVideoBitrateAudio;
+        private CheckButton _chkVideoPad;
+        private SpinButton _spinVideoPadStart;
+        private SpinButton _spinVideoPadEnd;
+        private CheckButton _chkIPod;
+
+        private Button _btnGo;
+        private Button _btnCancel;
+        private ProgressBar _progressBar;
+        private GtkProgressReporter? _reporter;
+
+        public MainWindow() : base(WindowType.Toplevel)
+        {
+            Title = "subs2srs";
+            SetDefaultSize(700, 650);
+            WindowPosition = WindowPosition.Center;
+            DeleteEvent += (o, args) => { Logger.Instance.flush(); Application.Quit(); };
+
+            BuildUI();
+            LoadSettings();
+        }
+
+        private void BuildUI()
+        {
+            var mainVBox = new Box(Orientation.Vertical, 5) { BorderWidth = 8 };
+        
+            var notebook = new Notebook();
+            notebook.AppendPage(BuildMainTab(), new Label("Main"));
+            notebook.AppendPage(BuildAudioTab(), new Label("Audio"));
+            notebook.AppendPage(BuildSnapshotTab(), new Label("Snapshots"));
+            notebook.AppendPage(BuildVideoTab(), new Label("Video Clips"));
+            notebook.AppendPage(BuildToolsTab(), new Label("Tools"));
+            mainVBox.PackStart(notebook, true, true, 0);
+        
+            _progressBar = new ProgressBar { Fraction = 0.0, ShowText = true, Text = "Ready" };
+            mainVBox.PackStart(_progressBar, false, false, 0);
+        
+            var bottomHBox = new Box(Orientation.Horizontal, 5);
+            var btnPreview = new Button("Preview...");
+            btnPreview.Clicked += (s, e) =>
+            {
+                SaveSettings();
+                var preview = new DialogPreview();
+                preview.RefreshSettings += (s2, e2) => SaveSettings();
+                preview.StartPreview();
+            };
+        
+            var btnAbout = new Button("About");
+            btnAbout.Clicked += (s, e) =>
+            {
+            var dlg = new AboutDialog
+            {
+                ProgramName = UtilsAssembly.Title,
+                Version = UtilsAssembly.Version,
+                Comments = UtilsAssembly.Product
+                    + "\n\nOriginal project: https://subs2srs.sourceforge.net/",
+                Authors = new[] { UtilsAssembly.Author },
+                Website = "https://gitlab.com/fkzys/subs2srs-gtk3",
+                WebsiteLabel = "Source Code",
+                License = "GNU General Public License v3",
+                TransientFor = this
+            };
+            dlg.Run();
+            dlg.Destroy();
+            };
+        
+            var btnPref = new Button("Preferences...");
+            btnPref.Clicked += (s, e) =>
+            {
+                var dlg = new DialogPref(this);
+                dlg.Run();
+                dlg.Destroy();
+                LoadSettings();
+            };
+            bottomHBox.PackStart(btnPref, false, false, 0);
+        
+            bottomHBox.PackStart(btnAbout, false, false, 0);
+        
+            _btnGo = new Button("Go!") { WidthRequest = 100 };
+            _btnGo.Clicked += OnGoClicked;
+        
+            _btnCancel = new Button("Cancel") { WidthRequest = 100, Sensitive = false };
+            _btnCancel.Clicked += (s, e) => { if (_reporter != null) _reporter.Cancel = true; };
+        
+            bottomHBox.PackStart(btnPreview, false, false, 0);
+            bottomHBox.PackEnd(_btnGo, false, false, 0);
+            bottomHBox.PackEnd(_btnCancel, false, false, 0);
+        
+            mainVBox.PackStart(bottomHBox, false, false, 0);
+            Add(mainVBox);
+        }
+
+	//── TOOLS TAB ─────────────────────────────────────────────────────────
+        private Widget BuildToolsTab()
+        {
+            var vbox = new Box(Orientation.Vertical, 12) { BorderWidth = 10 };
+        
+            // Extract Audio
+            var extractFrame = new Frame("Extract Audio from Media");
+            var extractBox = new Box(Orientation.Vertical, 6) { BorderWidth = 8 };
+            extractBox.PackStart(new Label("Extract audio clips from media files using subtitle timings.")
+                { Halign = Align.Start }, false, false, 0);
+            var btnExtractAudio = new Button("Extract Audio...") { Halign = Align.Start };
+            btnExtractAudio.Clicked += (s, e) =>
+            {
+                SaveSettings();
+                var dlg = new DialogExtractAudioFromMedia(this)
+                {
+                    MediaFilePattern = _txtVideo.Text,
+                    OutputDir = _txtOutputDir.Text,
+                    DeckName = _txtDeckName.Text,
+                    EpisodeStartNumber = (int)_spinEpisodeStart.Value,
+                    Bitrate = Settings.Instance.AudioClips.Bitrate
+                };
+                dlg.Run();
+                dlg.Destroy();
+            };
+            extractBox.PackStart(btnExtractAudio, false, false, 0);
+            extractFrame.Add(extractBox);
+            vbox.PackStart(extractFrame, false, false, 0);
+        
+            // Dueling Subtitles
+            var duelingFrame = new Frame("Dueling Subtitles");
+            var duelingBox = new Box(Orientation.Vertical, 6) { BorderWidth = 8 };
+            duelingBox.PackStart(new Label("Create dual-language subtitle files.")
+                { Halign = Align.Start }, false, false, 0);
+            var btnDueling = new Button("Dueling Subs...") { Halign = Align.Start };
+            btnDueling.Clicked += (s, e) =>
+            {
+                SaveSettings();
+                var dlg = new DialogDuelingSubtitles(this);
+                dlg.Run();
+                dlg.Destroy();
+            };
+            duelingBox.PackStart(btnDueling, false, false, 0);
+            duelingFrame.Add(duelingBox);
+            vbox.PackStart(duelingFrame, false, false, 0);
+        
+            // Advanced Subtitle Options
+            var advFrame = new Frame("Advanced Subtitle Options");
+            var advBox = new Box(Orientation.Vertical, 6) { BorderWidth = 8 };
+            advBox.PackStart(new Label("Configure filtering, joining, context lines and other subtitle options.")
+                { Halign = Align.Start }, false, false, 0);
+            var btnAdvanced = new Button("Advanced...") { Halign = Align.Start };
+            btnAdvanced.Clicked += (s, e) =>
+            {
+                SaveSettings();
+                var dlg = new DialogAdvancedSubtitleOptions(this)
+                {
+                    Subs1FilePattern = _txtSubs1.Text,
+                    Subs2FilePattern = _txtSubs2.Text,
+                    Subs1Encoding = _comboEncodingSubs1.ActiveText ?? "",
+                    Subs2Encoding = _comboEncodingSubs2.ActiveText ?? ""
+                };
+                if (dlg.Run() == (int)ResponseType.Ok)
+                    dlg.SaveToSettings();
+                dlg.Destroy();
+            };
+            advBox.PackStart(btnAdvanced, false, false, 0);
+            advFrame.Add(advBox);
+            vbox.PackStart(advFrame, false, false, 0);
+        
+            return vbox;
+        }
+
+        // ── MAIN TAB ─────────────────────────────────────────────────────────
+
+        private Widget BuildMainTab()
+        {
+            var vbox = new Box(Orientation.Vertical, 8) { BorderWidth = 10 };
+
+            // Files grid
+            var grid = new Grid { RowSpacing = 6, ColumnSpacing = 6 };
+            int row = 0;
+
+            // Subs1
+            grid.Attach(new Label("Subtitle 1:") { Halign = Align.End }, 0, row, 1, 1);
+            _txtSubs1 = new Entry { Hexpand = true };
+            _txtSubs1.Changed += OnSubs1Changed;
+            grid.Attach(_txtSubs1, 1, row, 1, 1);
+            var btnSubs1 = new Button("Browse...");
+            btnSubs1.Clicked += (s, e) => { var f = SelectFile("Select Subtitle 1"); if (f != "") _txtSubs1.Text = f; };
+            grid.Attach(btnSubs1, 2, row, 1, 1);
+            row++;
+
+            // Encoding Subs1
+            grid.Attach(new Label("Subs1 Encoding:") { Halign = Align.End }, 0, row, 1, 1);
+            _comboEncodingSubs1 = BuildEncodingCombo();
+            grid.Attach(_comboEncodingSubs1, 1, row, 2, 1);
+            row++;
+
+            // Subs2
+            grid.Attach(new Label("Subtitle 2:") { Halign = Align.End }, 0, row, 1, 1);
+            _txtSubs2 = new Entry { Hexpand = true };
+            grid.Attach(_txtSubs2, 1, row, 1, 1);
+            var btnSubs2 = new Button("Browse...");
+            btnSubs2.Clicked += (s, e) => { var f = SelectFile("Select Subtitle 2"); if (f != "") _txtSubs2.Text = f; };
+            grid.Attach(btnSubs2, 2, row, 1, 1);
+            row++;
+
+            // Encoding Subs2
+            grid.Attach(new Label("Subs2 Encoding:") { Halign = Align.End }, 0, row, 1, 1);
+            _comboEncodingSubs2 = BuildEncodingCombo();
+            grid.Attach(_comboEncodingSubs2, 1, row, 2, 1);
+            row++;
+
+            // Video
+            grid.Attach(new Label("Video:") { Halign = Align.End }, 0, row, 1, 1);
+            _txtVideo = new Entry { Hexpand = true };
+            _txtVideo.Changed += OnVideoChanged;
+            grid.Attach(_txtVideo, 1, row, 1, 1);
+            var btnVideo = new Button("Browse...");
+            btnVideo.Clicked += (s, e) => { var f = SelectFile("Select Video"); if (f != "") _txtVideo.Text = f; };
+            grid.Attach(btnVideo, 2, row, 1, 1);
+            row++;
+
+            // Audio stream
+            grid.Attach(new Label("Audio Stream:") { Halign = Align.End }, 0, row, 1, 1);
+            _comboAudioStream = new ComboBoxText();
+            _comboAudioStream.AppendText("0 - (Default)");
+            _comboAudioStream.Active = 0;
+            grid.Attach(_comboAudioStream, 1, row, 2, 1);
+            row++;
+
+            // Output dir
+            grid.Attach(new Label("Output Dir:") { Halign = Align.End }, 0, row, 1, 1);
+            _txtOutputDir = new Entry { Hexpand = true };
+            grid.Attach(_txtOutputDir, 1, row, 1, 1);
+            var btnOut = new Button("Browse...");
+            btnOut.Clicked += (s, e) => { var f = SelectFolder("Select Output Directory"); if (f != "") _txtOutputDir.Text = f; };
+            grid.Attach(btnOut, 2, row, 1, 1);
+            row++;
+
+            // Deck name
+            grid.Attach(new Label("Deck Name:") { Halign = Align.End }, 0, row, 1, 1);
+            _txtDeckName = new Entry { Hexpand = true };
+            grid.Attach(_txtDeckName, 1, row, 2, 1);
+            row++;
+
+            // Episode start
+            grid.Attach(new Label("Episode Start #:") { Halign = Align.End }, 0, row, 1, 1);
+            _spinEpisodeStart = new SpinButton(1, 9999, 1) { Value = 1 };
+            grid.Attach(_spinEpisodeStart, 1, row, 1, 1);
+            row++;
+
+            vbox.PackStart(grid, false, false, 0);
+            vbox.PackStart(new Separator(Orientation.Horizontal), false, false, 4);
+
+            // Timing
+            var timingFrame = new Frame("Use Timings From");
+            var timingBox = new Box(Orientation.Horizontal, 10) { BorderWidth = 6 };
+            _radioTimingSubs1 = new RadioButton("Subs 1");
+            _radioTimingSubs2 = new RadioButton(_radioTimingSubs1, "Subs 2");
+            timingBox.PackStart(_radioTimingSubs1, false, false, 0);
+            timingBox.PackStart(_radioTimingSubs2, false, false, 0);
+            timingFrame.Add(timingBox);
+            vbox.PackStart(timingFrame, false, false, 0);
+
+            // Time shift
+            _chkTimeShift = new CheckButton("Time Shift");
+            var timeShiftBox = new Box(Orientation.Horizontal, 6);
+            timeShiftBox.PackStart(_chkTimeShift, false, false, 0);
+            timeShiftBox.PackStart(new Label("Subs1 (ms):"), false, false, 0);
+            _spinTimeShiftSubs1 = new SpinButton(-99999, 99999, 1) { Value = 0 };
+            timeShiftBox.PackStart(_spinTimeShiftSubs1, false, false, 0);
+            timeShiftBox.PackStart(new Label("Subs2 (ms):"), false, false, 0);
+            _spinTimeShiftSubs2 = new SpinButton(-99999, 99999, 1) { Value = 0 };
+            timeShiftBox.PackStart(_spinTimeShiftSubs2, false, false, 0);
+            vbox.PackStart(timeShiftBox, false, false, 0);
+
+            // Span
+            _chkSpan = new CheckButton("Span (h:mm:ss)");
+            var spanBox = new Box(Orientation.Horizontal, 6);
+            spanBox.PackStart(_chkSpan, false, false, 0);
+            spanBox.PackStart(new Label("Start:"), false, false, 0);
+            _txtSpanStart = new Entry { Text = "0:01:30", WidthChars = 8 };
+            spanBox.PackStart(_txtSpanStart, false, false, 0);
+            spanBox.PackStart(new Label("End:"), false, false, 0);
+            _txtSpanEnd = new Entry { Text = "0:22:30", WidthChars = 8 };
+            spanBox.PackStart(_txtSpanEnd, false, false, 0);
+            vbox.PackStart(spanBox, false, false, 0);
+
+            return vbox;
+        }
+
+        private ComboBoxText BuildEncodingCombo()
+        {
+            var combo = new ComboBoxText();
+            var encodings = InfoEncoding.getEncodings();
+            foreach (InfoEncoding enc in encodings)
+                combo.AppendText(enc.LongName);
+            int idx = 0;
+            foreach (InfoEncoding enc in encodings)
+            {
+                if (enc.ShortName == "utf-8") { combo.Active = idx; break; }
+                idx++;
+            }
+            return combo;
+        }
+
+        // ── AUDIO TAB ────────────────────────────────────────────────────────
+
+        private Widget BuildAudioTab()
+        {
+            var vbox = new Box(Orientation.Vertical, 8) { BorderWidth = 10 };
+
+            _chkGenerateAudio = new CheckButton("Generate Audio Clips") { Active = true };
+            vbox.PackStart(_chkGenerateAudio, false, false, 0);
+            vbox.PackStart(new Separator(Orientation.Horizontal), false, false, 2);
+
+            // Source
+            var sourceFrame = new Frame("Source");
+            var sourceBox = new Box(Orientation.Vertical, 4) { BorderWidth = 6 };
+            _radioAudioFromVideo = new RadioButton("Extract from video, bitrate:");
+            _radioAudioExisting = new RadioButton(_radioAudioFromVideo, "Use existing audio file:");
+            var bitrateBox = new Box(Orientation.Horizontal, 6);
+            bitrateBox.PackStart(_radioAudioFromVideo, false, false, 0);
+            _comboAudioBitrate = new ComboBoxText();
+            foreach (var b in new[] { "64", "96", "112", "128", "160", "192", "256", "320" })
+                _comboAudioBitrate.AppendText(b);
+            _comboAudioBitrate.Active = 3; // 128
+            bitrateBox.PackStart(_comboAudioBitrate, false, false, 0);
+            bitrateBox.PackStart(new Label("kbps"), false, false, 0);
+            sourceBox.PackStart(bitrateBox, false, false, 0);
+
+            var existingBox = new Box(Orientation.Horizontal, 6);
+            existingBox.PackStart(_radioAudioExisting, false, false, 0);
+            _txtAudioFile = new Entry { Hexpand = true, Sensitive = false };
+            existingBox.PackStart(_txtAudioFile, true, true, 0);
+            var btnAudio = new Button("Browse...");
+            btnAudio.Sensitive = false;
+            btnAudio.Clicked += (s, e) => { var f = SelectFile("Select Audio File"); if (f != "") _txtAudioFile.Text = f; };
+            existingBox.PackStart(btnAudio, false, false, 0);
+            sourceBox.PackStart(existingBox, false, false, 0);
+
+            _radioAudioFromVideo.Toggled += (s, e) => {
+                _comboAudioBitrate.Sensitive = _radioAudioFromVideo.Active;
+                _txtAudioFile.Sensitive = !_radioAudioFromVideo.Active;
+                btnAudio.Sensitive = !_radioAudioFromVideo.Active;
+            };
+
+            sourceFrame.Add(sourceBox);
+            vbox.PackStart(sourceFrame, false, false, 0);
+
+            // Pad timings
+            _chkAudioPad = new CheckButton("Pad Timings");
+            var padBox = new Box(Orientation.Horizontal, 6);
+            padBox.PackStart(_chkAudioPad, false, false, 0);
+            padBox.PackStart(new Label("Start (ms):"), false, false, 0);
+            _spinAudioPadStart = new SpinButton(0, 9999, 50) { Value = 250 };
+            padBox.PackStart(_spinAudioPadStart, false, false, 0);
+            padBox.PackStart(new Label("End (ms):"), false, false, 0);
+            _spinAudioPadEnd = new SpinButton(0, 9999, 50) { Value = 250 };
+            padBox.PackStart(_spinAudioPadEnd, false, false, 0);
+            vbox.PackStart(padBox, false, false, 0);
+
+            _chkNormalize = new CheckButton("Normalize audio (requires mp3gain)");
+            vbox.PackStart(_chkNormalize, false, false, 0);
+
+            return vbox;
+        }
+
+        // ── SNAPSHOT TAB ─────────────────────────────────────────────────────
+
+        private Widget BuildSnapshotTab()
+        {
+            var vbox = new Box(Orientation.Vertical, 8) { BorderWidth = 10 };
+
+            _chkGenerateSnapshots = new CheckButton("Generate Snapshots") { Active = true };
+            vbox.PackStart(_chkGenerateSnapshots, false, false, 0);
+            vbox.PackStart(new Separator(Orientation.Horizontal), false, false, 2);
+
+            var grid = new Grid { RowSpacing = 6, ColumnSpacing = 6 };
+            grid.Attach(new Label("Width:") { Halign = Align.End }, 0, 0, 1, 1);
+            _spinSnapshotWidth = new SpinButton(16, 3840, 16) { Value = 240 };
+            grid.Attach(_spinSnapshotWidth, 1, 0, 1, 1);
+            grid.Attach(new Label("px"), 2, 0, 1, 1);
+
+            grid.Attach(new Label("Height:") { Halign = Align.End }, 0, 1, 1, 1);
+            _spinSnapshotHeight = new SpinButton(16, 2160, 2) { Value = 160 };
+            grid.Attach(_spinSnapshotHeight, 1, 1, 1, 1);
+            grid.Attach(new Label("px"), 2, 1, 1, 1);
+
+            grid.Attach(new Label("Crop Bottom:") { Halign = Align.End }, 0, 2, 1, 1);
+            _spinSnapshotCropBottom = new SpinButton(0, 2160, 2) { Value = 0 };
+            grid.Attach(_spinSnapshotCropBottom, 1, 2, 1, 1);
+            grid.Attach(new Label("px"), 2, 2, 1, 1);
+
+            vbox.PackStart(grid, false, false, 0);
+            return vbox;
+        }
+
+        // ── VIDEO CLIP TAB ───────────────────────────────────────────────────
+
+        private Widget BuildVideoTab()
+        {
+            var vbox = new Box(Orientation.Vertical, 8) { BorderWidth = 10 };
+
+            _chkGenerateVideo = new CheckButton("Generate Video Clips") { Active = false };
+            vbox.PackStart(_chkGenerateVideo, false, false, 0);
+            vbox.PackStart(new Separator(Orientation.Horizontal), false, false, 2);
+
+            var grid = new Grid { RowSpacing = 6, ColumnSpacing = 6 };
+            int row = 0;
+
+            grid.Attach(new Label("Width:") { Halign = Align.End }, 0, row, 1, 1);
+            _spinVideoWidth = new SpinButton(16, 3840, 16) { Value = 240 };
+            grid.Attach(_spinVideoWidth, 1, row, 1, 1);
+            grid.Attach(new Label("px"), 2, row, 1, 1);
+            row++;
+
+            grid.Attach(new Label("Height:") { Halign = Align.End }, 0, row, 1, 1);
+            _spinVideoHeight = new SpinButton(16, 2160, 2) { Value = 160 };
+            grid.Attach(_spinVideoHeight, 1, row, 1, 1);
+            grid.Attach(new Label("px"), 2, row, 1, 1);
+            row++;
+
+            grid.Attach(new Label("Crop Bottom:") { Halign = Align.End }, 0, row, 1, 1);
+            _spinVideoCropBottom = new SpinButton(0, 2160, 2) { Value = 0 };
+            grid.Attach(_spinVideoCropBottom, 1, row, 1, 1);
+            grid.Attach(new Label("px"), 2, row, 1, 1);
+            row++;
+
+            grid.Attach(new Label("Video Bitrate:") { Halign = Align.End }, 0, row, 1, 1);
+            _spinVideoBitrateVideo = new SpinButton(100, 10000, 100) { Value = 800 };
+            grid.Attach(_spinVideoBitrateVideo, 1, row, 1, 1);
+            grid.Attach(new Label("kb/s"), 2, row, 1, 1);
+            row++;
+
+            grid.Attach(new Label("Audio Bitrate:") { Halign = Align.End }, 0, row, 1, 1);
+            _comboVideoBitrateAudio = new ComboBoxText();
+            foreach (var b in new[] { "64", "96", "112", "128", "160", "192", "256", "320" })
+                _comboVideoBitrateAudio.AppendText(b);
+            _comboVideoBitrateAudio.Active = 3; // 128
+            grid.Attach(_comboVideoBitrateAudio, 1, row, 1, 1);
+            grid.Attach(new Label("kb/s"), 2, row, 1, 1);
+            row++;
+
+            vbox.PackStart(grid, false, false, 0);
+
+            // Pad
+            _chkVideoPad = new CheckButton("Pad Timings");
+            var padBox = new Box(Orientation.Horizontal, 6);
+            padBox.PackStart(_chkVideoPad, false, false, 0);
+            padBox.PackStart(new Label("Start (ms):"), false, false, 0);
+            _spinVideoPadStart = new SpinButton(0, 9999, 50) { Value = 250 };
+            padBox.PackStart(_spinVideoPadStart, false, false, 0);
+            padBox.PackStart(new Label("End (ms):"), false, false, 0);
+            _spinVideoPadEnd = new SpinButton(0, 9999, 50) { Value = 250 };
+            padBox.PackStart(_spinVideoPadEnd, false, false, 0);
+            vbox.PackStart(padBox, false, false, 0);
+
+            _chkIPod = new CheckButton("iPod/iPhone support");
+            vbox.PackStart(_chkIPod, false, false, 0);
+
+            return vbox;
+        }
+
+        // ── SETTINGS ─────────────────────────────────────────────────────────
+
+        private void LoadSettings()
+        {
+            PrefIO.read();
+        
+            Settings.Instance.AudioClips.Enabled = ConstantSettings.DefaultEnableAudioClipGeneration;
+            Settings.Instance.Snapshots.Enabled = ConstantSettings.DefaultEnableSnapshotsGeneration;
+            Settings.Instance.VideoClips.Enabled = ConstantSettings.DefaultEnableVideoClipsGeneration;
+            Settings.Instance.AudioClips.Bitrate = ConstantSettings.DefaultAudioClipBitrate;
+            Settings.Instance.AudioClips.Normalize = ConstantSettings.DefaultAudioNormalize;
+            Settings.Instance.VideoClips.BitrateVideo = ConstantSettings.DefaultVideoClipVideoBitrate;
+            Settings.Instance.VideoClips.BitrateAudio = ConstantSettings.DefaultVideoClipAudioBitrate;
+            Settings.Instance.VideoClips.IPodSupport = ConstantSettings.DefaultIphoneSupport;
+            Settings.Instance.Subs[0].Encoding = ConstantSettings.DefaultEncodingSubs1;
+            Settings.Instance.Subs[1].Encoding = ConstantSettings.DefaultEncodingSubs2;
+            Settings.Instance.ContextLeadingCount = ConstantSettings.DefaultContextNumLeading;
+            Settings.Instance.ContextTrailingCount = ConstantSettings.DefaultContextNumTrailing;
+            Settings.Instance.ContextLeadingRange = ConstantSettings.DefaultContextLeadingRange;
+            Settings.Instance.ContextTrailingRange = ConstantSettings.DefaultContextTrailingRange;
+        
+            Settings.Instance.Subs[0].RemoveNoCounterpart = ConstantSettings.DefaultRemoveNoCounterpartSubs1;
+            Settings.Instance.Subs[1].RemoveNoCounterpart = ConstantSettings.DefaultRemoveNoCounterpartSubs2;
+            Settings.Instance.Subs[0].RemoveStyledLines = ConstantSettings.DefaultRemoveStyledLinesSubs1;
+            Settings.Instance.Subs[1].RemoveStyledLines = ConstantSettings.DefaultRemoveStyledLinesSubs2;
+        
+            Settings.Instance.Subs[0].IncludedWords = UtilsCommon.removeExtraSpaces(
+                ConstantSettings.DefaultIncludeTextSubs1.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries));
+            Settings.Instance.Subs[1].IncludedWords = UtilsCommon.removeExtraSpaces(
+                ConstantSettings.DefaultIncludeTextSubs2.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries));
+            Settings.Instance.Subs[0].ExcludedWords = UtilsCommon.removeExtraSpaces(
+                ConstantSettings.DefaultExcludeTextSubs1.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries));
+            Settings.Instance.Subs[1].ExcludedWords = UtilsCommon.removeExtraSpaces(
+                ConstantSettings.DefaultExcludeTextSubs2.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries));
+        
+            Settings.Instance.Subs[0].ExcludeDuplicateLinesEnabled = ConstantSettings.DefaultExcludeDuplicateLinesSubs1;
+            Settings.Instance.Subs[1].ExcludeDuplicateLinesEnabled = ConstantSettings.DefaultExcludeDuplicateLinesSubs2;
+            Settings.Instance.Subs[0].ExcludeFewerEnabled = ConstantSettings.DefaultExcludeLinesFewerThanCharsSubs1;
+            Settings.Instance.Subs[1].ExcludeFewerEnabled = ConstantSettings.DefaultExcludeLinesFewerThanCharsSubs2;
+            Settings.Instance.Subs[0].ExcludeFewerCount = ConstantSettings.DefaultExcludeLinesFewerThanCharsNumSubs1;
+            Settings.Instance.Subs[1].ExcludeFewerCount = ConstantSettings.DefaultExcludeLinesFewerThanCharsNumSubs2;
+            Settings.Instance.Subs[0].ExcludeShorterThanTimeEnabled = ConstantSettings.DefaultExcludeLinesShorterThanMsSubs1;
+            Settings.Instance.Subs[1].ExcludeShorterThanTimeEnabled = ConstantSettings.DefaultExcludeLinesShorterThanMsSubs2;
+            Settings.Instance.Subs[0].ExcludeShorterThanTime = ConstantSettings.DefaultExcludeLinesShorterThanMsNumSubs1;
+            Settings.Instance.Subs[1].ExcludeShorterThanTime = ConstantSettings.DefaultExcludeLinesShorterThanMsNumSubs2;
+            Settings.Instance.Subs[0].ExcludeLongerThanTimeEnabled = ConstantSettings.DefaultExcludeLinesLongerThanMsSubs1;
+            Settings.Instance.Subs[1].ExcludeLongerThanTimeEnabled = ConstantSettings.DefaultExcludeLinesLongerThanMsSubs2;
+            Settings.Instance.Subs[0].ExcludeLongerThanTime = ConstantSettings.DefaultExcludeLinesLongerThanMsNumSubs1;
+            Settings.Instance.Subs[1].ExcludeLongerThanTime = ConstantSettings.DefaultExcludeLinesLongerThanMsNumSubs2;
+            Settings.Instance.Subs[0].JoinSentencesEnabled = ConstantSettings.DefaultJoinSentencesSubs1;
+            Settings.Instance.Subs[1].JoinSentencesEnabled = ConstantSettings.DefaultJoinSentencesSubs2;
+            Settings.Instance.Subs[0].JoinSentencesCharList = ConstantSettings.DefaultJoinSentencesCharListSubs1;
+            Settings.Instance.Subs[1].JoinSentencesCharList = ConstantSettings.DefaultJoinSentencesCharListSubs2;
+        
+            _txtDeckName.Text = Settings.Instance.DeckName != "" ? Settings.Instance.DeckName : "MyDeck";
+            _txtOutputDir.Text = Settings.Instance.OutputDir != ""
+                ? Settings.Instance.OutputDir
+                : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            _spinEpisodeStart.Value = Settings.Instance.EpisodeStartNumber;
+        
+            _chkGenerateAudio.Active = Settings.Instance.AudioClips.Enabled;
+            _chkGenerateSnapshots.Active = Settings.Instance.Snapshots.Enabled;
+            _chkGenerateVideo.Active = Settings.Instance.VideoClips.Enabled;
+        
+            _spinSnapshotWidth.Value = Settings.Instance.Snapshots.Size.Width > 0 ? Settings.Instance.Snapshots.Size.Width : 240;
+            _spinSnapshotHeight.Value = Settings.Instance.Snapshots.Size.Height > 0 ? Settings.Instance.Snapshots.Size.Height : 160;
+            _spinSnapshotCropBottom.Value = Settings.Instance.Snapshots.Crop.Bottom;
+        
+            _spinVideoWidth.Value = Settings.Instance.VideoClips.Size.Width > 0 ? Settings.Instance.VideoClips.Size.Width : 240;
+            _spinVideoHeight.Value = Settings.Instance.VideoClips.Size.Height > 0 ? Settings.Instance.VideoClips.Size.Height : 160;
+            _spinVideoCropBottom.Value = Settings.Instance.VideoClips.Crop.Bottom;
+            _spinVideoBitrateVideo.Value = Settings.Instance.VideoClips.BitrateVideo > 0 ? Settings.Instance.VideoClips.BitrateVideo : 800;
+        
+            SetEncodingCombo(_comboEncodingSubs1, Settings.Instance.Subs[0].Encoding);
+            SetEncodingCombo(_comboEncodingSubs2, Settings.Instance.Subs[1].Encoding);
+        
+            _radioTimingSubs1.Active = true;
+        
+            SetDefaultSize(ConstantSettings.MainWindowWidth, ConstantSettings.MainWindowHeight);
+        }
+
+        private void SaveSettings()
+        {
+            try
+            {
+                Settings.Instance.DeckName = _txtDeckName.Text.Trim();
+                Settings.Instance.OutputDir = _txtOutputDir.Text.Trim();
+                Settings.Instance.EpisodeStartNumber = (int)_spinEpisodeStart.Value;
+        
+                // Subs
+                Settings.Instance.Subs[0].FilePattern = _txtSubs1.Text.Trim();
+                Settings.Instance.Subs[0].Encoding = GetSelectedEncoding(_comboEncodingSubs1);
+                Settings.Instance.Subs[0].TimingsEnabled = _radioTimingSubs1.Active;
+                Settings.Instance.Subs[0].TimeShift = (int)_spinTimeShiftSubs1.Value;
+                Settings.Instance.Subs[0].Files = UtilsSubs.getSubsFiles(
+                    Settings.Instance.Subs[0].FilePattern).ToArray();
+        
+                Settings.Instance.Subs[1].FilePattern = _txtSubs2.Text.Trim();
+                Settings.Instance.Subs[1].Encoding = GetSelectedEncoding(_comboEncodingSubs2);
+                Settings.Instance.Subs[1].TimingsEnabled = _radioTimingSubs2.Active;
+                Settings.Instance.Subs[1].TimeShift = (int)_spinTimeShiftSubs2.Value;
+                if (Settings.Instance.Subs[1].FilePattern.Length > 0)
+                    Settings.Instance.Subs[1].Files = UtilsSubs.getSubsFiles(
+                        Settings.Instance.Subs[1].FilePattern).ToArray();
+                else
+                    Settings.Instance.Subs[1].Files = new string[0];
+        
+                Settings.Instance.TimeShiftEnabled = _chkTimeShift.Active;
+        
+                Settings.Instance.SpanEnabled = _chkSpan.Active;
+                if (_chkSpan.Active)
+                {
+                    Settings.Instance.SpanStart = UtilsSubs.stringToTime(_txtSpanStart.Text.Trim());
+                    Settings.Instance.SpanEnd = UtilsSubs.stringToTime(_txtSpanEnd.Text.Trim());
+                }
+        
+                // Video
+                Settings.Instance.VideoClips.FilePattern = _txtVideo.Text.Trim();
+                Settings.Instance.VideoClips.Files = UtilsCommon.getNonHiddenFiles(
+                    Settings.Instance.VideoClips.FilePattern);
+        
+                string streamNum = _comboAudioStream.Active >= 0
+                    ? _comboAudioStream.Active.ToString() : "0";
+                Settings.Instance.VideoClips.AudioStream = new InfoStream(streamNum, streamNum, "", "");
+        
+                // Audio
+                Settings.Instance.AudioClips.Enabled = _chkGenerateAudio.Active;
+                Settings.Instance.AudioClips.UseAudioFromVideo = _radioAudioFromVideo.Active;
+                Settings.Instance.AudioClips.UseExistingAudio = _radioAudioExisting.Active;
+                Settings.Instance.AudioClips.Bitrate = GetSelectedBitrate(_comboAudioBitrate, 128);
+                Settings.Instance.AudioClips.PadEnabled = _chkAudioPad.Active;
+                Settings.Instance.AudioClips.PadStart = (int)_spinAudioPadStart.Value;
+                Settings.Instance.AudioClips.PadEnd = (int)_spinAudioPadEnd.Value;
+                Settings.Instance.AudioClips.Normalize = _chkNormalize.Active;
+        
+                Settings.Instance.AudioClips.filePattern = _txtAudioFile.Text.Trim();
+                Settings.Instance.AudioClips.Files = UtilsCommon.getNonHiddenFiles(
+                    Settings.Instance.AudioClips.filePattern);
+        
+                // Snapshots
+                Settings.Instance.Snapshots.Enabled = _chkGenerateSnapshots.Active;
+                Settings.Instance.Snapshots.Size.Width = (int)_spinSnapshotWidth.Value;
+                Settings.Instance.Snapshots.Size.Height = (int)_spinSnapshotHeight.Value;
+                Settings.Instance.Snapshots.Crop.Bottom = (int)_spinSnapshotCropBottom.Value;
+        
+                // Video clips
+                Settings.Instance.VideoClips.Enabled = _chkGenerateVideo.Active;
+                Settings.Instance.VideoClips.Size.Width = (int)_spinVideoWidth.Value;
+                Settings.Instance.VideoClips.Size.Height = (int)_spinVideoHeight.Value;
+                Settings.Instance.VideoClips.Crop.Bottom = (int)_spinVideoCropBottom.Value;
+                Settings.Instance.VideoClips.BitrateVideo = (int)_spinVideoBitrateVideo.Value;
+                Settings.Instance.VideoClips.BitrateAudio = GetSelectedBitrate(_comboVideoBitrateAudio, 128);
+                Settings.Instance.VideoClips.PadEnabled = _chkVideoPad.Active;
+                Settings.Instance.VideoClips.PadStart = (int)_spinVideoPadStart.Value;
+                Settings.Instance.VideoClips.PadEnd = (int)_spinVideoPadEnd.Value;
+                Settings.Instance.VideoClips.IPodSupport = _chkIPod.Active;
+            }
+            catch (Exception e1)
+            {
+                UtilsMsg.showErrMsg("Something went wrong while gathering interface data:\n" + e1);
+            }
+        }
+
+        private string GetSelectedEncoding(ComboBoxText combo)
+        {
+            var encodings = InfoEncoding.getEncodings();
+            int idx = combo.Active;
+            int i = 0;
+            foreach (InfoEncoding enc in encodings)
+            {
+                if (i == idx) return enc.ShortName;
+                i++;
+            }
+            return "utf-8";
+        }
+
+        private void SetEncodingCombo(ComboBoxText combo, string shortName)
+        {
+            int i = 0;
+            foreach (InfoEncoding enc in InfoEncoding.getEncodings())
+            {
+                if (enc.ShortName == shortName) { combo.Active = i; return; }
+                i++;
+            }
+            combo.Active = 0;
+        }
+
+        private int GetSelectedBitrate(ComboBoxText combo, int defaultVal)
+        {
+            if (int.TryParse(combo.ActiveText, out int val)) return val;
+            return defaultVal;
+        }
+
+        // ── EVENT HANDLERS ───────────────────────────────────────────────────
+
+        private void OnSubs1Changed(object? sender, EventArgs e)
+        {
+        }
+
+        private void OnVideoChanged(object? sender, EventArgs e)
+        {
+            string file = _txtVideo.Text.Trim();
+            if (!System.IO.File.Exists(file)) return;
+
+            var streams = UtilsVideo.getAvailableAudioStreams(file);
+            _comboAudioStream.RemoveAll();
+            if (streams.Count > 0)
+            {
+                foreach (var s in streams)
+                    _comboAudioStream.AppendText(s.ToString());
+            }
+            else
+            {
+                _comboAudioStream.AppendText("0 - (Default)");
+            }
+            _comboAudioStream.Active = 0;
+        }
+
+        private async void OnGoClicked(object? sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(_txtSubs1.Text))
+            {
+                UtilsMsg.showErrMsg("Please provide at least Subtitle 1.");
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(_txtOutputDir.Text))
+            {
+                UtilsMsg.showErrMsg("Please provide Output Directory.");
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(_txtDeckName.Text))
+            {
+                UtilsMsg.showErrMsg("Please provide Deck Name.");
+                return;
+            }
+        
+            SaveSettings();
+        
+            _btnGo.Sensitive = false;
+            _btnCancel.Sensitive = true;
+        
+            _reporter = new GtkProgressReporter(_progressBar);
+            var processor = new SubsProcessor();
+        
+            try
+            {
+                await processor.StartAsync(_reporter);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(ex);
+                Application.Invoke((s2, e2) =>
+                    UtilsMsg.showErrMsg($"Error: {ex.Message}\n\n{ex.StackTrace}"));
+            }
+        
+            Gtk.Application.Invoke((s2, e2) =>
+            {
+                _btnGo.Sensitive = true;
+                _btnCancel.Sensitive = false;
+                if (_reporter != null)
+                {
+                    _progressBar.Text = _reporter.Cancel ? "Cancelled" : "Finished!";
+                    _progressBar.Fraction = _reporter.Cancel ? 0.0 : 1.0;
+                }
+            });
+        }
+
+        // ── FILE DIALOGS ─────────────────────────────────────────────────────
+
+        private string SelectFile(string title)
+        {
+            var dlg = new FileChooserDialog(title, this, FileChooserAction.Open,
+                "Cancel", ResponseType.Cancel, "Open", ResponseType.Accept);
+            string result = string.Empty;
+            if (dlg.Run() == (int)ResponseType.Accept)
+                result = dlg.Filename;
+            dlg.Destroy();
+            return result;
+        }
+
+        private string SelectFolder(string title)
+        {
+            var dlg = new FileChooserDialog(title, this, FileChooserAction.SelectFolder,
+                "Cancel", ResponseType.Cancel, "Open", ResponseType.Accept);
+            string result = string.Empty;
+            if (dlg.Run() == (int)ResponseType.Accept)
+                result = dlg.Filename;
+            dlg.Destroy();
+            return result;
+        }
+
+        // ── PROGRESS REPORTER ────────────────────────────────────────────────
+
+        private class GtkProgressReporter : IProgressReporter
+        {
+            private readonly ProgressBar _bar;
+            public bool Cancel { get; set; } = false;
+            public int StepsTotal { get; set; }
+
+            public GtkProgressReporter(ProgressBar bar) { _bar = bar; }
+
+            public void NextStep(int step, string description)
+            {
+                Application.Invoke((s, e) => {
+                    _bar.Text = $"[{step}/{StepsTotal}] {description}";
+                    _bar.Fraction = 0.0;
+                });
+            }
+
+            public void UpdateProgress(int percent, string text)
+            {
+                Application.Invoke((s, e) => {
+                    _bar.Text = text;
+                    _bar.Fraction = Math.Max(0, Math.Min(1, percent / 100.0));
+                });
+            }
+
+            public void UpdateProgress(string text)
+            {
+                Application.Invoke((s, e) => { _bar.Text = text; });
+            }
+
+            public void EnableDetail(bool enable) { }
+            public void SetDuration(DateTime duration) { }
+            public void OnFFmpegOutput(object sender, System.Diagnostics.DataReceivedEventArgs e) { }
+        }
+    }
+}
