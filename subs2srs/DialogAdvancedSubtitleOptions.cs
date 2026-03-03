@@ -324,7 +324,7 @@ namespace subs2srs
             _radioActorS1.Active = s.Subs[0].ActorsEnabled;
             _radioActorS2.Active = s.Subs[1].ActorsEnabled;
 
-            _chkKanjiOnly.Active = s.LangaugeSpecific.KanjiLinesOnly;
+            _chkKanjiOnly.Active = s.LanguageSpecific.KanjiLinesOnly;
 
             // Sensitivity
             _spinS1Fewer.Sensitive = _chkS1ExclFewer.Active;
@@ -383,7 +383,7 @@ namespace subs2srs
             s.ContextTrailingIncludeVideoClips = _chkTrailVideo.Active;
             s.ContextTrailingRange = (int)_spinTrailRange.Value;
 
-            s.LangaugeSpecific.KanjiLinesOnly = _chkKanjiOnly.Active;
+            s.LanguageSpecific.KanjiLinesOnly = _chkKanjiOnly.Active;
 
             // Actors
             s.ActorList.Clear();

@@ -1415,7 +1415,7 @@ namespace subs2srs
 #endif
 
   [Serializable]
-  public class LangaugeSpecific
+  public class LanguageSpecific
   {
     // Japanese
     private bool kanjiLinesOnly;
@@ -1426,7 +1426,7 @@ namespace subs2srs
       set { kanjiLinesOnly = value; }
     }
 
-    public LangaugeSpecific()
+    public LanguageSpecific()
     {
       kanjiLinesOnly = false;
     }
@@ -1443,7 +1443,7 @@ namespace subs2srs
     private AudioClips audioClips;
     private Snapshots snapshots;
     private VobSubColors vobSubColors;
-    private LangaugeSpecific langaugeSpecific;
+    private LanguageSpecific languageSpecific;
 
     private string outputDir;
 
@@ -1501,10 +1501,10 @@ namespace subs2srs
       set { vobSubColors = value; }
     }
 
-    public LangaugeSpecific LangaugeSpecific
+    public LanguageSpecific LanguageSpecific
     {
-      get { return langaugeSpecific; }
-      set { langaugeSpecific = value; }
+      get { return languageSpecific; }
+      set { languageSpecific = value; }
     }
 
     public string OutputDir
@@ -1651,7 +1651,7 @@ namespace subs2srs
       audioClips.Files = Array.Empty<string>();
       snapshots = settings.snapshots;
       vobSubColors = settings.vobSubColors;
-      langaugeSpecific = settings.langaugeSpecific;
+      languageSpecific = settings.languageSpecific;
 
       outputDir = settings.outputDir;
 
@@ -1693,7 +1693,7 @@ namespace subs2srs
     public AudioClips audioClips;
     public Snapshots snapshots;
     public VobSubColors vobSubColors;
-    public LangaugeSpecific langaugeSpecific;
+    public LanguageSpecific languageSpecific;
 
     public string outputDir;
 
@@ -1732,7 +1732,7 @@ namespace subs2srs
       audioClips = new AudioClips();
       snapshots = new Snapshots();
       vobSubColors = new VobSubColors();
-      langaugeSpecific = new LangaugeSpecific();
+      languageSpecific = new LanguageSpecific();
       outputDir = "";
       timeShiftEnabled = false;
       spanEnabled = false;
@@ -1765,7 +1765,7 @@ namespace subs2srs
       audioClips = Settings.Instance.AudioClips;
       snapshots = Settings.Instance.Snapshots;
       vobSubColors = Settings.Instance.VobSubColors;
-      langaugeSpecific = Settings.Instance.LangaugeSpecific;
+      languageSpecific = Settings.Instance.LanguageSpecific;
 
       outputDir = Settings.Instance.OutputDir;
 

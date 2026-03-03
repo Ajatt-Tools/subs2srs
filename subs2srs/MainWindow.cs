@@ -613,7 +613,7 @@ namespace subs2srs
                     Settings.Instance.Subs[1].Files = UtilsSubs.getSubsFiles(
                         Settings.Instance.Subs[1].FilePattern).ToArray();
                 else
-                    Settings.Instance.Subs[1].Files = new string[0];
+                    Settings.Instance.Subs[1].Files = Array.Empty<string>();
         
                 Settings.Instance.TimeShiftEnabled = _chkTimeShift.Active;
         

@@ -874,7 +874,7 @@ namespace subs2srs
 
 
           // Remove lines without a kanji
-          if (Settings.Instance.LangaugeSpecific.KanjiLinesOnly && !isExcluded)
+          if (Settings.Instance.LanguageSpecific.KanjiLinesOnly && !isExcluded)
           {
             if ((!isSubs1Vobsub && !UtilsLang.containsIdeograph(comb.Subs1.Text)) && (!isSubs2Vobsub && !UtilsLang.containsIdeograph(comb.Subs2.Text)))
             {
