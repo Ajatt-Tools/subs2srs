@@ -1032,8 +1032,8 @@ namespace subs2srs
       vobsubStream = null;
       timingsEnabled = false;
       timeShift = 0;
-      includedWords = new string[0];
-      excludedWords = new string[0];
+      includedWords = Array.Empty<string>();
+      excludedWords = Array.Empty<string>();
       removeNoCounterpart = true;
       removeStyledLines = true;
       excludeDuplicateLinesEnabled = false;
@@ -1047,7 +1047,7 @@ namespace subs2srs
       joinSentencesCharList = ",、→";
       actorsEnabled = false;
       encoding = "utf-8";
-      files =  new string[0];
+      files =  Array.Empty<string>();
     }
   }
 
@@ -1226,7 +1226,7 @@ namespace subs2srs
       enabled = false;
       dir = "";
       audioStream = null;
-      files = new string[0];
+      files = Array.Empty<string>();
       size = new ImageSize((int)(720 / 3), (int)(480 / 3));
       bitrateVideo = 700;
       bitrateAudio = 128;
@@ -1318,7 +1318,7 @@ namespace subs2srs
     {
       enabled = true;
       dir = "";
-      files = new string[0];
+      files = Array.Empty<string>();
       padEnabled = false;
       padStart = 250;
       padEnd = 250;
@@ -1643,12 +1643,12 @@ namespace subs2srs
     public void loadSettings(SaveSettings settings)
     {
       subs = settings.subs;
-      subs[0].Files = new string[0];
-      subs[1].Files = new string[0];
+      subs[0].Files = Array.Empty<string>();
+      subs[1].Files = Array.Empty<string>();
       videoClips = settings.videoClips;
-      videoClips.Files = new string[0];
+      videoClips.Files = Array.Empty<string>();
       audioClips = settings.audioClips;
-      audioClips.Files = new string[0];
+      audioClips.Files = Array.Empty<string>();
       snapshots = settings.snapshots;
       vobSubColors = settings.vobSubColors;
       langaugeSpecific = settings.langaugeSpecific;
@@ -1781,7 +1781,7 @@ namespace subs2srs
       actorList = Settings.Instance.ActorList;
 
       contextLeadingCount = Settings.Instance.ContextLeadingCount;
-      contextLeadingIncludeSnapshots = Settings.Instance.ContextLeadingIncludeAudioClips;
+      contextLeadingIncludeSnapshots = Settings.Instance.ContextLeadingIncludeSnapshots;
       contextLeadingIncludeAudioClips = Settings.Instance.ContextLeadingIncludeAudioClips;
       contextLeadingIncludeVideoClips = Settings.Instance.ContextLeadingIncludeVideoClips;
       contextLeadingRange = Settings.Instance.ContextLeadingRange;
