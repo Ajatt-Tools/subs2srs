@@ -129,7 +129,8 @@ namespace subs2srs
                         throw new OperationCanceledException();
                 }
             }
-            catch { }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { Logger.Instance.info($"VobSub copy failed: {ex.Message}"); }
 
             DialogProgress.nextStepInvoke(dialogProgress, ++currentStep, "Generate import file");
             WorkerSrs srsWorker = new WorkerSrs();
