@@ -19,14 +19,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Diagnostics;
 using System.IO;
-using System.Globalization;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
 
 namespace subs2srs
 {
@@ -40,7 +33,7 @@ namespace subs2srs
     /// </summary>
     public bool genSnapshots(WorkerVars workerVars, IProgressReporter dialogProgress)
     {
-      int progessCount = 0;
+      int progressCount = 0;
       int episodeCount = 0;
       int totalEpisodes = workerVars.CombinedAll.Count;
       int totalLines = UtilsSubs.getTotalLineCount(workerVars.CombinedAll);
@@ -57,15 +50,11 @@ namespace subs2srs
         // For each line in episode, generate a snapshot
         for (int i = 0; i < combArray.Count; i++)
         {
-          progessCount++;
+          progressCount++;
 
-          string progressText = string.Format("Generating snapshot: {0} of {1}",
-                                              progessCount.ToString(),
-                                              totalLines.ToString());
+          string progressText = $"Generating snapshot: {progressCount} of {totalLines}";
+          int progress = Convert.ToInt32(progressCount * (100.0 / totalLines));
 
-          int progress = Convert.ToInt32(progessCount * (100.0 / totalLines));
-
-          // Update the progress dialog
           dialogProgress.UpdateProgress(progress, progressText);
 
           InfoCombined comb = combArray[i];
@@ -75,32 +64,27 @@ namespace subs2srs
 
           string videoFileName = Settings.Instance.VideoClips.Files[episodeCount - 1];
 
-          // Create output filename
-          string nameStr = name.createName(ConstantSettings.SnapshotFilenameFormat, 
+          string nameStr = name.createName(ConstantSettings.SnapshotFilenameFormat,
             (int)episodeCount + Settings.Instance.EpisodeStartNumber - 1,
-            progessCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
+            progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
 
-          string outFile = string.Format("{0}{1}{2}",
-                                          workerVars.MediaDir,          // {0}
-                                          Path.DirectorySeparatorChar,  // {1}
-                                          nameStr);                     // {2}
+          string outFile = $"{workerVars.MediaDir}{Path.DirectorySeparatorChar}{nameStr}";
 
-          // Generate snapshot
-          UtilsSnapshot.takeSnapshotFromVideo(videoFileName, midTime, Settings.Instance.Snapshots.Size,
-            Settings.Instance.Snapshots.Crop, outFile);
+          // Skip if already exists (resume support)
+          if (!File.Exists(outFile))
+          {
+            UtilsSnapshot.takeSnapshotFromVideo(videoFileName, midTime, Settings.Instance.Snapshots.Size,
+              Settings.Instance.Snapshots.Crop, outFile);
+          }
 
-          // Did the user press the cancel button?
           if (dialogProgress.Cancel)
           {
             return false;
-          }                                                               
+          }
         }
       }
 
       return true;
     }
-
-
-
   }
 }

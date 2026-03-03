@@ -463,41 +463,41 @@ namespace subs2srs
 
     public void loadSettings(SaveSettings settings)
     {
-      Subs = settings.subs;
+      Subs = settings.Subs;
       Subs[0].Files = Array.Empty<string>();
       Subs[1].Files = Array.Empty<string>();
-      VideoClips = settings.videoClips;
+      VideoClips = settings.VideoClips;
       VideoClips.Files = Array.Empty<string>();
-      AudioClips = settings.audioClips;
+      AudioClips = settings.AudioClips;
       AudioClips.Files = Array.Empty<string>();
-      Snapshots = settings.snapshots;
-      VobSubColors = settings.vobSubColors;
-      LanguageSpecific = settings.languageSpecific;
+      Snapshots = settings.Snapshots;
+      VobSubColors = settings.VobSubColors;
+      LanguageSpecific = settings.LanguageSpecific;
 
-      OutputDir = settings.outputDir;
+      OutputDir = settings.OutputDir;
 
-      TimeShiftEnabled = settings.timeShiftEnabled;
+      TimeShiftEnabled = settings.TimeShiftEnabled;
 
-      SpanEnabled = settings.spanEnabled;
-      SpanStart = settings.spanStart;
-      SpanEnd = settings.spanEnd;
+      SpanEnabled = settings.SpanEnabled;
+      SpanStart = settings.SpanStart;
+      SpanEnd = settings.SpanEnd;
 
-      DeckName = settings.deckName;
-      EpisodeStartNumber = settings.episodeStartNumber;
+      DeckName = settings.DeckName;
+      EpisodeStartNumber = settings.EpisodeStartNumber;
 
-      ActorList = settings.actorList;
+      ActorList = settings.ActorList;
 
-      ContextLeadingCount = settings.contextLeadingCount;
-      ContextLeadingIncludeSnapshots = settings.contextLeadingIncludeSnapshots;
-      ContextLeadingIncludeAudioClips = settings.contextLeadingIncludeAudioClips;
-      ContextLeadingIncludeVideoClips = settings.contextLeadingIncludeVideoClips;
-      ContextLeadingRange = settings.contextLeadingRange;
+      ContextLeadingCount = settings.ContextLeadingCount;
+      ContextLeadingIncludeSnapshots = settings.ContextLeadingIncludeSnapshots;
+      ContextLeadingIncludeAudioClips = settings.ContextLeadingIncludeAudioClips;
+      ContextLeadingIncludeVideoClips = settings.ContextLeadingIncludeVideoClips;
+      ContextLeadingRange = settings.ContextLeadingRange;
 
-      ContextTrailingCount = settings.contextTrailingCount;
-      ContextTrailingIncludeSnapshots = settings.contextTrailingIncludeSnapshots;
-      ContextTrailingIncludeAudioClips = settings.contextTrailingIncludeAudioClips;
-      ContextTrailingIncludeVideoClips = settings.contextTrailingIncludeVideoClips;
-      ContextTrailingRange = settings.contextTrailingRange;
+      ContextTrailingCount = settings.ContextTrailingCount;
+      ContextTrailingIncludeSnapshots = settings.ContextTrailingIncludeSnapshots;
+      ContextTrailingIncludeAudioClips = settings.ContextTrailingIncludeAudioClips;
+      ContextTrailingIncludeVideoClips = settings.ContextTrailingIncludeVideoClips;
+      ContextTrailingRange = settings.ContextTrailingRange;
     }
 
     public void reset()
@@ -509,105 +509,147 @@ namespace subs2srs
 
   public class SaveSettings
   {
-    public SubSettings[] subs;
-    public VideoClips videoClips;
-    public AudioClips audioClips;
-    public Snapshots snapshots;
-    public VobSubColors vobSubColors;
+    [JsonPropertyName("subs")]
+    public SubSettings[] Subs { get; set; }
+
+    [JsonPropertyName("videoClips")]
+    public VideoClips VideoClips { get; set; }
+
+    [JsonPropertyName("audioClips")]
+    public AudioClips AudioClips { get; set; }
+
+    [JsonPropertyName("snapshots")]
+    public Snapshots Snapshots { get; set; }
+
+    [JsonPropertyName("vobSubColors")]
+    public VobSubColors VobSubColors { get; set; }
 
     [JsonPropertyName("langaugeSpecific")]
-    public LanguageSpecific languageSpecific;
+    public LanguageSpecific LanguageSpecific { get; set; }
 
-    public string outputDir;
-    public bool timeShiftEnabled;
-    public bool spanEnabled;
-    public DateTime spanStart;
-    public DateTime spanEnd;
-    public string deckName;
-    public int episodeStartNumber;
-    public List<string> actorList;
+    [JsonPropertyName("outputDir")]
+    public string OutputDir { get; set; }
 
-    public int contextLeadingCount;
-    public bool contextLeadingIncludeSnapshots;
-    public bool contextLeadingIncludeAudioClips;
-    public bool contextLeadingIncludeVideoClips;
-    public int contextLeadingRange;
+    [JsonPropertyName("timeShiftEnabled")]
+    public bool TimeShiftEnabled { get; set; }
 
-    public int contextTrailingCount;
-    public bool contextTrailingIncludeSnapshots;
-    public bool contextTrailingIncludeAudioClips;
-    public bool contextTrailingIncludeVideoClips;
-    public int contextTrailingRange;
+    [JsonPropertyName("spanEnabled")]
+    public bool SpanEnabled { get; set; }
+
+    [JsonPropertyName("spanStart")]
+    public DateTime SpanStart { get; set; }
+
+    [JsonPropertyName("spanEnd")]
+    public DateTime SpanEnd { get; set; }
+
+    [JsonPropertyName("deckName")]
+    public string DeckName { get; set; }
+
+    [JsonPropertyName("episodeStartNumber")]
+    public int EpisodeStartNumber { get; set; }
+
+    [JsonPropertyName("actorList")]
+    public List<string> ActorList { get; set; }
+
+    [JsonPropertyName("contextLeadingCount")]
+    public int ContextLeadingCount { get; set; }
+
+    [JsonPropertyName("contextLeadingIncludeSnapshots")]
+    public bool ContextLeadingIncludeSnapshots { get; set; }
+
+    [JsonPropertyName("contextLeadingIncludeAudioClips")]
+    public bool ContextLeadingIncludeAudioClips { get; set; }
+
+    [JsonPropertyName("contextLeadingIncludeVideoClips")]
+    public bool ContextLeadingIncludeVideoClips { get; set; }
+
+    [JsonPropertyName("contextLeadingRange")]
+    public int ContextLeadingRange { get; set; }
+
+    [JsonPropertyName("contextTrailingCount")]
+    public int ContextTrailingCount { get; set; }
+
+    [JsonPropertyName("contextTrailingIncludeSnapshots")]
+    public bool ContextTrailingIncludeSnapshots { get; set; }
+
+    [JsonPropertyName("contextTrailingIncludeAudioClips")]
+    public bool ContextTrailingIncludeAudioClips { get; set; }
+
+    [JsonPropertyName("contextTrailingIncludeVideoClips")]
+    public bool ContextTrailingIncludeVideoClips { get; set; }
+
+    [JsonPropertyName("contextTrailingRange")]
+    public int ContextTrailingRange { get; set; }
 
     public SaveSettings()
     {
-      subs = new SubSettings[2];
-      subs[0] = new SubSettings();
-      subs[1] = new SubSettings();
-      subs[0].ActorsEnabled = true;
-      subs[0].TimingsEnabled = true;
+      Subs = new SubSettings[2];
+      Subs[0] = new SubSettings();
+      Subs[1] = new SubSettings();
+      Subs[0].ActorsEnabled = true;
+      Subs[0].TimingsEnabled = true;
 
-      videoClips = new VideoClips();
-      audioClips = new AudioClips();
-      snapshots = new Snapshots();
-      vobSubColors = new VobSubColors();
-      languageSpecific = new LanguageSpecific();
-      outputDir = "";
-      timeShiftEnabled = false;
-      spanEnabled = false;
-      spanStart = new DateTime().AddMilliseconds(90_000);
-      spanEnd = new DateTime().AddMilliseconds(1_350_000);
-      deckName = "";
-      episodeStartNumber = 1;
+      VideoClips = new VideoClips();
+      AudioClips = new AudioClips();
+      Snapshots = new Snapshots();
+      VobSubColors = new VobSubColors();
+      LanguageSpecific = new LanguageSpecific();
+      OutputDir = "";
+      TimeShiftEnabled = false;
+      SpanEnabled = false;
+      SpanStart = new DateTime().AddMilliseconds(90_000);
+      SpanEnd = new DateTime().AddMilliseconds(1_350_000);
+      DeckName = "";
+      EpisodeStartNumber = 1;
 
-      actorList = new List<string>();
+      ActorList = new List<string>();
 
-      contextLeadingCount = 0;
-      contextLeadingIncludeSnapshots = false;
-      contextLeadingIncludeAudioClips = false;
-      contextLeadingIncludeVideoClips = false;
-      contextLeadingRange = 15;
+      ContextLeadingCount = 0;
+      ContextLeadingIncludeSnapshots = false;
+      ContextLeadingIncludeAudioClips = false;
+      ContextLeadingIncludeVideoClips = false;
+      ContextLeadingRange = 15;
 
-      contextTrailingCount = 0;
-      contextTrailingIncludeSnapshots = false;
-      contextTrailingIncludeAudioClips = false;
-      contextTrailingIncludeVideoClips = false;
-      contextTrailingRange = 15;
+      ContextTrailingCount = 0;
+      ContextTrailingIncludeSnapshots = false;
+      ContextTrailingIncludeAudioClips = false;
+      ContextTrailingIncludeVideoClips = false;
+      ContextTrailingRange = 15;
     }
 
     public void gatherData()
     {
-      subs = Settings.Instance.Subs;
-      videoClips = Settings.Instance.VideoClips;
-      audioClips = Settings.Instance.AudioClips;
-      snapshots = Settings.Instance.Snapshots;
-      vobSubColors = Settings.Instance.VobSubColors;
-      languageSpecific = Settings.Instance.LanguageSpecific;
+      Subs = Settings.Instance.Subs;
+      VideoClips = Settings.Instance.VideoClips;
+      AudioClips = Settings.Instance.AudioClips;
+      Snapshots = Settings.Instance.Snapshots;
+      VobSubColors = Settings.Instance.VobSubColors;
+      LanguageSpecific = Settings.Instance.LanguageSpecific;
 
-      outputDir = Settings.Instance.OutputDir;
+      OutputDir = Settings.Instance.OutputDir;
 
-      timeShiftEnabled = Settings.Instance.TimeShiftEnabled;
+      TimeShiftEnabled = Settings.Instance.TimeShiftEnabled;
 
-      spanEnabled = Settings.Instance.SpanEnabled;
-      spanStart = Settings.Instance.SpanStart;
-      spanEnd = Settings.Instance.SpanEnd;
+      SpanEnabled = Settings.Instance.SpanEnabled;
+      SpanStart = Settings.Instance.SpanStart;
+      SpanEnd = Settings.Instance.SpanEnd;
 
-      deckName = Settings.Instance.DeckName;
-      episodeStartNumber = Settings.Instance.EpisodeStartNumber;
+      DeckName = Settings.Instance.DeckName;
+      EpisodeStartNumber = Settings.Instance.EpisodeStartNumber;
 
-      actorList = Settings.Instance.ActorList;
+      ActorList = Settings.Instance.ActorList;
 
-      contextLeadingCount = Settings.Instance.ContextLeadingCount;
-      contextLeadingIncludeSnapshots = Settings.Instance.ContextLeadingIncludeSnapshots;
-      contextLeadingIncludeAudioClips = Settings.Instance.ContextLeadingIncludeAudioClips;
-      contextLeadingIncludeVideoClips = Settings.Instance.ContextLeadingIncludeVideoClips;
-      contextLeadingRange = Settings.Instance.ContextLeadingRange;
+      ContextLeadingCount = Settings.Instance.ContextLeadingCount;
+      ContextLeadingIncludeSnapshots = Settings.Instance.ContextLeadingIncludeSnapshots;
+      ContextLeadingIncludeAudioClips = Settings.Instance.ContextLeadingIncludeAudioClips;
+      ContextLeadingIncludeVideoClips = Settings.Instance.ContextLeadingIncludeVideoClips;
+      ContextLeadingRange = Settings.Instance.ContextLeadingRange;
 
-      contextTrailingCount = Settings.Instance.ContextTrailingCount;
-      contextTrailingIncludeSnapshots = Settings.Instance.ContextTrailingIncludeSnapshots;
-      contextTrailingIncludeAudioClips = Settings.Instance.ContextTrailingIncludeAudioClips;
-      contextTrailingIncludeVideoClips = Settings.Instance.ContextTrailingIncludeVideoClips;
-      contextTrailingRange = Settings.Instance.ContextTrailingRange;
+      ContextTrailingCount = Settings.Instance.ContextTrailingCount;
+      ContextTrailingIncludeSnapshots = Settings.Instance.ContextTrailingIncludeSnapshots;
+      ContextTrailingIncludeAudioClips = Settings.Instance.ContextTrailingIncludeAudioClips;
+      ContextTrailingIncludeVideoClips = Settings.Instance.ContextTrailingIncludeVideoClips;
+      ContextTrailingRange = Settings.Instance.ContextTrailingRange;
     }
   }
 }

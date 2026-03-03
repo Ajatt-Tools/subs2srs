@@ -19,14 +19,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Diagnostics;
 using System.IO;
-using System.Globalization;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
 
 
 namespace subs2srs
@@ -36,13 +29,12 @@ namespace subs2srs
   /// </summary>
   public class WorkerAudio
   {
-
     /// <summary>
     /// Generate Audio clips for all episodes.
     /// </summary>
     public bool genAudioClip(WorkerVars workerVars, IProgressReporter dialogProgress)
     {
-      int progessCount = 0;
+      int progressCount = 0;
       int episodeCount = 0;
       int totalEpisodes = workerVars.CombinedAll.Count;
       int curEpisodeCount = 0;
@@ -62,31 +54,35 @@ namespace subs2srs
         // It is possible for all lines in an episode to be set to inactive
         if (combArray.Count == 0)
         {
-          // Skip this episode
           continue;
         }
 
         // Is the audio input an mp3 file?
-        bool inputFileIsMp3 = (Settings.Instance.AudioClips.Files.Length > 0) 
+        bool inputFileIsMp3 = (Settings.Instance.AudioClips.Files.Length > 0)
           && (Path.GetExtension(Settings.Instance.AudioClips.Files[episodeCount - 1]).ToLower() == ".mp3");
 
         DateTime entireClipStartTime = combArray[0].Subs1.StartTime;
         DateTime entireClipEndTime = combArray[combArray.Count - 1].Subs1.EndTime;
         string tempMp3Filename = Path.GetTempPath() + ConstantSettings.TempAudioFilename;
 
-        // Apply pad to entire clip timings  (if requested)
+        // Apply pad to entire clip timings (if requested)
         if (Settings.Instance.AudioClips.PadEnabled)
         {
           entireClipStartTime = UtilsSubs.applyTimePad(entireClipStartTime, -Settings.Instance.AudioClips.PadStart);
           entireClipEndTime = UtilsSubs.applyTimePad(entireClipEndTime, Settings.Instance.AudioClips.PadEnd);
         }
 
+        // Skip entire episode (including expensive audio extraction) if all clips already exist
+        if (checkAllAudioClipsExist(combArray, name, episodeCount, progressCount, workerVars.MediaDir))
+        {
+          progressCount += combArray.Count;
+          continue;
+        }
+
         // Do we need to extract the audio from the video file?
         if (Settings.Instance.AudioClips.UseAudioFromVideo)
         {
-          string progressText = String.Format("Extracting audio from video file {0} of {1}",
-                                              episodeCount,    // {0}
-                                              totalEpisodes);  // {1}
+          string progressText = $"Extracting audio from video file {episodeCount} of {totalEpisodes}";
 
           bool success = convertToMp3(
             Settings.Instance.VideoClips.Files[episodeCount - 1],
@@ -107,9 +103,7 @@ namespace subs2srs
         // If the reencode option is set or the input audio is not an mp3, reencode to mp3
         else if (ConstantSettings.ReencodeBeforeSplittingAudio || !inputFileIsMp3)
         {
-          string progressText = String.Format("Reencoding audio file {0} of {1}",
-                                          episodeCount,
-                                          totalEpisodes);
+          string progressText = $"Reencoding audio file {episodeCount} of {totalEpisodes}";
 
           bool success = convertToMp3(
             Settings.Instance.AudioClips.Files[episodeCount - 1],
@@ -128,24 +122,20 @@ namespace subs2srs
           }
         }
 
-        curEpisodeCount = 0; // Reset
+        curEpisodeCount = 0;
 
         // For each line in episode, generate an audio clip
         foreach (InfoCombined comb in combArray)
         {
-          progessCount++;
+          progressCount++;
           curEpisodeCount++;
 
-          int progress = Convert.ToInt32(progessCount * (100.0 / totalLines));
+          int progress = Convert.ToInt32(progressCount * (100.0 / totalLines));
 
-          string progressText = string.Format("Generating audio clip: {0} of {1}",
-                                              progessCount.ToString(),
-                                              totalLines.ToString());
+          string progressText = $"Generating audio clip: {progressCount} of {totalLines}";
 
-          // Update the progress dialog
           dialogProgress.UpdateProgress(progress, progressText);
 
-          // Did the user press the cancel button?
           if (dialogProgress.Cancel)
           {
             File.Delete(tempMp3Filename);
@@ -180,27 +170,27 @@ namespace subs2srs
 
           string lyricSubs2 = "";
 
-          // Set the Subs2 lyric if it exists
           if (Settings.Instance.Subs[1].Files.Length != 0)
           {
             lyricSubs2 = comb.Subs2.Text.Trim();
           }
 
-          // Create output filename
-          string nameStr = name.createName(ConstantSettings.AudioFilenameFormat, (int)episodeCount + Settings.Instance.EpisodeStartNumber - 1,
-             progessCount, filenameStartTime, filenameEndTime, comb.Subs1.Text, lyricSubs2);
+          string nameStr = name.createName(ConstantSettings.AudioFilenameFormat,
+            (int)episodeCount + Settings.Instance.EpisodeStartNumber - 1,
+            progressCount, filenameStartTime, filenameEndTime, comb.Subs1.Text, lyricSubs2);
 
-          string outName = String.Format("{0}{1}{2}",
-                          workerVars.MediaDir,           // {0}
-                          Path.DirectorySeparatorChar,   // {1}
-                          nameStr);                      // {2}   
+          string outName = $"{workerVars.MediaDir}{Path.DirectorySeparatorChar}{nameStr}";
 
-          // Create audio clip
+          // Skip if already exists (resume support)
+          if (File.Exists(outName))
+          {
+            continue;
+          }
+
           UtilsAudio.cutAudio(fileToCut, startTime, endTime, outName);
 
-          // Tag the audio clip
-          this.tagAudio(name, outName, episodeCount, curEpisodeCount, progessCount, combArray.Count,
-            filenameStartTime, filenameEndTime, comb.Subs1.Text, lyricSubs2);          
+          this.tagAudio(name, outName, episodeCount, curEpisodeCount, progressCount, combArray.Count,
+            filenameStartTime, filenameEndTime, comb.Subs1.Text, lyricSubs2);
         }
 
         File.Delete(tempMp3Filename);
@@ -210,8 +200,51 @@ namespace subs2srs
       if (Settings.Instance.AudioClips.Normalize)
       {
         dialogProgress.UpdateProgress(-1, "Normalizing audio...");
-
         UtilsAudio.normalizeAudio(workerVars.MediaDir);
+      }
+
+      return true;
+    }
+
+
+    /// <summary>
+    /// Check if all audio clips for an episode already exist.
+    /// Used to skip the expensive audio extraction step on resume.
+    /// </summary>
+    private bool checkAllAudioClipsExist(List<InfoCombined> combArray, UtilsName name,
+      int episodeCount, int progressCountBase, string mediaDir)
+    {
+      int tempCount = progressCountBase;
+
+      foreach (InfoCombined comb in combArray)
+      {
+        tempCount++;
+
+        DateTime filenameStartTime = comb.Subs1.StartTime;
+        DateTime filenameEndTime = comb.Subs1.EndTime;
+
+        if (Settings.Instance.AudioClips.PadEnabled)
+        {
+          filenameStartTime = UtilsSubs.applyTimePad(filenameStartTime, -Settings.Instance.AudioClips.PadStart);
+          filenameEndTime = UtilsSubs.applyTimePad(filenameEndTime, Settings.Instance.AudioClips.PadEnd);
+        }
+
+        string lyricSubs2 = "";
+        if (Settings.Instance.Subs[1].Files.Length != 0)
+        {
+          lyricSubs2 = comb.Subs2.Text.Trim();
+        }
+
+        string nameStr = name.createName(ConstantSettings.AudioFilenameFormat,
+          episodeCount + Settings.Instance.EpisodeStartNumber - 1,
+          tempCount, filenameStartTime, filenameEndTime, comb.Subs1.Text, lyricSubs2);
+
+        string outName = $"{mediaDir}{Path.DirectorySeparatorChar}{nameStr}";
+
+        if (!File.Exists(outName))
+        {
+          return false;
+        }
       }
 
       return true;
@@ -221,25 +254,25 @@ namespace subs2srs
     /// <summary>
     /// Apply tag to audio file.
     /// </summary>
-    private void tagAudio(UtilsName name, string outName, int episodeCount, int curEpisodeCount, int progessCount, int totalTracks,
+    private void tagAudio(UtilsName name, string outName, int episodeCount, int curEpisodeCount, int progressCount, int totalTracks,
       DateTime filenameStartTime, DateTime filenameEndTime, string lyricSubs1, string lyricSubs2)
     {
       int episodeNum = episodeCount + Settings.Instance.EpisodeStartNumber - 1;
 
       string tagArtist = name.createName(ConstantSettings.AudioId3Artist, episodeNum,
-        progessCount, filenameStartTime, filenameEndTime, lyricSubs1, lyricSubs2);
+        progressCount, filenameStartTime, filenameEndTime, lyricSubs1, lyricSubs2);
 
       string tagAlbum = name.createName(ConstantSettings.AudioId3Album, episodeNum,
-        progessCount, filenameStartTime, filenameEndTime, lyricSubs1, lyricSubs2);
+        progressCount, filenameStartTime, filenameEndTime, lyricSubs1, lyricSubs2);
 
       string tagTitle = name.createName(ConstantSettings.AudioId3Title, episodeNum,
-        progessCount, filenameStartTime, filenameEndTime, lyricSubs1, lyricSubs2);
+        progressCount, filenameStartTime, filenameEndTime, lyricSubs1, lyricSubs2);
 
       string tagGenre = name.createName(ConstantSettings.AudioId3Genre, episodeNum,
-        progessCount, filenameStartTime, filenameEndTime, lyricSubs1, lyricSubs2);
+        progressCount, filenameStartTime, filenameEndTime, lyricSubs1, lyricSubs2);
 
       string tagLyrics = name.createName(ConstantSettings.AudioId3Lyrics, episodeNum,
-        progessCount, filenameStartTime, filenameEndTime, lyricSubs1, lyricSubs2);
+        progressCount, filenameStartTime, filenameEndTime, lyricSubs1, lyricSubs2);
 
       UtilsAudio.tagAudio(outName,
         tagArtist,
@@ -255,22 +288,15 @@ namespace subs2srs
     /// <summary>
     /// Convert audio or video to mp3 and display progress dialog.
     /// </summary>
-    private bool convertToMp3(string file, string stream, string progressText, IProgressReporter dialogProgress, 
+    private bool convertToMp3(string file, string stream, string progressText, IProgressReporter dialogProgress,
       DateTime entireClipStartTime, DateTime entireClipEndTime, string tempMp3Filename)
     {
-      bool status = true;
-
       DateTime entireClipDuration = UtilsSubs.getDurationTime(entireClipStartTime, entireClipEndTime);
 
       dialogProgress.UpdateProgress(progressText);
-
-      // Enable detail mode in progress dialog
       dialogProgress.EnableDetail(true);
-
-      // Set the duration of the clip in the progress dialog  (for detail mode)
       dialogProgress.SetDuration(entireClipDuration);
 
-      // Rip the audio to a temporary mp3 file
       UtilsAudio.ripAudioFromVideo(file,
         stream,
         entireClipStartTime, entireClipEndTime,
@@ -279,17 +305,7 @@ namespace subs2srs
       dialogProgress.EnableDetail(false);
 
       FileInfo fileInfo = new FileInfo(tempMp3Filename);
-
-      // Error if the temporary mp3 file doesn't exist or is zero bytes
-      if (!File.Exists(tempMp3Filename) || fileInfo.Length == 0)
-      {
-        status = false;
-      }
-
-      return status;
+      return File.Exists(tempMp3Filename) && fileInfo.Length > 0;
     }
-
-
-
   }
 }
