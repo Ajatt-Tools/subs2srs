@@ -271,8 +271,8 @@ namespace subs2srs
       if(width > -1)
       {
         // Replace tokens related to numbers that don't have leading zeroes
-        finalName = finalName.Replace("${width}", subs2Text);
-        finalName = finalName.Replace("${height}", subs2Text);
+        finalName = finalName.Replace("${width}", width.ToString());
+        finalName = finalName.Replace("${height}", height.ToString());
       }
 
       // Replace tokens related to strings
