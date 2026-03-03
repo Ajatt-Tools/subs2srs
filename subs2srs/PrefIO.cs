@@ -57,7 +57,7 @@ namespace subs2srs
         // Replace each setting in list
         foreach (SettingsPair pair in settingsList)
         {
-          string regex = "^" + pair.Key + @"\s*?=.*$";
+          string regex = "^" + Regex.Escape(pair.Key) + @"\s*?=.*$";
           string replacement = pair.Key + " = " + pair.Value;
           contents = Regex.Replace(contents, regex, replacement, RegexOptions.Multiline);
         }
