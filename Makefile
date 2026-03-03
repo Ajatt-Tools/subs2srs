@@ -1,8 +1,10 @@
 PREFIX   ?= /usr
 DESTDIR  ?=
-LIBDIR    = $(DESTDIR)$(PREFIX)/lib/subs2srs
+PKGNAME   = subs2srs
+LIBDIR    = $(DESTDIR)$(PREFIX)/lib/$(PKGNAME)
 BINDIR    = $(DESTDIR)$(PREFIX)/bin
 APPDIR    = $(DESTDIR)$(PREFIX)/share/applications
+LICDIR    = $(DESTDIR)$(PREFIX)/share/licenses/$(PKGNAME)
 PROJ      = subs2srs/subs2srs.csproj
 PUBLISH   = subs2srs/bin/Release/net10.0/publish
 
@@ -16,11 +18,13 @@ install: build
 	cp -r $(PUBLISH)/* "$(LIBDIR)/"
 	install -Dm755 dist/subs2srs.sh "$(BINDIR)/subs2srs"
 	install -Dm644 dist/subs2srs.desktop "$(APPDIR)/subs2srs.desktop"
+	install -Dm644 LICENSE "$(LICDIR)/LICENSE"
 
 uninstall:
-	rm -rf "$(DESTDIR)$(PREFIX)/lib/subs2srs"
+	rm -rf "$(DESTDIR)$(PREFIX)/lib/$(PKGNAME)"
 	rm -f  "$(BINDIR)/subs2srs"
 	rm -f  "$(APPDIR)/subs2srs.desktop"
+	rm -rf "$(LICDIR)"
 
 clean:
 	dotnet clean $(PROJ) -c Release 2>/dev/null || true
