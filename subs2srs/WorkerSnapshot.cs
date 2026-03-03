@@ -73,8 +73,11 @@ namespace subs2srs
           // Skip if already exists (resume support)
           if (!File.Exists(outFile))
           {
+            string ext = Path.GetExtension(outFile);
+            string tmpFile = Path.ChangeExtension(outFile, ".tmp" + ext);
             UtilsSnapshot.takeSnapshotFromVideo(videoFileName, midTime, Settings.Instance.Snapshots.Size,
-              Settings.Instance.Snapshots.Crop, outFile);
+              Settings.Instance.Snapshots.Crop, tmpFile);
+            File.Move(tmpFile, outFile);
           }
 
           if (dialogProgress.Cancel)
