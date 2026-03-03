@@ -635,6 +635,16 @@ namespace subs2srs
                 "If a line of dialog's duration exceeds the specified number of seconds, display a warning.\n\nRange: 0-99999. To disable, set to 0.",
                 PrefDefaults.LongClipWarningSeconds));
             propTable["Long Clip Warning"] = ConstantSettings.LongClipWarningSeconds;
+
+            // max_parallel_tasks
+            propTable.Properties.Add(new PropertySpec("Max Parallel Tasks", typeof(int),
+                "Misc",
+                "Maximum number of parallel threads for media generation.\n\n"
+                + "0 = auto (number of CPU cores).\n"
+                + "1 = sequential (no parallelism).\n\n"
+                + "Range: 0-128.",
+                PrefDefaults.MaxParallelTasks));
+            propTable["Max Parallel Tasks"] = ConstantSettings.MaxParallelTasks;
         }
 
         // ── GTK UI ──────────────────────────────────────────────────────────
@@ -978,6 +988,8 @@ namespace subs2srs
             pairList.Add(new PrefIO.SettingsPair("audio_normalize_args", convertOut("Normalize Audio Arguments")));
             pairList.Add(new PrefIO.SettingsPair("long_clip_warning_seconds",
                 UtilsCommon.checkRange((int)propTable["Long Clip Warning"], 0, 99999, PrefDefaults.LongClipWarningSeconds).ToString()));
+            pairList.Add(new PrefIO.SettingsPair("max_parallel_tasks",
+                UtilsCommon.checkRange((int)propTable["Max Parallel Tasks"], 0, 128, PrefDefaults.MaxParallelTasks).ToString()));
 
             PrefIO.writeString(pairList);
             PrefIO.read();
