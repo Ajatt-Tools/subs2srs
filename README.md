@@ -47,20 +47,29 @@ is carried over from the original with minimal changes.
 - `Logger` constructor / `writeFileToLog()` — `StreamWriter`/`StreamReader` without `using`
 - `PrefIO.read()` — `DefaultRemoveStyledLinesSubs2` default was `Subs1`; `VobsubFilenameFormat` default was `VideoFilenameFormat`
 - `PrefIO.writeString()` — regex replacement broke on keys containing regex metacharacters
+- `UtilsName.createName()` — `${width}` and `${height}` tokens replaced with `subs2Text` instead of actual dimensions
 
 **Performance:**
 - `PrefIO.read()` — read preferences file ~70 times → single pass into dictionary
 - Workers skip existing output files — interrupted runs resume without re-extracting
+- `WorkerVideo` — skip expensive video conversion when all clips for an episode already exist
+
+**Reliability:**
+- Workers write to `.tmp` file then rename — incomplete files from crashes cannot be mistaken for finished output
+- `UtilsMsg` — errors and info messages always echo to `stderr` for terminal visibility
 
 **Refactoring:**
 - `PrefIO` — `StreamReader`/`StreamWriter` → `File.ReadAllText`/`WriteAllText`; create `preferences.txt` on first launch
 - `Settings.cs` — all model classes (`SubSettings`, `AudioClips`, `VideoClips`, `Snapshots`, `SaveSettings`, etc.) converted to auto-properties
 - `ConstantSettings` — 130 backing field + property pairs → auto-properties (~400 lines removed)
+- `InfoCombined`, `InfoLine` — auto-properties, remove `[Serializable]`
+- `ObjectCloner` — remove `IncludeFields` (no longer needed with auto-properties)
 - `WorkerVars` — backing fields → auto-properties
 - `PropertyBag` — removed `ICustomTypeDescriptor` (WinForms `PropertyGrid` leftover), `ArrayList`/`Hashtable` → generics
 - `LangaugeSpecific` → `LanguageSpecific` (typo fix across all files, `[JsonPropertyName]` for `.s2s` compat)
 - `[Serializable]` / `[NonSerialized]` → removed / `[JsonIgnore]` (unused since `BinaryFormatter` → `System.Text.Json`)
 - `Logger` — `Mutex` → `lock` (single-process, cannot leak)
+- `PrefIO` — legacy per-key read methods marked `[Obsolete]`
 - `new string[0]` → `Array.Empty<string>()` everywhere
 - `String.Format` → string interpolation throughout
 - Unused `using` directives removed
