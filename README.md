@@ -37,7 +37,7 @@ is carried over from the original with minimal changes.
 - **DialogVideoDimensionsChooser** — removed (size set directly in settings)
 - **GroupBoxCheck** — WinForms custom control, not needed in GTK
 
-### Post-port cleanup (38a6d4e → HEAD)
+### Post-port cleanup
 
 **Bug fixes:**
 - `SaveSettings.gatherData()` — `ContextLeadingIncludeSnapshots` was copied from `AudioClips` instead of `Snapshots`
@@ -48,6 +48,9 @@ is carried over from the original with minimal changes.
 - `PrefIO.read()` — `DefaultRemoveStyledLinesSubs2` default was `Subs1`; `VobsubFilenameFormat` default was `VideoFilenameFormat`
 - `PrefIO.writeString()` — regex replacement broke on keys containing regex metacharacters
 - `UtilsName.createName()` — `${width}` and `${height}` tokens replaced with `subs2Text` instead of actual dimensions
+- Audio stream number stored as combo box index instead of ffmpeg stream identifier — multi-stream MKV files produced empty audio clips
+- Episode change in Preview dialog triggered infinite re-entrant loop (missing guard), causing 100% CPU
+- Audio stream combo not populated when video path uses a glob pattern (`*.mkv`)
 
 **Performance:**
 - `PrefIO.read()` — read preferences file ~70 times → single pass into dictionary
@@ -132,7 +135,7 @@ Edit via **Preferences** dialog or manually.
 
 ### Parallelism
 
-Set `max_parallel_tasks` in `preferences.txt`:
+Set `max_parallel_tasks` in Preferences → Misc (or in `preferences.txt`):
 - `0` — auto (number of CPU cores, default)
 - `1` — sequential (no parallelism)
 - `N` — use up to N threads for media generation
