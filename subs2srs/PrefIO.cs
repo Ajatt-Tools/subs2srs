@@ -115,6 +115,7 @@ namespace subs2srs
         sb.AppendLine($"enable_logging = {PrefDefaults.EnableLogging}");
         sb.AppendLine($"audio_normalize_args = {Tok(PrefDefaults.AudioNormalizeArgs)}");
         sb.AppendLine($"long_clip_warning_seconds = {PrefDefaults.LongClipWarningSeconds}");
+	sb.AppendLine($"max_parallel_tasks = {PrefDefaults.MaxParallelTasks}");
         sb.AppendLine();
 
         sb.AppendLine($"default_audio_clip_bitrate = {PrefDefaults.DefaultAudioClipBitrate}");
@@ -409,6 +410,7 @@ namespace subs2srs
       ConstantSettings.EnableLogging = getBl("enable_logging", PrefDefaults.EnableLogging);
       ConstantSettings.AudioNormalizeArgs = getStr("audio_normalize_args", PrefDefaults.AudioNormalizeArgs);
       ConstantSettings.LongClipWarningSeconds = getI("long_clip_warning_seconds", PrefDefaults.LongClipWarningSeconds);
+      ConstantSettings.MaxParallelTasks = getI("max_parallel_tasks", PrefDefaults.MaxParallelTasks);
 
       ConstantSettings.DefaultAudioClipBitrate = getI("default_audio_clip_bitrate", PrefDefaults.DefaultAudioClipBitrate);
       ConstantSettings.DefaultAudioNormalize = getBl("default_audio_normalize", PrefDefaults.DefaultAudioNormalize);

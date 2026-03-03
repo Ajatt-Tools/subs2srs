@@ -20,7 +20,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace subs2srs
 {
@@ -37,12 +38,16 @@ namespace subs2srs
       int progressCount = 0;
       int episodeCount = 0;
       int totalEpisodes = workerVars.CombinedAll.Count;
-      int curEpisodeCount = 0;
       int totalLines = UtilsSubs.getTotalLineCount(workerVars.CombinedAll);
       DateTime lastTime = UtilsSubs.getLastTime(workerVars.CombinedAll);
 
       UtilsName name = new UtilsName(Settings.Instance.DeckName, totalEpisodes,
         totalLines, lastTime, Settings.Instance.VideoClips.Size.Width, Settings.Instance.VideoClips.Size.Height);
+
+      var parallelOptions = new ParallelOptions
+      {
+        MaxDegreeOfParallelism = ConstantSettings.EffectiveParallelism
+      };
 
       dialogProgress.UpdateProgress(0, "Creating audio clips.");
 
@@ -122,41 +127,39 @@ namespace subs2srs
           }
         }
 
-        curEpisodeCount = 0;
+        // Determine source file and whether timing shift is needed (same for all lines in episode)
+        bool needsShift = Settings.Instance.AudioClips.UseAudioFromVideo
+          || ConstantSettings.ReencodeBeforeSplittingAudio || !inputFileIsMp3;
+        string fileToCut = needsShift
+          ? tempMp3Filename
+          : Settings.Instance.AudioClips.Files[episodeCount - 1];
 
-        // For each line in episode, generate an audio clip
-        foreach (InfoCombined comb in combArray)
+        int epNum = episodeCount; // capture for lambda
+        int baseCount = progressCount;
+
+        // Pre-compute work items with fixed sequence numbers
+        var workItems = new List<(int seqNum, int epLineNum, InfoCombined comb)>(combArray.Count);
+        for (int i = 0; i < combArray.Count; i++)
         {
-          progressCount++;
-          curEpisodeCount++;
+          workItems.Add((baseCount + i + 1, i + 1, combArray[i]));
+        }
 
-          int progress = Convert.ToInt32(progressCount * (100.0 / totalLines));
+        int completed = 0;
+        bool cancelled = false;
 
-          string progressText = $"Generating audio clip: {progressCount} of {totalLines}";
+        Parallel.ForEach(workItems, parallelOptions, (item, state) =>
+        {
+          if (dialogProgress.Cancel) { cancelled = true; state.Stop(); return; }
 
-          dialogProgress.UpdateProgress(progress, progressText);
+          DateTime startTime = item.comb.Subs1.StartTime;
+          DateTime endTime = item.comb.Subs1.EndTime;
+          DateTime filenameStartTime = item.comb.Subs1.StartTime;
+          DateTime filenameEndTime = item.comb.Subs1.EndTime;
 
-          if (dialogProgress.Cancel)
-          {
-            File.Delete(tempMp3Filename);
-            return false;
-          }
-
-          DateTime startTime = comb.Subs1.StartTime;
-          DateTime endTime = comb.Subs1.EndTime;
-          DateTime filenameStartTime = comb.Subs1.StartTime;
-          DateTime filenameEndTime = comb.Subs1.EndTime;
-          string fileToCut = "";
-
-          if (Settings.Instance.AudioClips.UseAudioFromVideo || ConstantSettings.ReencodeBeforeSplittingAudio || !inputFileIsMp3)
+          if (needsShift)
           {
             startTime = UtilsSubs.shiftTiming(startTime, -((int)entireClipStartTime.TimeOfDay.TotalMilliseconds));
             endTime = UtilsSubs.shiftTiming(endTime, -((int)entireClipStartTime.TimeOfDay.TotalMilliseconds));
-            fileToCut = tempMp3Filename;
-          }
-          else
-          {
-            fileToCut = Settings.Instance.AudioClips.Files[episodeCount - 1];
           }
 
           // Apply pad (if requested)
@@ -164,40 +167,48 @@ namespace subs2srs
           {
             startTime = UtilsSubs.applyTimePad(startTime, -Settings.Instance.AudioClips.PadStart);
             endTime = UtilsSubs.applyTimePad(endTime, Settings.Instance.AudioClips.PadEnd);
-            filenameStartTime = UtilsSubs.applyTimePad(comb.Subs1.StartTime, -Settings.Instance.AudioClips.PadStart);
-            filenameEndTime = UtilsSubs.applyTimePad(comb.Subs1.EndTime, Settings.Instance.AudioClips.PadEnd);
+            filenameStartTime = UtilsSubs.applyTimePad(item.comb.Subs1.StartTime, -Settings.Instance.AudioClips.PadStart);
+            filenameEndTime = UtilsSubs.applyTimePad(item.comb.Subs1.EndTime, Settings.Instance.AudioClips.PadEnd);
           }
 
           string lyricSubs2 = "";
 
           if (Settings.Instance.Subs[1].Files.Length != 0)
           {
-            lyricSubs2 = comb.Subs2.Text.Trim();
+            lyricSubs2 = item.comb.Subs2.Text.Trim();
           }
 
           string nameStr = name.createName(ConstantSettings.AudioFilenameFormat,
-            (int)episodeCount + Settings.Instance.EpisodeStartNumber - 1,
-            progressCount, filenameStartTime, filenameEndTime, comb.Subs1.Text, lyricSubs2);
+            epNum + Settings.Instance.EpisodeStartNumber - 1,
+            item.seqNum, filenameStartTime, filenameEndTime, item.comb.Subs1.Text, lyricSubs2);
 
           string outName = $"{workerVars.MediaDir}{Path.DirectorySeparatorChar}{nameStr}";
 
-          // Skip if already exists (resume support)
-          if (File.Exists(outName))
+          if (!File.Exists(outName))
           {
-            continue;
+            // Write to temp file, then atomic rename
+            string ext = Path.GetExtension(outName);
+            string tmpName = Path.ChangeExtension(outName, ".tmp" + ext);
+            UtilsAudio.cutAudio(fileToCut, startTime, endTime, tmpName);
+            File.Move(tmpName, outName);
+
+            this.tagAudio(name, outName, epNum, item.epLineNum, item.seqNum, combArray.Count,
+              filenameStartTime, filenameEndTime, item.comb.Subs1.Text, lyricSubs2);
           }
 
-          // Write to temp file, then atomic rename — protects against incomplete files from crashes
-          string ext = Path.GetExtension(outName);
-          string tmpName = Path.ChangeExtension(outName, ".tmp" + ext);
-          UtilsAudio.cutAudio(fileToCut, startTime, endTime, tmpName);
-          File.Move(tmpName, outName);
+          int done = Interlocked.Increment(ref completed);
+          int totalDone = baseCount + done;
+          dialogProgress.UpdateProgress(
+            Convert.ToInt32(totalDone * (100.0 / totalLines)),
+            $"Generating audio clip: {totalDone} of {totalLines}");
+        });
 
-          this.tagAudio(name, outName, episodeCount, curEpisodeCount, progressCount, combArray.Count,
-            filenameStartTime, filenameEndTime, comb.Subs1.Text, lyricSubs2);
-        }
+        progressCount += combArray.Count;
 
         File.Delete(tempMp3Filename);
+
+        if (cancelled)
+          return false;
       }
 
       // Normalize all mp3 files in the media directory

@@ -27,6 +27,7 @@ namespace subs2srs
 {
   public static class PrefDefaults
   {
+    public const int MaxParallelTasks = 0; // 0 = auto (Environment.ProcessorCount)
     public const int MainWindowWidth = 614;
     public const int MainWindowHeight = 630;
     public const bool DefaultEnableAudioClipGeneration = true;
@@ -175,6 +176,12 @@ namespace subs2srs
       "subs2srs", "preferences.txt");
 
     // ── Mutable (loaded from preferences.txt via PrefIO.read) ──────────
+
+    public static int MaxParallelTasks { get; set; } = PrefDefaults.MaxParallelTasks;
+
+    public static int EffectiveParallelism => MaxParallelTasks > 0
+        ? MaxParallelTasks
+        : Environment.ProcessorCount;
 
     public static int MainWindowWidth { get; set; } = PrefDefaults.MainWindowWidth;
     public static int MainWindowHeight { get; set; } = PrefDefaults.MainWindowHeight;

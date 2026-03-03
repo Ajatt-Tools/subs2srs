@@ -20,6 +20,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace subs2srs
 {
@@ -41,6 +43,11 @@ namespace subs2srs
 
       UtilsName name = new UtilsName(Settings.Instance.DeckName, totalEpisodes,
         totalLines, lastTime, Settings.Instance.VideoClips.Size.Width, Settings.Instance.VideoClips.Size.Height);
+
+      var parallelOptions = new ParallelOptions
+      {
+        MaxDegreeOfParallelism = ConstantSettings.EffectiveParallelism
+      };
 
       dialogProgress.UpdateProgress(0, "Creating video clips.");
 
@@ -108,54 +115,64 @@ namespace subs2srs
 
         dialogProgress.EnableDetail(false);
 
-        // Generate a video clip for each line of the episode
-        foreach (InfoCombined comb in combArray)
+        int epNum = episodeCount; // capture for lambda
+        int baseCount = progressCount;
+
+        // Pre-compute work items with fixed sequence numbers
+        var workItems = new List<(int seqNum, InfoCombined comb)>(combArray.Count);
+        for (int i = 0; i < combArray.Count; i++)
         {
-          progressCount++;
+          workItems.Add((baseCount + i + 1, combArray[i]));
+        }
 
-          progressText = $"Generating video clip: {progressCount} of {totalLines}";
-          int progress = Convert.ToInt32(progressCount * (100.0 / totalLines));
+        int completed = 0;
+        bool cancelled = false;
 
-          dialogProgress.UpdateProgress(progress, progressText);
+        Parallel.ForEach(workItems, parallelOptions, (item, state) =>
+        {
+          if (dialogProgress.Cancel) { cancelled = true; state.Stop(); return; }
 
-          if (dialogProgress.Cancel)
-          {
-            File.Delete(tempVideoFilename);
-            return false;
-          }
+          DateTime startTime = UtilsSubs.shiftTiming(item.comb.Subs1.StartTime, -((int)entireClipStartTime.TimeOfDay.TotalMilliseconds));
+          DateTime endTime = UtilsSubs.shiftTiming(item.comb.Subs1.EndTime, -((int)entireClipStartTime.TimeOfDay.TotalMilliseconds));
 
-          DateTime startTime = UtilsSubs.shiftTiming(comb.Subs1.StartTime, -((int)entireClipStartTime.TimeOfDay.TotalMilliseconds));
-          DateTime endTime = UtilsSubs.shiftTiming(comb.Subs1.EndTime, -((int)entireClipStartTime.TimeOfDay.TotalMilliseconds));
-
-          DateTime filenameStartTime = comb.Subs1.StartTime;
-          DateTime filenameEndTime = comb.Subs1.EndTime;
+          DateTime filenameStartTime = item.comb.Subs1.StartTime;
+          DateTime filenameEndTime = item.comb.Subs1.EndTime;
 
           if (Settings.Instance.VideoClips.PadEnabled)
           {
             startTime = UtilsSubs.applyTimePad(startTime, -Settings.Instance.VideoClips.PadStart);
             endTime = UtilsSubs.applyTimePad(endTime, Settings.Instance.VideoClips.PadEnd);
-            filenameStartTime = UtilsSubs.applyTimePad(comb.Subs1.StartTime, -Settings.Instance.VideoClips.PadStart);
-            filenameEndTime = UtilsSubs.applyTimePad(comb.Subs1.EndTime, Settings.Instance.VideoClips.PadEnd);
+            filenameStartTime = UtilsSubs.applyTimePad(item.comb.Subs1.StartTime, -Settings.Instance.VideoClips.PadStart);
+            filenameEndTime = UtilsSubs.applyTimePad(item.comb.Subs1.EndTime, Settings.Instance.VideoClips.PadEnd);
           }
 
           string nameStr = name.createName(ConstantSettings.VideoFilenameFormat,
-            (int)episodeCount + Settings.Instance.EpisodeStartNumber - 1,
-            progressCount, filenameStartTime, filenameEndTime, comb.Subs1.Text, comb.Subs2.Text);
+            epNum + Settings.Instance.EpisodeStartNumber - 1,
+            item.seqNum, filenameStartTime, filenameEndTime, item.comb.Subs1.Text, item.comb.Subs2.Text);
 
           string outFile = $"{workerVars.MediaDir}{Path.DirectorySeparatorChar}{nameStr}{videoExtension}";
 
-          // Skip if already exists (resume support)
           if (!File.Exists(outFile))
           {
-            // Write to temp file, then atomic rename — protects against incomplete files from crashes
             string ext = Path.GetExtension(outFile);
             string tmpFile = Path.ChangeExtension(outFile, ".tmp" + ext);
             UtilsVideo.cutVideo(tempVideoFilename, startTime, endTime, tmpFile);
             File.Move(tmpFile, outFile);
           }
-        }
+
+          int done = Interlocked.Increment(ref completed);
+          int totalDone = baseCount + done;
+          dialogProgress.UpdateProgress(
+            Convert.ToInt32(totalDone * (100.0 / totalLines)),
+            $"Generating video clip: {totalDone} of {totalLines}");
+        });
+
+        progressCount += combArray.Count;
 
         File.Delete(tempVideoFilename);
+
+        if (cancelled)
+          return false;
       }
 
       return true;

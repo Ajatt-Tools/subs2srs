@@ -20,6 +20,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace subs2srs
 {
@@ -42,35 +44,45 @@ namespace subs2srs
       UtilsName name = new UtilsName(Settings.Instance.DeckName, totalEpisodes,
         totalLines, lastTime, Settings.Instance.VideoClips.Size.Width, Settings.Instance.VideoClips.Size.Height);
 
+      var parallelOptions = new ParallelOptions
+      {
+        MaxDegreeOfParallelism = ConstantSettings.EffectiveParallelism
+      };
+
       // For each episode
       foreach (List<InfoCombined> combArray in workerVars.CombinedAll)
       {
         episodeCount++;
+        int epNum = episodeCount; // capture for lambda
+        int baseCount = progressCount;
 
-        // For each line in episode, generate a snapshot
+        // Pre-compute work items with fixed sequence numbers
+        var workItems = new List<(int seqNum, InfoCombined comb)>(combArray.Count);
         for (int i = 0; i < combArray.Count; i++)
         {
-          progressCount++;
+          workItems.Add((baseCount + i + 1, combArray[i]));
+        }
 
-          string progressText = $"Generating snapshot: {progressCount} of {totalLines}";
-          int progress = Convert.ToInt32(progressCount * (100.0 / totalLines));
+        int completed = 0;
+        bool cancelled = false;
 
-          dialogProgress.UpdateProgress(progress, progressText);
+        Parallel.ForEach(workItems, parallelOptions, (item, state) =>
+        {
+          if (dialogProgress.Cancel) { cancelled = true; state.Stop(); return; }
 
-          InfoCombined comb = combArray[i];
+          InfoCombined comb = item.comb;
           DateTime startTime = comb.Subs1.StartTime;
           DateTime endTime = comb.Subs1.EndTime;
           DateTime midTime = UtilsSubs.getMidpointTime(startTime, endTime);
 
-          string videoFileName = Settings.Instance.VideoClips.Files[episodeCount - 1];
+          string videoFileName = Settings.Instance.VideoClips.Files[epNum - 1];
 
           string nameStr = name.createName(ConstantSettings.SnapshotFilenameFormat,
-            (int)episodeCount + Settings.Instance.EpisodeStartNumber - 1,
-            progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
+            epNum + Settings.Instance.EpisodeStartNumber - 1,
+            item.seqNum, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
 
           string outFile = $"{workerVars.MediaDir}{Path.DirectorySeparatorChar}{nameStr}";
 
-          // Skip if already exists (resume support)
           if (!File.Exists(outFile))
           {
             string ext = Path.GetExtension(outFile);
@@ -80,11 +92,17 @@ namespace subs2srs
             File.Move(tmpFile, outFile);
           }
 
-          if (dialogProgress.Cancel)
-          {
-            return false;
-          }
-        }
+          int done = Interlocked.Increment(ref completed);
+          int totalDone = baseCount + done;
+          dialogProgress.UpdateProgress(
+            Convert.ToInt32(totalDone * (100.0 / totalLines)),
+            $"Generating snapshot: {totalDone} of {totalLines}");
+        });
+
+        progressCount += combArray.Count;
+
+        if (cancelled)
+          return false;
       }
 
       return true;
