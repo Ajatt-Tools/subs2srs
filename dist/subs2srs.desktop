@@ -1,7 +1,11 @@
 [Desktop Entry]
 Name=subs2srs
 Comment=Generate Anki flashcards from media with subtitles
+GenericName=subs2srs
 Exec=subs2srs
+Icon=subs2srs
+Categories=Education;AudioVideo;
 Terminal=false
 Type=Application
-Categories=Education;AudioVideo;
+StartupNotify=true
+Version=1.0
