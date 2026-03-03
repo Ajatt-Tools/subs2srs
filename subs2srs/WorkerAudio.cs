@@ -90,9 +90,13 @@ namespace subs2srs
         {
           string progressText = $"Extracting audio from video file {episodeCount} of {totalEpisodes}";
 
+          string streamNum = Settings.Instance.VideoClips.AudioStream?.Num ?? "";
+          if (streamNum.Length == 0 || streamNum == "-" || !streamNum.Contains(":"))
+              streamNum = "0:a:0";
+
           bool success = convertToMp3(
             Settings.Instance.VideoClips.Files[episodeCount - 1],
-            Settings.Instance.VideoClips.AudioStream.Num,
+            streamNum,
             progressText,
             dialogProgress,
             entireClipStartTime,

@@ -531,6 +531,9 @@ namespace subs2srs
 
             await Task.Run(() =>
             {
+                try { if (File.Exists(mp3)) File.Delete(mp3); } catch { }
+                try { if (File.Exists(wav)) File.Delete(wav); } catch { }
+
                 DateTime st = comb.Subs1.StartTime, en = comb.Subs1.EndTime;
                 if (Settings.Instance.AudioClips.PadEnabled)
                 {
@@ -539,15 +542,19 @@ namespace subs2srs
                 }
 
                 if (Settings.Instance.AudioClips.UseAudioFromVideo &&
-                    Settings.Instance.VideoClips.Files?.Length > 0)
+                    Settings.Instance.VideoClips.Files?.Length > ep)
                 {
+                    string streamNum = Settings.Instance.VideoClips.AudioStream?.Num;
+                    if (string.IsNullOrEmpty(streamNum) || streamNum == "-" || !streamNum.Contains(":"))
+                        streamNum = "0:a:0";
+
                     UtilsAudio.ripAudioFromVideo(
                         Settings.Instance.VideoClips.Files[ep],
-                        Settings.Instance.VideoClips.AudioStream?.Num ?? "0",
+                        streamNum,
                         st, en, Settings.Instance.AudioClips.Bitrate, mp3, null);
                 }
 
-                if (File.Exists(mp3))
+                if (File.Exists(mp3) && new FileInfo(mp3).Length > 0)
                     UtilsAudio.convertAudioFormat(mp3, wav, 2);
             });
 
