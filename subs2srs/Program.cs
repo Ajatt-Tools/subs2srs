@@ -14,6 +14,22 @@ namespace subs2srs
         [STAThread]
         static void Main(string[] args)
         {
+            AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            {
+                var ex = e.ExceptionObject as Exception;
+                string msg = ex?.ToString() ?? e.ExceptionObject.ToString();
+                Console.Error.WriteLine($"FATAL: {msg}");
+                Logger.Instance.error(msg);
+                Logger.Instance.flush();
+            };
+
+            TaskScheduler.UnobservedTaskException += (_, e) =>
+            {
+                Console.Error.WriteLine($"UNOBSERVED: {e.Exception}");
+                Logger.Instance.error(e.Exception.ToString());
+                Logger.Instance.flush();
+            };
+
             // Must run before anything touches Logger or PrefIO
             EnsureAppDirectories();
 

@@ -29,20 +29,21 @@ namespace subs2srs
 
     public static void showErrMsg(string msg)
     {
+      Console.Error.WriteLine($"ERROR: {msg}");
       Logger.Instance.error(msg);
-      if (OnShowError != null) OnShowError(msg, "Error");
-      else Console.WriteLine("ERROR: " + msg);
+      OnShowError?.Invoke(msg, "Error");
     }
 
     public static void showInfoMsg(string msg)
     {
+      Console.Error.WriteLine($"INFO: {msg}");
       Logger.Instance.info(msg);
-      if (OnShowInfo != null) OnShowInfo(msg, UtilsAssembly.Title);
-      else Console.WriteLine("INFO: " + msg);
+      OnShowInfo?.Invoke(msg, UtilsAssembly.Title);
     }
 
     public static bool showConfirm(string msg)
     {
+      Console.Error.WriteLine($"CONFIRM: {msg}");
       if (OnShowConfirm != null) return OnShowConfirm(msg, "Confirmation");
       return false;
     }
