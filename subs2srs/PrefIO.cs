@@ -236,6 +236,7 @@ namespace subs2srs
     /// <summary>
     /// Read a string setting.
     /// </summary>
+    [Obsolete("Use PrefIO.read() which reads the file once. This method re-reads the file on every call.")]
     public static string getString(string key, string def)
     {
       string value = "";
@@ -288,6 +289,7 @@ namespace subs2srs
     /// <summary>
     /// Read a boolean setting.
     /// </summary>
+    [Obsolete("Use PrefIO.read() which reads the file once. This method re-reads the file on every call.")]
     public static bool getBool(string key, bool def)
     {
       string defString = def.ToString();
@@ -300,6 +302,7 @@ namespace subs2srs
     /// <summary>
     /// Read an integer setting.
     /// </summary>
+    [Obsolete("Use PrefIO.read() which reads the file once. This method re-reads the file on every call.")]
     public static int getInt(string key, int def)
     {
       string valString = PrefIO.getString(key, def.ToString());
@@ -311,6 +314,7 @@ namespace subs2srs
     /// <summary>
     /// Read a float setting.
     /// </summary>
+    [Obsolete("Use PrefIO.read() which reads the file once. This method re-reads the file on every call.")]
     public static float getFloat(string key, float def)
     {
       string valString = PrefIO.getString(key, def.ToString());
