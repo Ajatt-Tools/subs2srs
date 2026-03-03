@@ -126,7 +126,7 @@ namespace subs2srs
       }
       else
       {
-        return new string[0];
+        return Array.Empty<string>();
       }
     }
 
@@ -155,7 +155,7 @@ namespace subs2srs
     static public string[] getNonHiddenFiles(string filePattern)
     {
       List<string> unHiddenFiles = new List<string>();
-      string[] nonHiddenFiles = new string[0];
+      string[] nonHiddenFiles = Array.Empty<string>();
 
       if (filePattern.Length > 0)
       {
