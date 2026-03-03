@@ -120,764 +120,162 @@ namespace subs2srs
   // 7) Add setting to Logger.writeSettingsToLog.
   // 8) For GUI settings, add to FormMain.readPreferencesFile.
 
-
   public static class ConstantSettings
   {
     private static string FindInPath(string name)
     {
-        foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "")
-            .Split(Path.PathSeparator))
-        {
-            var full = Path.Combine(dir, name);
-            if (File.Exists(full)) return full;
-        }
-        return name;
-    }
-
-    private static string saveExt = "s2s";
-    private static string helpPage = "http://subs2srs.sourceforge.net/";
-    private static string logDir = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "subs2srs", "Logs") + Path.DirectorySeparatorChar;
-    private static int maxLogFiles = 10;
-
-    private static string exeFFmpeg = "ffmpeg";
-    private static string pathFFmpegFullExe = FindInPath("ffmpeg");
-    private static string pathFFmpegExe = pathFFmpegFullExe;
-    private static string pathFFmpegPresetsFull = Path.Combine(
-        UtilsCommon.getAppDir(true), "presets");
-
-    private static string tempImageFilename = $"subs2srs_temp_{Guid.NewGuid()}.jpg";
-    private static string tempVideoFilename = $"subs2srs_temp_{Guid.NewGuid()}";
-    private static string tempAudioFilename = $"subs2srs_temp_{Guid.NewGuid()}.mp3";
-    private static string tempAudioPreviewFilename = $"subs2srs_temp_{Guid.NewGuid()}.wav";
-    private static string tempPreviewDirName = $"subs2srs_preview_{Guid.NewGuid()}";
-    private static string tempMkvExtractSubs1Filename = $"subs2srs_mkv_extract_subs1_{Guid.NewGuid()}";
-    private static string tempMkvExtractSubs2Filename = $"subs2srs_mkv_extract_subs2_{Guid.NewGuid()}";
-
-    private static string normalizeAudioExe = "mp3gain";
-    private static string pathNormalizeAudioExeRel = "mp3gain";
-    private static string pathNormalizeAudioExeFull = FindInPath("mp3gain");
-
-    private static string pathSubsReTimerFull = FindInPath("SubsReTimer");
-
-    private static string exeMkvInfo = "mkvinfo";
-    private static string pathMkvDirRel = "";
-    private static string pathMkvDirFull = "";
-    private static string pathMkvInfoExeRel = "mkvinfo";
-    private static string pathMkvInfoExeFull = FindInPath("mkvinfo");
-
-    private static string exeMkvExtract = "mkvextract";
-    private static string pathMkvExtractExeRel = "mkvextract";
-    private static string pathMkvExtractExeFull = FindInPath("mkvextract");
-
-    private static string settingsFilename = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "subs2srs", "preferences.txt");
-    private static int mainWindowWidth = PrefDefaults.MainWindowWidth;
-
-    // Preferences file stuff
-    private static int mainWindowHeight = PrefDefaults.MainWindowHeight;
-    private static bool defaultEnableAudioClipGeneration = PrefDefaults.DefaultEnableAudioClipGeneration;
-    private static bool defaultEnableSnapshotsGeneration = PrefDefaults.DefaultEnableSnapshotsGeneration;
-    private static bool defaultEnableVideoClipsGeneration = PrefDefaults.DefaultEnableVideoClipsGeneration;
-    private static string videoPlayer = PrefDefaults.VideoPlayer;
-    private static string videoPlayerArgs = PrefDefaults.VideoPlayerArgs;
-    private static bool reencodeBeforeSplittingAudio = PrefDefaults.ReencodeBeforeSplittingAudio;
-    private static bool enableLogging = PrefDefaults.EnableLogging;
-    private static string audioNormalizeArgs = PrefDefaults.AudioNormalizeArgs;
-    private static int longClipWarningSeconds = PrefDefaults.LongClipWarningSeconds;
-    private static int defaultAudioClipBitrate = PrefDefaults.DefaultAudioClipBitrate;
-    private static bool defaultAudioNormalize = PrefDefaults.DefaultAudioNormalize;
-    private static int defaultVideoClipVideoBitrate = PrefDefaults.DefaultVideoClipVideoBitrate;
-    private static int defaultVideoClipAudioBitrate = PrefDefaults.DefaultVideoClipAudioBitrate;
-    private static bool defaultIpodSupport = PrefDefaults.DefaultIphoneSupport;
-    private static string defaultEncodingSubs1 = PrefDefaults.DefaultEncodingSubs1;
-    private static string defaultEncodingSubs2 = PrefDefaults.DefaultEncodingSubs2;
-    private static int defaultContextNumLeading = PrefDefaults.DefaultContextNumLeading;
-    private static int defaultContextNumTrailing = PrefDefaults.DefaultContextNumTrailing;
-    private static int defaultContextLeadingRange = PrefDefaults.DefaultContextLeadingRange;
-    private static int defaultContextTrailingRange = PrefDefaults.DefaultContextTrailingRange;
-    private static string defaultFileBrowserStartDir = PrefDefaults.DefaultFileBrowserStartDir;
-    private static bool defaultRemoveStyledLinesSubs1 = PrefDefaults.DefaultRemoveStyledLinesSubs1;
-    private static bool defaultRemoveStyledLinesSubs2 = PrefDefaults.DefaultRemoveStyledLinesSubs2;
-    private static bool defaultRemoveNoCounterpartSubs1 = PrefDefaults.DefaultRemoveNoCounterpartSubs1;
-    private static bool defaultRemoveNoCounterpartSubs2 = PrefDefaults.DefaultRemoveNoCounterpartSubs2;
-    private static string defaultIncludeTextSubs1 = PrefDefaults.DefaultIncludeTextSubs1;
-    private static string defaultIncludeTextSubs2 = PrefDefaults.DefaultIncludeTextSubs2;
-    private static string defaultExcludeTextSubs1 = PrefDefaults.DefaultExcludeTextSubs1;
-    private static string defaultExcludeTextSubs2 = PrefDefaults.DefaultExcludeTextSubs2;
-    private static bool defaultExcludeDuplicateLinesSubs1 = PrefDefaults.DefaultExcludeDuplicateLinesSubs1;
-    private static bool defaultExcludeDuplicateLinesSubs2 = PrefDefaults.DefaultExcludeDuplicateLinesSubs2;
-    private static bool defaultExcludeLinesFewerThanCharsSubs1 = PrefDefaults.DefaultExcludeLinesFewerThanCharsSubs1;
-    private static bool defaultExcludeLinesFewerThanCharsSubs2 = PrefDefaults.DefaultExcludeLinesFewerThanCharsSubs2;
-    private static int defaultExcludeLinesFewerThanCharsNumSubs1 = PrefDefaults.DefaultExcludeLinesFewerThanCharsNumSubs1;
-    private static int defaultExcludeLinesFewerThanCharsNumSubs2 = PrefDefaults.DefaultExcludeLinesFewerThanCharsNumSubs2;
-    private static bool defaultExcludeLinesShorterThanMsSubs1 = PrefDefaults.DefaultExcludeLinesShorterThanMsSubs1;
-    private static bool defaultExcludeLinesShorterThanMsSubs2 = PrefDefaults.DefaultExcludeLinesShorterThanMsSubs2;
-    private static int defaultExcludeLinesShorterThanMsNumSubs1 = PrefDefaults.DefaultExcludeLinesShorterThanMsNumSubs1;
-    private static int defaultExcludeLinesShorterThanMsNumSubs2 = PrefDefaults.DefaultExcludeLinesShorterThanMsNumSubs2;
-    private static bool defaultExcludeLinesLongerThanMsSubs1 = PrefDefaults.DefaultExcludeLinesLongerThanMsSubs1;
-    private static bool defaultExcludeLinesLongerThanMsSubs2 = PrefDefaults.DefaultExcludeLinesLongerThanMsSubs2;
-    private static int defaultExcludeLinesLongerThanMsNumSubs1 = PrefDefaults.DefaultExcludeLinesLongerThanMsNumSubs1;
-    private static int defaultExcludeLinesLongerThanMsNumSubs2 = PrefDefaults.DefaultExcludeLinesLongerThanMsNumSubs2;
-    private static bool defaultJoinSentencesSubs1 = PrefDefaults.DefaultJoinSentencesSubs1;
-    private static bool defaultJoinSentencesSubs2 = PrefDefaults.DefaultJoinSentencesSubs2;
-    private static string defaultJoinSentencesCharListSubs1 = PrefDefaults.DefaultJoinSentencesCharListSubs1;
-    private static string defaultJoinSentencesCharListSubs2 = PrefDefaults.DefaultJoinSentencesCharListSubs2;
-    private static string srsFilenameFormat = PrefDefaults.SrsFilenameFormat;
-    private static string srsDelimiter = PrefDefaults.SrsDelimiter;
-    private static string srsTagFormat = PrefDefaults.SrsTagFormat;
-    private static string srsSequenceMarkerFormat = PrefDefaults.SrsSequenceMarkerFormat;
-    private static string srsAudioFilenamePrefix = PrefDefaults.SrsAudioFilenamePrefix;
-    private static string srsAudioFilenameSuffix = PrefDefaults.SrsAudioFilenameSuffix;
-    private static string srsSnapshotFilenamePrefix = PrefDefaults.SrsSnapshotFilenamePrefix;
-    private static string srsSnapshotFilenameSuffix = PrefDefaults.SrsSnapshotFilenameSuffix;
-    private static string srsVideoFilenamePrefix = PrefDefaults.SrsVideoFilenamePrefix;
-    private static string srsVideoFilenameSuffix = PrefDefaults.SrsVideoFilenameSuffix;
-    private static string srsSubs1Format = PrefDefaults.SrsSubs1Format;
-    private static string srsSubs2Format = PrefDefaults.SrsSubs2Format;
-    private static string srsVobsubFilenamePrefix = PrefDefaults.SrsVobsubFilenamePrefix;
-    private static string srsVobsubFilenameSuffix = PrefDefaults.SrsVobsubFilenameSuffix;
-    private static string audioFilenameFormat = PrefDefaults.AudioFilenameFormat;
-    private static string snapshotFilenameFormat = PrefDefaults.SnapshotFilenameFormat;
-    private static string videoFilenameFormat = PrefDefaults.VideoFilenameFormat;
-    private static string vobsubFilenameFormat = PrefDefaults.VobsubFilenameFormat;
-    private static string audioId3Artist = PrefDefaults.AudioId3Artist;
-    private static string audioId3Album = PrefDefaults.AudioId3Album;
-    private static string audioId3Title = PrefDefaults.AudioId3Title;
-    private static string audioId3Genre = PrefDefaults.AudioId3Genre;
-    private static string audioId3Lyrics = PrefDefaults.AudioId3Lyrics;
-    private static string extractMediaAudioFilenameFormat = PrefDefaults.ExtractMediaAudioFilenameFormat;
-    private static string extractMediaLyricsSubs1Format = PrefDefaults.ExtractMediaLyricsSubs1Format;
-    private static string extractMediaLyricsSubs2Format = PrefDefaults.ExtractMediaLyricsSubs2Format;
-    private static string duelingSubtitleFilenameFormat = PrefDefaults.DuelingSubtitleFilenameFormat;
-    private static string duelingQuickRefFilenameFormat = PrefDefaults.DuelingQuickRefFilenameFormat;
-    private static string duelingQuickRefSubs1Format = PrefDefaults.DuelingQuickRefSubs1Format;
-    private static string duelingQuickRefSubs2Format = PrefDefaults.DuelingQuickRefSubs2Format;
-
-    public static string SaveExt
-    {
-      get { return saveExt; }
-    }
-
-    public static string HelpPage
-    {
-      get { return helpPage; }
-    }
-
-    public static string LogDir
-    {
-      get { return logDir; }
-    }
-
-    public static int MaxLogFiles
-    {
-      get { return maxLogFiles; }
-    }
-
-    public static string ExeFFmpeg
-    {
-      get 
+      foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
       {
-        return exeFFmpeg;
+        var full = Path.Combine(dir, name);
+        if (File.Exists(full)) return full;
       }
-    }
-
-    public static string PathFFmpegExe
-    {
-      get 
-      {
-        return pathFFmpegExe;
-      }
-    }
-
-    public static string PathFFmpegFullExe
-    {
-      get
-      {
-        return pathFFmpegFullExe;
-      }
-    }
-
-    public static string PathFFmpegPresetsFull
-    {
-      get { return pathFFmpegPresetsFull; }
-    }
-
-    public static string TempImageFilename
-    {
-      get { return tempImageFilename; }
-    }
-
-    public static string TempVideoFilename
-    {
-      get { return tempVideoFilename; }
-    }
-  
-    public static string TempAudioFilename
-    {
-      get { return tempAudioFilename; }
-    }
-
-    public static string TempAudioPreviewFilename
-    {
-      get { return tempAudioPreviewFilename; }
-    }
-
-    public static string TempPreviewDirName
-    {
-      get { return tempPreviewDirName; }
-    }
-
-    public static string TempMkvExtractSubs1Filename
-    {
-      get { return tempMkvExtractSubs1Filename; }
-    }
-
-    public static string TempMkvExtractSubs2Filename
-    {
-      get { return tempMkvExtractSubs2Filename; }
-    }
-
-    public static string NormalizeAudioExe
-    {
-      get { return normalizeAudioExe; }
-    }
-
-    public static string PathNormalizeAudioExeRel
-    {
-      get { return pathNormalizeAudioExeRel; }
-    }
-
-    public static string PathNormalizeAudioExeFull
-    {
-      get { return pathNormalizeAudioExeFull; }
-    }
-
-    public static string PathSubsReTimerFull
-    {
-      get { return pathSubsReTimerFull; }
-    }
-
-    public static string PathMkvDirRel
-    {
-      get { return pathMkvDirRel; }
-    }
-
-    public static string PathMkvDirFull
-    {
-      get { return pathMkvDirFull; }
-    }
-
-    public static string ExeMkvInfo
-    {
-      get { return exeMkvInfo; }
-    }
-
-    public static string PathMkvInfoExeRel
-    {
-      get { return pathMkvInfoExeRel; }
-    }
-
-    public static string PathMkvInfoExeFull
-    {
-      get { return pathMkvInfoExeFull; }
-    }
-
-    public static string ExeMkvExtract
-    {
-      get { return exeMkvExtract; }
-    }
-
-    public static string PathMkvExtractExeRel
-    {
-      get { return pathMkvExtractExeRel; }
-    }
-
-    public static string PathMkvExtractExeFull
-    {
-      get { return pathMkvExtractExeFull; }
-    }
-
-    public static string SettingsFilename
-    {
-      get { return settingsFilename; }
-    }
-
-    public static int MainWindowWidth
-    {
-      get { return mainWindowWidth; }
-      set { mainWindowWidth = value; }
-    }
-
-    public static int MainWindowHeight
-    {
-      get { return mainWindowHeight; }
-      set { mainWindowHeight = value; }
-    }
-
-    public static bool DefaultEnableAudioClipGeneration
-    {
-      get { return defaultEnableAudioClipGeneration; }
-      set { defaultEnableAudioClipGeneration = value; }
-    }
-
-    public static bool DefaultEnableSnapshotsGeneration
-    {
-      get { return defaultEnableSnapshotsGeneration; }
-      set { defaultEnableSnapshotsGeneration = value; }
-    }
-
-    public static bool DefaultEnableVideoClipsGeneration
-    {
-      get { return defaultEnableVideoClipsGeneration; }
-      set { defaultEnableVideoClipsGeneration = value; }
-    }
-
-    public static string VideoPlayer
-    {
-      get { return videoPlayer; }
-      set { videoPlayer = value; }
-    }
-
-    public static string VideoPlayerArgs
-    {
-      get { return videoPlayerArgs; }
-      set { videoPlayerArgs = value; }
-    }
-
-    public static bool ReencodeBeforeSplittingAudio
-    {
-      get { return reencodeBeforeSplittingAudio; }
-      set { reencodeBeforeSplittingAudio = value; }
-    }
-
-    public static bool EnableLogging
-    {
-      get { return enableLogging; }
-      set { enableLogging = value; }
-    }
-
-    public static string AudioNormalizeArgs
-    {
-      get { return audioNormalizeArgs; }
-      set { audioNormalizeArgs = value; }
-    }
-
-    public static int LongClipWarningSeconds
-    {
-      get { return longClipWarningSeconds; }
-      set { longClipWarningSeconds = value; }
-    }
-
-    public static int DefaultAudioClipBitrate
-    {
-      get { return defaultAudioClipBitrate; }
-      set { defaultAudioClipBitrate = value; }
-    }
-
-    public static bool DefaultAudioNormalize
-    {
-      get { return defaultAudioNormalize; }
-      set { defaultAudioNormalize = value; }
-    }
-
-    public static int DefaultVideoClipVideoBitrate
-    {
-      get { return defaultVideoClipVideoBitrate; }
-      set { defaultVideoClipVideoBitrate = value; }
-    }
-
-    public static int DefaultVideoClipAudioBitrate
-    {
-      get { return defaultVideoClipAudioBitrate; }
-      set { defaultVideoClipAudioBitrate = value; }
-    }
-
-    public static bool DefaultIphoneSupport
-    {
-      get { return defaultIpodSupport; }
-      set { defaultIpodSupport = value; }
-    }
-
-    public static string DefaultEncodingSubs1
-    {
-      get { return defaultEncodingSubs1; }
-      set { defaultEncodingSubs1 = value; }
-    }
-
-    public static string DefaultEncodingSubs2
-    {
-      get { return defaultEncodingSubs2; }
-      set { defaultEncodingSubs2 = value; }
-    }
-
-    public static int DefaultContextNumLeading
-    {
-      get { return defaultContextNumLeading; }
-      set { defaultContextNumLeading = value; }
-    }
-
-    public static int DefaultContextNumTrailing
-    {
-      get { return defaultContextNumTrailing; }
-      set { defaultContextNumTrailing = value; }
-    }
-
-    public static int DefaultContextLeadingRange
-    {
-      get { return defaultContextLeadingRange; }
-      set { defaultContextLeadingRange = value; }
-    }
-
-    public static int DefaultContextTrailingRange
-    {
-      get { return defaultContextTrailingRange; }
-      set { defaultContextTrailingRange = value; }
-    }
-
-    public static string DefaultFileBrowserStartDir
-    {
-      get { return defaultFileBrowserStartDir; }
-      set { defaultFileBrowserStartDir = value; }
-    }
-
-    public static bool DefaultRemoveStyledLinesSubs1
-    {
-      get { return defaultRemoveStyledLinesSubs1; }
-      set { defaultRemoveStyledLinesSubs1 = value; }
-    }
-
-    public static bool DefaultRemoveStyledLinesSubs2
-    {
-      get { return defaultRemoveStyledLinesSubs2; }
-      set {defaultRemoveStyledLinesSubs2 = value; }
-    }
-
-    public static bool DefaultRemoveNoCounterpartSubs1
-    {
-      get { return defaultRemoveNoCounterpartSubs1; }
-      set { defaultRemoveNoCounterpartSubs1 = value; }
-    }
-
-    public static bool DefaultRemoveNoCounterpartSubs2
-    {
-      get { return defaultRemoveNoCounterpartSubs2; }
-      set { defaultRemoveNoCounterpartSubs2 = value; }
-    }
-
-    public static string DefaultIncludeTextSubs1
-    {
-      get { return defaultIncludeTextSubs1; }
-      set { defaultIncludeTextSubs1 = value; }
-    }
-
-    public static string DefaultIncludeTextSubs2
-    {
-      get { return defaultIncludeTextSubs2; }
-      set { defaultIncludeTextSubs2 = value; }
-    }
-
-    public static string DefaultExcludeTextSubs1
-    {
-      get { return defaultExcludeTextSubs1; }
-      set { defaultExcludeTextSubs1 = value; }
-    }
-
-    public static string DefaultExcludeTextSubs2
-    {
-      get { return defaultExcludeTextSubs2; }
-      set { defaultExcludeTextSubs2 = value; }
-    }
-
-    public static bool DefaultExcludeLinesFewerThanCharsSubs1
-    {
-      get { return defaultExcludeLinesFewerThanCharsSubs1; }
-      set { defaultExcludeLinesFewerThanCharsSubs1 = value; }
-    }
-
-    public static bool DefaultExcludeLinesFewerThanCharsSubs2
-    {
-      get { return defaultExcludeLinesFewerThanCharsSubs2; }
-      set { defaultExcludeLinesFewerThanCharsSubs2 = value; }
-    }
-
-    public static int DefaultExcludeLinesFewerThanCharsNumSubs1
-    {
-      get { return defaultExcludeLinesFewerThanCharsNumSubs1; }
-      set { defaultExcludeLinesFewerThanCharsNumSubs1 = value; }
-    }
-
-    public static int DefaultExcludeLinesFewerThanCharsNumSubs2
-    {
-      get { return defaultExcludeLinesFewerThanCharsNumSubs2; }
-      set { defaultExcludeLinesFewerThanCharsNumSubs2 = value; }
-    }
-
-    public static bool DefaultExcludeLinesShorterThanMsSubs1
-    {
-      get { return defaultExcludeLinesShorterThanMsSubs1; }
-      set { defaultExcludeLinesShorterThanMsSubs1 = value; }
-    }
-
-    public static bool DefaultExcludeLinesShorterThanMsSubs2
-    {
-      get { return defaultExcludeLinesShorterThanMsSubs2; }
-      set { defaultExcludeLinesShorterThanMsSubs2 = value; }
-    }
-
-    public static int DefaultExcludeLinesShorterThanMsNumSubs1
-    {
-      get { return defaultExcludeLinesShorterThanMsNumSubs1; }
-      set { defaultExcludeLinesShorterThanMsNumSubs1 = value; }
-    }
-
-    public static int DefaultExcludeLinesShorterThanMsNumSubs2
-    {
-      get { return defaultExcludeLinesShorterThanMsNumSubs2; }
-      set { defaultExcludeLinesShorterThanMsNumSubs2 = value; }
-    }
-
-    public static bool DefaultExcludeLinesLongerThanMsSubs1
-    {
-      get { return defaultExcludeLinesLongerThanMsSubs1; }
-      set { defaultExcludeLinesLongerThanMsSubs1 = value; }
-    }
-
-    public static bool DefaultExcludeLinesLongerThanMsSubs2
-    {
-      get { return defaultExcludeLinesLongerThanMsSubs2; }
-      set { defaultExcludeLinesLongerThanMsSubs2 = value; }
-    }
-
-    public static int DefaultExcludeLinesLongerThanMsNumSubs1
-    {
-      get { return defaultExcludeLinesLongerThanMsNumSubs1; }
-      set { defaultExcludeLinesLongerThanMsNumSubs1 = value; }
-    }
-
-    public static int DefaultExcludeLinesLongerThanMsNumSubs2
-    {
-      get { return defaultExcludeLinesLongerThanMsNumSubs2; }
-      set { defaultExcludeLinesLongerThanMsNumSubs2 = value; }
-    }
-
-    public static bool DefaultJoinSentencesSubs1
-    {
-      get { return defaultJoinSentencesSubs1; }
-      set { defaultJoinSentencesSubs1 = value; }
-    }
-
-    public static bool DefaultJoinSentencesSubs2
-    {
-      get { return defaultJoinSentencesSubs2; }
-      set { defaultJoinSentencesSubs2 = value; }
-    }
-
-    public static string DefaultJoinSentencesCharListSubs1
-    {
-      get { return defaultJoinSentencesCharListSubs1; }
-      set { defaultJoinSentencesCharListSubs1 = value; }
-    }
-
-    public static string DefaultJoinSentencesCharListSubs2
-    {
-      get { return defaultJoinSentencesCharListSubs2; }
-      set { defaultJoinSentencesCharListSubs2 = value; }
-    }
-
-    public static bool DefaultExcludeDuplicateLinesSubs1
-    {
-      get { return defaultExcludeDuplicateLinesSubs1; }
-      set { defaultExcludeDuplicateLinesSubs1 = value; }
-    }
-
-    public static bool DefaultExcludeDuplicateLinesSubs2
-    {
-      get { return defaultExcludeDuplicateLinesSubs2; }
-      set { defaultExcludeDuplicateLinesSubs2 = value; }
-    }  
-
-    public static string SrsFilenameFormat
-    {
-      get { return srsFilenameFormat; }
-      set { srsFilenameFormat = value; }
-    } 
-
-    public static string SrsDelimiter
-    {
-      get { return srsDelimiter; }
-      set { srsDelimiter = value; }
-    }   
-
-    public static string SrsTagFormat
-    {
-      get { return srsTagFormat; }
-      set { srsTagFormat = value; }
-    }
-
-    public static string SrsSequenceMarkerFormat
-    {
-      get { return srsSequenceMarkerFormat; }
-      set { srsSequenceMarkerFormat = value; }
-    }
-
-    public static string SrsAudioFilenamePrefix
-    {
-      get { return srsAudioFilenamePrefix; }
-      set { srsAudioFilenamePrefix = value; }
-    }
-
-    public static string SrsAudioFilenameSuffix
-    {
-      get { return srsAudioFilenameSuffix; }
-      set { srsAudioFilenameSuffix = value; }
-    }
-
-    public static string SrsSnapshotFilenamePrefix
-    {
-      get { return srsSnapshotFilenamePrefix; }
-      set { srsSnapshotFilenamePrefix = value; }
-    }
-
-    public static string SrsSnapshotFilenameSuffix
-    {
-      get { return srsSnapshotFilenameSuffix; }
-      set { srsSnapshotFilenameSuffix = value; }
-    }
-
-    public static string SrsVideoFilenamePrefix
-    {
-      get { return srsVideoFilenamePrefix; }
-      set { srsVideoFilenamePrefix = value; }
-    }
-
-    public static string SrsVideoFilenameSuffix
-    {
-      get { return srsVideoFilenameSuffix; }
-      set { srsVideoFilenameSuffix = value; }
-    }
-
-    public static string SrsSubs1Format
-    {
-      get { return srsSubs1Format; }
-      set { srsSubs1Format = value; }
-    }
-
-    public static string SrsSubs2Format
-    {
-      get { return srsSubs2Format; }
-      set { srsSubs2Format = value; }
-    }
-
-    public static string SrsVobsubFilenamePrefix
-    {
-      get { return srsVobsubFilenamePrefix; }
-      set { srsVobsubFilenamePrefix = value; }
-    }
-
-    public static string SrsVobsubFilenameSuffix
-    {
-      get { return srsVobsubFilenameSuffix; }
-      set { srsVobsubFilenameSuffix = value; }
-    }
-
-    public static string AudioFilenameFormat
-    {
-      get { return audioFilenameFormat; }
-      set { audioFilenameFormat = value; }
-    }
-
-    public static string SnapshotFilenameFormat
-    {
-      get { return snapshotFilenameFormat; }
-      set { snapshotFilenameFormat = value; }
-    }
-
-    public static string VideoFilenameFormat
-    {
-      get { return videoFilenameFormat; }
-      set { videoFilenameFormat = value; }
-    }
-
-    public static string VobsubFilenameFormat
-    {
-      get { return vobsubFilenameFormat; }
-      set { vobsubFilenameFormat = value; }
-    }
-
-    public static string AudioId3Artist
-    {
-      get { return audioId3Artist; }
-      set { audioId3Artist = value; }
-    }
-
-    public static string AudioId3Album
-    {
-      get { return audioId3Album; }
-      set { audioId3Album = value; }
-    }
-
-    public static string AudioId3Title
-    {
-      get { return audioId3Title; }
-      set { audioId3Title = value; }
-    }
-
-    public static string AudioId3Genre
-    {
-      get { return audioId3Genre; }
-      set { audioId3Genre = value; }
-    }
-
-    public static string AudioId3Lyrics
-    {
-      get { return audioId3Lyrics; }
-      set { audioId3Lyrics = value; }
-    }
-
-    public static string ExtractMediaAudioFilenameFormat
-    {
-      get { return extractMediaAudioFilenameFormat; }
-      set { extractMediaAudioFilenameFormat = value; }
-    }
-
-    public static string ExtractMediaLyricsSubs1Format
-    {
-      get { return extractMediaLyricsSubs1Format; }
-      set { extractMediaLyricsSubs1Format = value; }
-    }
-
-    public static string ExtractMediaLyricsSubs2Format
-    {
-      get { return extractMediaLyricsSubs2Format; }
-      set { extractMediaLyricsSubs2Format = value; }
-    }
-
-    public static string DuelingSubtitleFilenameFormat
-    {
-      get { return duelingSubtitleFilenameFormat; }
-      set { duelingSubtitleFilenameFormat = value; }
-    }
-
-    public static string DuelingQuickRefFilenameFormat
-    {
-      get { return duelingQuickRefFilenameFormat; }
-      set { duelingQuickRefFilenameFormat = value; }
-    }
-
-    public static string DuelingQuickRefSubs1Format
-    {
-      get { return duelingQuickRefSubs1Format; }
-      set { duelingQuickRefSubs1Format = value; }
-    }
-
-    public static string DuelingQuickRefSubs2Format
-    {
-      get { return duelingQuickRefSubs2Format; }
-      set { duelingQuickRefSubs2Format = value; }
-    }
+      return name;
+    }
+
+    // ── Immutable (no setter) ──────────────────────────────────────────
+
+    public static string SaveExt { get; } = "s2s";
+    public static string HelpPage { get; } = "http://subs2srs.sourceforge.net/";
+    public static string LogDir { get; } = Path.Combine(
+      Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+      "subs2srs", "Logs") + Path.DirectorySeparatorChar;
+    public static int MaxLogFiles { get; } = 10;
+
+    public static string ExeFFmpeg { get; } = "ffmpeg";
+    public static string PathFFmpegFullExe { get; } = FindInPath("ffmpeg");
+    public static string PathFFmpegExe { get; } = FindInPath("ffmpeg");
+    public static string PathFFmpegPresetsFull { get; } = Path.Combine(
+      UtilsCommon.getAppDir(true), "presets");
+
+    public static string TempImageFilename { get; } = $"subs2srs_temp_{Guid.NewGuid()}.jpg";
+    public static string TempVideoFilename { get; } = $"subs2srs_temp_{Guid.NewGuid()}";
+    public static string TempAudioFilename { get; } = $"subs2srs_temp_{Guid.NewGuid()}.mp3";
+    public static string TempAudioPreviewFilename { get; } = $"subs2srs_temp_{Guid.NewGuid()}.wav";
+    public static string TempPreviewDirName { get; } = $"subs2srs_preview_{Guid.NewGuid()}";
+    public static string TempMkvExtractSubs1Filename { get; } = $"subs2srs_mkv_extract_subs1_{Guid.NewGuid()}";
+    public static string TempMkvExtractSubs2Filename { get; } = $"subs2srs_mkv_extract_subs2_{Guid.NewGuid()}";
+
+    public static string NormalizeAudioExe { get; } = "mp3gain";
+    public static string PathNormalizeAudioExeRel { get; } = "mp3gain";
+    public static string PathNormalizeAudioExeFull { get; } = FindInPath("mp3gain");
+    public static string PathSubsReTimerFull { get; } = FindInPath("SubsReTimer");
+
+    public static string ExeMkvInfo { get; } = "mkvinfo";
+    public static string PathMkvDirRel { get; } = "";
+    public static string PathMkvDirFull { get; } = "";
+    public static string PathMkvInfoExeRel { get; } = "mkvinfo";
+    public static string PathMkvInfoExeFull { get; } = FindInPath("mkvinfo");
+
+    public static string ExeMkvExtract { get; } = "mkvextract";
+    public static string PathMkvExtractExeRel { get; } = "mkvextract";
+    public static string PathMkvExtractExeFull { get; } = FindInPath("mkvextract");
+
+    public static string SettingsFilename { get; } = Path.Combine(
+      Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+      "subs2srs", "preferences.txt");
+
+    // ── Mutable (loaded from preferences.txt via PrefIO.read) ──────────
+
+    public static int MainWindowWidth { get; set; } = PrefDefaults.MainWindowWidth;
+    public static int MainWindowHeight { get; set; } = PrefDefaults.MainWindowHeight;
+
+    public static bool DefaultEnableAudioClipGeneration { get; set; } = PrefDefaults.DefaultEnableAudioClipGeneration;
+    public static bool DefaultEnableSnapshotsGeneration { get; set; } = PrefDefaults.DefaultEnableSnapshotsGeneration;
+    public static bool DefaultEnableVideoClipsGeneration { get; set; } = PrefDefaults.DefaultEnableVideoClipsGeneration;
+
+    public static string VideoPlayer { get; set; } = PrefDefaults.VideoPlayer;
+    public static string VideoPlayerArgs { get; set; } = PrefDefaults.VideoPlayerArgs;
+
+    public static bool ReencodeBeforeSplittingAudio { get; set; } = PrefDefaults.ReencodeBeforeSplittingAudio;
+    public static bool EnableLogging { get; set; } = PrefDefaults.EnableLogging;
+    public static string AudioNormalizeArgs { get; set; } = PrefDefaults.AudioNormalizeArgs;
+    public static int LongClipWarningSeconds { get; set; } = PrefDefaults.LongClipWarningSeconds;
+
+    public static int DefaultAudioClipBitrate { get; set; } = PrefDefaults.DefaultAudioClipBitrate;
+    public static bool DefaultAudioNormalize { get; set; } = PrefDefaults.DefaultAudioNormalize;
+
+    public static int DefaultVideoClipVideoBitrate { get; set; } = PrefDefaults.DefaultVideoClipVideoBitrate;
+    public static int DefaultVideoClipAudioBitrate { get; set; } = PrefDefaults.DefaultVideoClipAudioBitrate;
+    public static bool DefaultIphoneSupport { get; set; } = PrefDefaults.DefaultIphoneSupport;
+
+    public static string DefaultEncodingSubs1 { get; set; } = PrefDefaults.DefaultEncodingSubs1;
+    public static string DefaultEncodingSubs2 { get; set; } = PrefDefaults.DefaultEncodingSubs2;
+
+    public static int DefaultContextNumLeading { get; set; } = PrefDefaults.DefaultContextNumLeading;
+    public static int DefaultContextNumTrailing { get; set; } = PrefDefaults.DefaultContextNumTrailing;
+    public static int DefaultContextLeadingRange { get; set; } = PrefDefaults.DefaultContextLeadingRange;
+    public static int DefaultContextTrailingRange { get; set; } = PrefDefaults.DefaultContextTrailingRange;
+
+    public static string DefaultFileBrowserStartDir { get; set; } = PrefDefaults.DefaultFileBrowserStartDir;
+
+    public static bool DefaultRemoveStyledLinesSubs1 { get; set; } = PrefDefaults.DefaultRemoveStyledLinesSubs1;
+    public static bool DefaultRemoveStyledLinesSubs2 { get; set; } = PrefDefaults.DefaultRemoveStyledLinesSubs2;
+    public static bool DefaultRemoveNoCounterpartSubs1 { get; set; } = PrefDefaults.DefaultRemoveNoCounterpartSubs1;
+    public static bool DefaultRemoveNoCounterpartSubs2 { get; set; } = PrefDefaults.DefaultRemoveNoCounterpartSubs2;
+
+    public static string DefaultIncludeTextSubs1 { get; set; } = PrefDefaults.DefaultIncludeTextSubs1;
+    public static string DefaultIncludeTextSubs2 { get; set; } = PrefDefaults.DefaultIncludeTextSubs2;
+    public static string DefaultExcludeTextSubs1 { get; set; } = PrefDefaults.DefaultExcludeTextSubs1;
+    public static string DefaultExcludeTextSubs2 { get; set; } = PrefDefaults.DefaultExcludeTextSubs2;
+
+    public static bool DefaultExcludeDuplicateLinesSubs1 { get; set; } = PrefDefaults.DefaultExcludeDuplicateLinesSubs1;
+    public static bool DefaultExcludeDuplicateLinesSubs2 { get; set; } = PrefDefaults.DefaultExcludeDuplicateLinesSubs2;
+
+    public static bool DefaultExcludeLinesFewerThanCharsSubs1 { get; set; } = PrefDefaults.DefaultExcludeLinesFewerThanCharsSubs1;
+    public static bool DefaultExcludeLinesFewerThanCharsSubs2 { get; set; } = PrefDefaults.DefaultExcludeLinesFewerThanCharsSubs2;
+    public static int DefaultExcludeLinesFewerThanCharsNumSubs1 { get; set; } = PrefDefaults.DefaultExcludeLinesFewerThanCharsNumSubs1;
+    public static int DefaultExcludeLinesFewerThanCharsNumSubs2 { get; set; } = PrefDefaults.DefaultExcludeLinesFewerThanCharsNumSubs2;
+
+    public static bool DefaultExcludeLinesShorterThanMsSubs1 { get; set; } = PrefDefaults.DefaultExcludeLinesShorterThanMsSubs1;
+    public static bool DefaultExcludeLinesShorterThanMsSubs2 { get; set; } = PrefDefaults.DefaultExcludeLinesShorterThanMsSubs2;
+    public static int DefaultExcludeLinesShorterThanMsNumSubs1 { get; set; } = PrefDefaults.DefaultExcludeLinesShorterThanMsNumSubs1;
+    public static int DefaultExcludeLinesShorterThanMsNumSubs2 { get; set; } = PrefDefaults.DefaultExcludeLinesShorterThanMsNumSubs2;
+
+    public static bool DefaultExcludeLinesLongerThanMsSubs1 { get; set; } = PrefDefaults.DefaultExcludeLinesLongerThanMsSubs1;
+    public static bool DefaultExcludeLinesLongerThanMsSubs2 { get; set; } = PrefDefaults.DefaultExcludeLinesLongerThanMsSubs2;
+    public static int DefaultExcludeLinesLongerThanMsNumSubs1 { get; set; } = PrefDefaults.DefaultExcludeLinesLongerThanMsNumSubs1;
+    public static int DefaultExcludeLinesLongerThanMsNumSubs2 { get; set; } = PrefDefaults.DefaultExcludeLinesLongerThanMsNumSubs2;
+
+    public static bool DefaultJoinSentencesSubs1 { get; set; } = PrefDefaults.DefaultJoinSentencesSubs1;
+    public static bool DefaultJoinSentencesSubs2 { get; set; } = PrefDefaults.DefaultJoinSentencesSubs2;
+    public static string DefaultJoinSentencesCharListSubs1 { get; set; } = PrefDefaults.DefaultJoinSentencesCharListSubs1;
+    public static string DefaultJoinSentencesCharListSubs2 { get; set; } = PrefDefaults.DefaultJoinSentencesCharListSubs2;
+
+    public static string SrsFilenameFormat { get; set; } = PrefDefaults.SrsFilenameFormat;
+    public static string SrsDelimiter { get; set; } = PrefDefaults.SrsDelimiter;
+    public static string SrsTagFormat { get; set; } = PrefDefaults.SrsTagFormat;
+    public static string SrsSequenceMarkerFormat { get; set; } = PrefDefaults.SrsSequenceMarkerFormat;
+
+    public static string SrsAudioFilenamePrefix { get; set; } = PrefDefaults.SrsAudioFilenamePrefix;
+    public static string SrsAudioFilenameSuffix { get; set; } = PrefDefaults.SrsAudioFilenameSuffix;
+    public static string SrsSnapshotFilenamePrefix { get; set; } = PrefDefaults.SrsSnapshotFilenamePrefix;
+    public static string SrsSnapshotFilenameSuffix { get; set; } = PrefDefaults.SrsSnapshotFilenameSuffix;
+    public static string SrsVideoFilenamePrefix { get; set; } = PrefDefaults.SrsVideoFilenamePrefix;
+    public static string SrsVideoFilenameSuffix { get; set; } = PrefDefaults.SrsVideoFilenameSuffix;
+    public static string SrsSubs1Format { get; set; } = PrefDefaults.SrsSubs1Format;
+    public static string SrsSubs2Format { get; set; } = PrefDefaults.SrsSubs2Format;
+    public static string SrsVobsubFilenamePrefix { get; set; } = PrefDefaults.SrsVobsubFilenamePrefix;
+    public static string SrsVobsubFilenameSuffix { get; set; } = PrefDefaults.SrsVobsubFilenameSuffix;
+
+    public static string AudioFilenameFormat { get; set; } = PrefDefaults.AudioFilenameFormat;
+    public static string SnapshotFilenameFormat { get; set; } = PrefDefaults.SnapshotFilenameFormat;
+    public static string VideoFilenameFormat { get; set; } = PrefDefaults.VideoFilenameFormat;
+    public static string VobsubFilenameFormat { get; set; } = PrefDefaults.VobsubFilenameFormat;
+
+    public static string AudioId3Artist { get; set; } = PrefDefaults.AudioId3Artist;
+    public static string AudioId3Album { get; set; } = PrefDefaults.AudioId3Album;
+    public static string AudioId3Title { get; set; } = PrefDefaults.AudioId3Title;
+    public static string AudioId3Genre { get; set; } = PrefDefaults.AudioId3Genre;
+    public static string AudioId3Lyrics { get; set; } = PrefDefaults.AudioId3Lyrics;
+
+    public static string ExtractMediaAudioFilenameFormat { get; set; } = PrefDefaults.ExtractMediaAudioFilenameFormat;
+    public static string ExtractMediaLyricsSubs1Format { get; set; } = PrefDefaults.ExtractMediaLyricsSubs1Format;
+    public static string ExtractMediaLyricsSubs2Format { get; set; } = PrefDefaults.ExtractMediaLyricsSubs2Format;
+
+    public static string DuelingSubtitleFilenameFormat { get; set; } = PrefDefaults.DuelingSubtitleFilenameFormat;
+    public static string DuelingQuickRefFilenameFormat { get; set; } = PrefDefaults.DuelingQuickRefFilenameFormat;
+    public static string DuelingQuickRefSubs1Format { get; set; } = PrefDefaults.DuelingQuickRefSubs1Format;
+    public static string DuelingQuickRefSubs2Format { get; set; } = PrefDefaults.DuelingQuickRefSubs2Format;
   }
 
   public class SubSettings
