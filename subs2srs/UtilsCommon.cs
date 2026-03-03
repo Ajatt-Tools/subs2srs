@@ -22,30 +22,21 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
-
 
 namespace subs2srs
 {
   /// <summary>
-  /// General utilies.
+  /// General utilities.
   /// </summary>
   public class UtilsCommon
   {
     /// <summary>
-    /// Check if an integer is within it's valid range. If is isn't set to a default.
+    /// Check if an integer is within its valid range. If it isn't, set to a default.
     /// </summary>
     public static int checkRange(int value, int min, int max, int def)
     {
-      int newValue = def;
-
-      if ((value >= min) && (value <= max))
-      {
-        newValue = value;
-      }
-
-      return newValue;
+      return (value >= min && value <= max) ? value : def;
     }
 
 
@@ -54,14 +45,7 @@ namespace subs2srs
     /// </summary>
     public static T checkRangeInSet<T>(T value, List<T> validValues, T def)
     {
-      T outBitrate = def;
-
-      if (validValues.Contains(value))
-      {
-        outBitrate = value;
-      }
-
-      return outBitrate;
+      return validValues.Contains(value) ? value : def;
     }
 
 
@@ -70,69 +54,44 @@ namespace subs2srs
     /// </summary>
     public static string getAppDir(bool addSlash)
     {
-        string appDir = AppContext.BaseDirectory;
-        if (!addSlash)
-            appDir = appDir.TrimEnd(Path.DirectorySeparatorChar);
-        return appDir;
+      string appDir = AppContext.BaseDirectory;
+      if (!addSlash)
+        appDir = appDir.TrimEnd(Path.DirectorySeparatorChar);
+      return appDir;
     }
 
+
     /// <summary>
-    /// Get the multle nearest to the provided value.
+    /// Get the multiple nearest to the provided value.
     /// </summary>
     public static int getNearestMultiple(int value, int multiple)
     {
-      int ret = 0;
       int remainder = value % multiple;
 
       if (remainder == 0)
-      {
-        ret = value;
-      }
-      if (remainder < ((int)multiple / 2))
-      {
-        ret = value - remainder;
-      }
-      else
-      {
-        ret = value + multiple - remainder;
-      }
-
-      return ret;
+        return value;
+      if (remainder < multiple / 2)
+        return value - remainder;
+      return value + multiple - remainder;
     }
 
-    
 
     /// <summary>
-    ///  Get a list of non-hidden files in a directory that match the given file pattern.
+    /// Get a list of non-hidden files in a directory that match the given file pattern.
     /// </summary>
-    public static string[] getNonHiddenFilesInDir(string dir, string searchPatttern)
+    public static string[] getNonHiddenFilesInDir(string dir, string searchPattern)
     {
-      if (Directory.Exists(dir))
-      {
-        List<string> subsFiles = Directory.GetFiles(dir, searchPatttern, SearchOption.TopDirectoryOnly).ToList();
-        subsFiles.Sort();
-        
-        List<string> unHiddenFiles = new List<string>();
-
-        foreach (string file in subsFiles)
-        {
-          if ((File.GetAttributes(file) & FileAttributes.Hidden) != FileAttributes.Hidden)
-          {
-            unHiddenFiles.Add(file);
-          }
-        }
-
-        return unHiddenFiles.ToArray();
-      }
-      else
-      {
+      if (!Directory.Exists(dir))
         return Array.Empty<string>();
-      }
+
+      List<string> files = Directory.GetFiles(dir, searchPattern, SearchOption.TopDirectoryOnly).ToList();
+      files.Sort();
+      return files.Where(f => (File.GetAttributes(f) & FileAttributes.Hidden) == 0).ToArray();
     }
 
 
     /// <summary>
-    ///  Get a list of non-hidden files in a directory.
+    /// Get a list of non-hidden files in a directory.
     /// </summary>
     public static string[] getNonHiddenFilesInDir(string dir)
     {
@@ -140,542 +99,272 @@ namespace subs2srs
     }
 
 
-    // File can be the full path to a dir or or it can be a dir + wildcard (D:\temp\*.mp3).
-    // Valid Wildcards:
-    //   * = Zero or more characters.
-    //   ? = Exactly zero or one character. 
-
     /// <summary>
     /// Get the non-hidden files based on the provided file pattern.
     /// File pattern can be the full path to a dir or it can be a dir + wildcard (D:\temp\*.mp3).
-    /// Valid Wildcards:
-    ///   * = Zero or more characters.
-    ///   ? = Exactly zero or one character. 
     /// </summary>
-    static public string[] getNonHiddenFiles(string filePattern)
+    public static string[] getNonHiddenFiles(string filePattern)
     {
-      List<string> unHiddenFiles = new List<string>();
-      string[] nonHiddenFiles = Array.Empty<string>();
+      if (filePattern.Length == 0)
+        return Array.Empty<string>();
 
-      if (filePattern.Length > 0)
-      {
-        string dir = Path.GetDirectoryName(filePattern);
-        string pattern = filePattern.Substring(dir.Length);
+      string dir = Path.GetDirectoryName(filePattern);
 
-        if (Directory.Exists(dir))
-        {
-          List<string> allFiles = Directory.GetFiles(Path.GetFullPath(dir), Path.GetFileName(pattern)).ToList();
-          allFiles.Sort();
+      if (!Directory.Exists(dir))
+        return Array.Empty<string>();
 
-          foreach (string file in allFiles)
-          {
-            if ((File.GetAttributes(file) & FileAttributes.Hidden) != FileAttributes.Hidden)
-            {
-              unHiddenFiles.Add(file);
-            }
-          }
-
-          nonHiddenFiles = unHiddenFiles.ToArray();
-        }
-      }
-
-      return nonHiddenFiles;
+      List<string> allFiles = Directory.GetFiles(Path.GetFullPath(dir), Path.GetFileName(filePattern)).ToList();
+      allFiles.Sort();
+      return allFiles.Where(f => (File.GetAttributes(f) & FileAttributes.Hidden) == 0).ToArray();
     }
 
 
     /// <summary>
-    /// Return string containing each element of provided list seperated by semicolons.
+    /// Return string containing each element of provided list separated by semicolons.
     /// </summary>
-    static public string makeSemiString(string[] words)
+    public static string makeSemiString(string[] words)
     {
-      string outStr = "";
-
-      foreach (string word in words)
-      {
-        outStr += word.Trim() + ";";
-      }
-
-      outStr = outStr.TrimEnd(new char[] { ';' });
-
-      return outStr;
+      return string.Join(";", words.Select(w => w.Trim()));
     }
 
 
     /// <summary>
     /// Trim spaces from words in provided list.
     /// </summary>
-    static public string[] removeExtraSpaces(string[] words)
+    public static string[] removeExtraSpaces(string[] words)
     {
       for (int i = 0; i < words.Length; i++)
-      {
         words[i] = words[i].Trim();
-      }
-
       return words;
     }
 
 
+    // ── Exe resolution ──────────────────────────────────────────────────
+
     /// <summary>
-    /// Call an exe and pass it the provided arguments. Blocking.
+    /// Get the list of exe paths to try, in order: relative, absolute, bare name (after PATH fix).
     /// </summary>
-    static private bool callExe(string exe, string args, bool useShellExecute, bool createNoWindow)
+    private static IEnumerable<string> getExePaths(string relPath, string fullPath)
     {
-        Process process = new Process();
-        bool status = false;
-    
-        try
-        {
-            process.StartInfo.FileName = exe;
-            process.StartInfo.Arguments = args;
-            process.StartInfo.UseShellExecute = useShellExecute;
-            process.StartInfo.CreateNoWindow = createNoWindow;
-            if (!useShellExecute)
-            {
-                process.StartInfo.RedirectStandardError = true;
-                process.StartInfo.RedirectStandardOutput = true;
-                process.ErrorDataReceived += (s, e) => { };
-                process.OutputDataReceived += (s, e) => { };
-            }
-            process.Start();
-            if (!useShellExecute)
-            {
-                process.BeginErrorReadLine();
-                process.BeginOutputReadLine();
-            }
-            process.WaitForExit();
-            status = true;
-        }
-        catch
-        {
-            try { process.Kill(); } catch { }
-        }
-    
-        return status;
+      yield return relPath;
+      yield return fullPath;
+
+      // Ensure directory of fullPath is in PATH, then try bare filename
+      string dir = Path.GetDirectoryName(fullPath);
+      if (!string.IsNullOrEmpty(dir))
+      {
+        string oldPath = Environment.GetEnvironmentVariable("PATH") ?? "";
+        if (!oldPath.Contains(dir))
+          Environment.SetEnvironmentVariable("PATH", oldPath + Path.PathSeparator + dir);
+      }
+
+      yield return Path.GetFileName(fullPath);
     }
 
-    /// <summary>
-    /// Call an exe with the provided arguments and returns the standard out text. Blocking.
-    /// </summary>
-    static private string callExeAndGetStdout(string exe, string args, bool useShellExecute, bool createNoWindow)
+    private static IEnumerable<string> getFFmpegPaths()
     {
-      Process process = new Process();
-      string stdOutText = "Error.";
+      return getExePaths(ConstantSettings.PathFFmpegExe, ConstantSettings.PathFFmpegFullExe);
+    }
 
+
+    // ── Simple process launching (blocking, no progress) ────────────────
+
+    /// <summary>
+    /// Try to call an exe with provided arguments. Returns true on success.
+    /// </summary>
+    private static bool callExe(string exe, string args, bool useShellExecute, bool createNoWindow)
+    {
       try
       {
+        using var process = new Process();
         process.StartInfo.FileName = exe;
         process.StartInfo.Arguments = args;
         process.StartInfo.UseShellExecute = useShellExecute;
         process.StartInfo.CreateNoWindow = createNoWindow;
-        process.StartInfo.RedirectStandardOutput = true;
+        if (!useShellExecute)
+        {
+          process.StartInfo.RedirectStandardError = true;
+          process.StartInfo.RedirectStandardOutput = true;
+          process.ErrorDataReceived += (s, e) => { };
+          process.OutputDataReceived += (s, e) => { };
+        }
         process.Start();
-
-        stdOutText = process.StandardOutput.ReadToEnd();
+        if (!useShellExecute)
+        {
+          process.BeginErrorReadLine();
+          process.BeginOutputReadLine();
+        }
+        process.WaitForExit();
+        return true;
       }
       catch
       {
-        try
-        {
-          process.Kill();
-          stdOutText = "Error.";
-        }
-        catch
-        {
-          // Dont care
-        }
+        return false;
       }
-
-      return stdOutText;
     }
 
-    // Apparently environment variable names on Windows are case-insensitive, while
-    // they are case-sensitive on Unix-like systems. "PATH" is the preferred name,
-    // not "Path".
-    static private string getEnvironmentPath()
-    {
-      return Environment.GetEnvironmentVariable("PATH");
-    }
-
-    static private void setEnvironmentPath(string newPath)
-    {
-      Environment.SetEnvironmentVariable("PATH", newPath);
-    }
 
     /// <summary>
-    /// Call an exe with the provided arguments.
+    /// Try to call an exe and return stdout. Returns "Error." on failure.
     /// </summary>
-    static public void startProcess(string relExePath, string fullExePath, string args,
+    private static string callExeAndGetStdout(string exe, string args)
+    {
+      try
+      {
+        using var process = new Process();
+        process.StartInfo.FileName = exe;
+        process.StartInfo.Arguments = args;
+        process.StartInfo.UseShellExecute = false;
+        process.StartInfo.CreateNoWindow = true;
+        process.StartInfo.RedirectStandardOutput = true;
+        process.Start();
+        return process.StandardOutput.ReadToEnd();
+      }
+      catch
+      {
+        return null;
+      }
+    }
+
+
+    /// <summary>
+    /// Try to call an exe and return stderr. Returns null on failure.
+    /// </summary>
+    private static string callExeAndGetStderr(string exe, string args)
+    {
+      try
+      {
+        using var process = new Process();
+        process.StartInfo.FileName = exe;
+        process.StartInfo.Arguments = args;
+        process.StartInfo.UseShellExecute = false;
+        process.StartInfo.CreateNoWindow = true;
+        process.StartInfo.RedirectStandardError = true;
+        process.Start();
+        return process.StandardError.ReadToEnd();
+      }
+      catch
+      {
+        return null;
+      }
+    }
+
+
+    /// <summary>
+    /// Run a process with progress monitoring and cancel support.
+    /// Returns true if process completed (not cancelled).
+    /// </summary>
+    private static bool runProcessWithProgress(string exe, string args, IProgressReporter dialogProgress)
+    {
+      try
+      {
+        using var process = new Process();
+        process.StartInfo.FileName = exe;
+        process.StartInfo.Arguments = args;
+        process.StartInfo.UseShellExecute = false;
+        process.StartInfo.CreateNoWindow = true;
+        process.StartInfo.RedirectStandardError = true;
+        process.ErrorDataReceived += new DataReceivedEventHandler(dialogProgress.OnFFmpegOutput);
+        process.Start();
+        process.BeginErrorReadLine();
+
+        while (!process.HasExited)
+        {
+          Thread.Sleep(100);
+
+          if (dialogProgress.Cancel)
+          {
+            try { process.Kill(); } catch { }
+            return true; // started OK, just cancelled
+          }
+        }
+
+        return true;
+      }
+      catch
+      {
+        return false;
+      }
+    }
+
+
+    // ── Public API ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Call an exe with the provided arguments, trying multiple paths.
+    /// </summary>
+    public static void startProcess(string relExePath, string fullExePath, string args,
       bool useShellExecute, bool createNoWindow)
     {
-      Process process = new Process();
-      bool status = true;
-
-      // Try several different ways of calling ffmpeg because of the dreaded
-      // "System.ComponentModel.Win32Exception: The system cannot find the drive specified" exception
-
-      // Try relative path from subs2srs.exe
-      status = callExe(relExePath, args, useShellExecute, createNoWindow);
-
-      // Try absolute path to exe
-      if (!status)
+      foreach (string exe in getExePaths(relExePath, fullExePath))
       {
-        status = callExe(fullExePath, args, useShellExecute, createNoWindow);
-      }
-
-      // Try setting PATH to include the absolute path of exe
-      if (!status)
-      {
-        string oldPath = getEnvironmentPath();
-        string dir = Path.GetDirectoryName(fullExePath);
-
-        if (!oldPath.Contains(dir))
-        {
-          string newPath = oldPath + Path.PathSeparator + dir;
-          setEnvironmentPath(newPath);
-        }
-
-        status = callExe(Path.GetFileName(fullExePath), args, useShellExecute, createNoWindow);
+        if (callExe(exe, args, useShellExecute, createNoWindow))
+          return;
       }
     }
 
 
     /// <summary>
-    /// Call an exe with the provided arguments. Don't open a DOS window.
+    /// Call an exe with the provided arguments. Don't open a window.
     /// </summary>
-    static public void startProcess(string relExePath, string fullExePath, string args)
+    public static void startProcess(string relExePath, string fullExePath, string args)
     {
       startProcess(relExePath, fullExePath, args, false, true);
     }
 
 
     /// <summary>
-    /// Call an exe with the provided arguments. Don't open a DOS window.
-    /// Get the standard output.
+    /// Call an exe with the provided arguments. Return stdout.
     /// </summary>
-    static public string startProcessAndGetStdout(string relExePath, string fullExePath, string args)
+    public static string startProcessAndGetStdout(string relExePath, string fullExePath, string args)
     {
-      Process process = new Process();
-      string stdOutText = "Error.";
-
-      // Try several different ways of calling because of the dreaded
-      // "System.ComponentModel.Win32Exception: The system cannot find the drive specified" exception
-
-      // Try relative path from subs2srs.exe
-      stdOutText = callExeAndGetStdout(relExePath, args, false, true);
-
-      // Try absolute path to exe
-      if (stdOutText == "Error.")
+      foreach (string exe in getExePaths(relExePath, fullExePath))
       {
-        stdOutText = callExeAndGetStdout(fullExePath, args, false, true);
+        string result = callExeAndGetStdout(exe, args);
+        if (result != null)
+          return result;
       }
 
-      // Try setting PATH to include the absolute path of exe
-      if (stdOutText == "Error.")
-      {
-        string oldPath = getEnvironmentPath();
-        string dir = Path.GetDirectoryName(fullExePath);
-
-        if (!oldPath.Contains(dir))
-        {
-          string newPath = oldPath + Path.PathSeparator + dir;
-          setEnvironmentPath(newPath);
-        }
-
-        stdOutText = callExeAndGetStdout(Path.GetFileName(fullExePath), args, false, true);
-      }
-
-      return stdOutText;
+      return "Error.";
     }
 
 
     /// <summary>
     /// Call ffmpeg with provided arguments. Blocking.
     /// </summary>
-    static public void startFFmpeg(string ffmpegAudioProgArgs, bool useShellExecute, bool createNoWindow)
+    public static void startFFmpeg(string ffmpegArgs, bool useShellExecute, bool createNoWindow)
     {
-      startProcess(ConstantSettings.PathFFmpegExe, ConstantSettings.PathFFmpegFullExe, ffmpegAudioProgArgs,
-        useShellExecute, createNoWindow);
+      startProcess(ConstantSettings.PathFFmpegExe, ConstantSettings.PathFFmpegFullExe,
+        ffmpegArgs, useShellExecute, createNoWindow);
     }
 
 
     /// <summary>
     /// Call ffmpeg with provided arguments and update the progress dialog.
-    /// No windows will popup. If Cancel is pressed in the progress dialog, the process will be killed.
     /// </summary>
-    static public void startFFmpegProgress(string ffmpegAudioProgArgs, IProgressReporter dialogProgress)
+    public static void startFFmpegProgress(string ffmpegArgs, IProgressReporter dialogProgress)
     {
-      Process ffmpegProcess = new Process();
-      bool tryAgain = true;
-      bool useShellExecute = false;
-      bool createNoWindow = true;
-
-      // Try several different ways of calling ffmpeg because of the dreaded
-      // "System.ComponentModel.Win32Exception: The system cannot find the drive specified" exception
-
-      // Try relative path from subs2srs.exe
-      try
+      foreach (string exe in getFFmpegPaths())
       {
-        ffmpegProcess.StartInfo.FileName = ConstantSettings.PathFFmpegExe;
-        ffmpegProcess.StartInfo.Arguments = ffmpegAudioProgArgs;
-        ffmpegProcess.StartInfo.UseShellExecute = useShellExecute;
-        ffmpegProcess.StartInfo.CreateNoWindow = createNoWindow;
-        ffmpegProcess.StartInfo.RedirectStandardError = true;
-        ffmpegProcess.ErrorDataReceived += new DataReceivedEventHandler(dialogProgress.OnFFmpegOutput);
-        ffmpegProcess.Start();
-        ffmpegProcess.BeginErrorReadLine();
-
-        // Loop until process has exited
-        while (!ffmpegProcess.HasExited)
-        {
-          Thread.Sleep(100);
-
-          // If the Cancel button was pressed
-          if(dialogProgress.Cancel)
-          {
-            try
-            {
-              ffmpegProcess.Kill();
-            }
-            catch
-            {
-              // Don't care
-            }
-
-            break;
-          }
-        }
-
-        tryAgain = false;
-      }
-      catch
-      {
-        try
-        {
-          ffmpegProcess.Kill();
-        }
-        catch
-        {
-          // Dont care
-        }
-
-        tryAgain = true;
-      }
-
-      // Try absolute path to ffmpeg.exe
-      if (tryAgain)
-      {
-        ffmpegProcess = new Process();
-
-        try
-        {
-          ffmpegProcess.StartInfo.FileName = ConstantSettings.PathFFmpegFullExe;
-          ffmpegProcess.StartInfo.Arguments = ffmpegAudioProgArgs;
-          ffmpegProcess.StartInfo.UseShellExecute = useShellExecute;
-          ffmpegProcess.StartInfo.CreateNoWindow = createNoWindow;
-          ffmpegProcess.StartInfo.RedirectStandardError = true;
-          ffmpegProcess.ErrorDataReceived += new DataReceivedEventHandler(dialogProgress.OnFFmpegOutput);
-          ffmpegProcess.Start();
-          ffmpegProcess.BeginErrorReadLine();
-
-          // Loop until process has exited
-          while (!ffmpegProcess.HasExited)
-          {
-            Thread.Sleep(100);
-
-            // If the Cancel button was pressed
-            if (dialogProgress.Cancel)
-            {
-              try
-              {
-                ffmpegProcess.Kill();
-              }
-              catch
-              {
-                // Don't care
-              }
-
-              break;
-            }
-          }
-
-          tryAgain = false;
-        }
-        catch (Exception)
-        {
-          try
-          {
-            ffmpegProcess.Kill();
-          }
-          catch
-          {
-            // Dont care
-          }
-
-          tryAgain = true;
-        }
-      }
-
-      // Try setting PATH to include the absolute path of ffmpeg.exe
-      if (tryAgain)
-      {
-        try
-        {
-          string oldPath = getEnvironmentPath();
-          string ffmpegDir = Path.GetDirectoryName(ConstantSettings.PathFFmpegFullExe);
-
-          if (!oldPath.Contains(ffmpegDir))
-          {
-            string newPath = oldPath + Path.PathSeparator + ffmpegDir;
-            setEnvironmentPath(newPath);
-          }
-
-          ffmpegProcess = new Process();
-
-          ffmpegProcess.StartInfo.FileName = ConstantSettings.ExeFFmpeg;
-          ffmpegProcess.StartInfo.Arguments = ffmpegAudioProgArgs;
-          ffmpegProcess.StartInfo.UseShellExecute = useShellExecute;
-          ffmpegProcess.StartInfo.CreateNoWindow = createNoWindow;
-          ffmpegProcess.StartInfo.RedirectStandardError = true;
-          ffmpegProcess.ErrorDataReceived += new DataReceivedEventHandler(dialogProgress.OnFFmpegOutput);
-          ffmpegProcess.Start();
-          ffmpegProcess.BeginErrorReadLine();
-
-          // Loop until process has exited
-          while (!ffmpegProcess.HasExited)
-          {
-            Thread.Sleep(100);
-
-            // If the Cancel button was pressed
-            if (dialogProgress.Cancel)
-            {
-              try
-              {
-                ffmpegProcess.Kill();
-              }
-              catch
-              {
-                // Don't care
-              }
-
-              break;
-            }
-          }
-        }
-        catch
-        {
-          // Don't care
-        }
+        if (runProcessWithProgress(exe, ffmpegArgs, dialogProgress))
+          return;
       }
     }
 
 
     /// <summary>
-    /// Call ffmpeg with the provided arguments. Return the ffmpeg console text.
+    /// Call ffmpeg with the provided arguments. Return the ffmpeg console text (stderr).
     /// </summary>
-    static public string getFFmpegText(string ffmpegAudioProgArgs)
+    public static string getFFmpegText(string ffmpegArgs)
     {
-      Process ffmpegProcess = new Process();
-      bool tryAgain = true;
-      bool useShellExecute = false;
-      bool createNoWindow = true;
-      string output = "";
-
-      // Try several different ways of calling ffmpeg because of the dreaded
-      // "System.ComponentModel.Win32Exception: The system cannot find the drive specified" exception
-
-      // Try relative path from subs2srs.exe
-      try
+      foreach (string exe in getFFmpegPaths())
       {
-        ffmpegProcess.StartInfo.FileName = ConstantSettings.PathFFmpegExe;
-        ffmpegProcess.StartInfo.Arguments = ffmpegAudioProgArgs;
-        ffmpegProcess.StartInfo.UseShellExecute = useShellExecute;
-        ffmpegProcess.StartInfo.RedirectStandardError = true;
-        ffmpegProcess.StartInfo.CreateNoWindow = createNoWindow;
-        ffmpegProcess.Start();
-
-        output = ffmpegProcess.StandardError.ReadToEnd();
-
-        tryAgain = false;
-      }
-      catch
-      {
-        try
-        {
-          ffmpegProcess.Kill();
-        }
-        catch
-        {
-          // Dont care
-        }
-
-        tryAgain = true;
+        string result = callExeAndGetStderr(exe, ffmpegArgs);
+        if (result != null)
+          return result;
       }
 
-      // Try absolute path to ffmpeg.exe
-      if (tryAgain)
-      {
-        ffmpegProcess = new Process();
-
-        try
-        {
-          ffmpegProcess.StartInfo.FileName = ConstantSettings.PathFFmpegFullExe;
-          ffmpegProcess.StartInfo.Arguments = ffmpegAudioProgArgs;
-          ffmpegProcess.StartInfo.UseShellExecute = useShellExecute;
-          ffmpegProcess.StartInfo.RedirectStandardError = true;
-          ffmpegProcess.StartInfo.CreateNoWindow = createNoWindow;
-          ffmpegProcess.Start();
-
-          output = ffmpegProcess.StandardError.ReadToEnd();
-
-          tryAgain = false;
-        }
-        catch (Exception)
-        {
-          try
-          {
-            ffmpegProcess.Kill();
-          }
-          catch
-          {
-            // Dont care
-          }
-
-          tryAgain = true;
-        }
-      }
-
-      // Try setting PATH to include the absolute path of ffmpeg.exe
-      if (tryAgain)
-      {
-        string oldPath = getEnvironmentPath();
-        string ffmpegDir = Path.GetDirectoryName(ConstantSettings.PathFFmpegFullExe);
-
-        if (!oldPath.Contains(ffmpegDir))
-        {
-          string newPath = oldPath + Path.PathSeparator + ffmpegDir;
-          Environment.SetEnvironmentVariable("Path", newPath);
-        }
-
-        ffmpegProcess = new Process();
-
-        ffmpegProcess.StartInfo.FileName = ConstantSettings.ExeFFmpeg;
-        ffmpegProcess.StartInfo.Arguments = ffmpegAudioProgArgs;
-        ffmpegProcess.StartInfo.UseShellExecute = useShellExecute;
-        ffmpegProcess.StartInfo.RedirectStandardError = true;
-        ffmpegProcess.StartInfo.CreateNoWindow = createNoWindow;
-        ffmpegProcess.Start();
-
-        output = ffmpegProcess.StandardError.ReadToEnd();
-      }
-
-      return output;
+      return "";
     }
-
-
-
-
-
-
-
   }
 }
