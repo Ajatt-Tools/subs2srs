@@ -17,8 +17,6 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -28,7 +26,6 @@ namespace subs2srs
     {
         private static readonly JsonSerializerOptions _options = new()
         {
-            IncludeFields = true,
             ReferenceHandler = ReferenceHandler.IgnoreCycles,
             WriteIndented = false
         };

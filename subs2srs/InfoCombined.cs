@@ -17,88 +17,54 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
 namespace subs2srs
 {
   /// <summary>
-  /// Represents paired lines: Subs1 and it's corresponding Sub2.
+  /// Represents paired lines: Subs1 and its corresponding Subs2.
   /// </summary>
-  [Serializable]
   public class InfoCombined
   {
-    private InfoLine subs1;
-    private InfoLine subs2;
-    private bool active;
-    private bool onlyNeededForContext;
-
-
-    public InfoLine Subs1 
-    {
-      get { return subs1; }
-      set { subs1 = value; }
-    }
-
-    public InfoLine Subs2
-    {
-      get { return subs2; }
-      set { subs2 = value; }
-    }
-
-    public InfoCombined() 
-    {
-      this.subs1 = new InfoLine();
-      this.subs2 = new InfoLine();
-      this.active = true;
-      this.onlyNeededForContext = false;
-    }
+    public InfoLine Subs1 { get; set; }
+    public InfoLine Subs2 { get; set; }
 
     /// <summary>
     /// Is the line active? (That is, will it be processed?)
     /// </summary>
-    public bool Active
-    {
-      get { return active; }
-      set { active = value; }
-    }
+    public bool Active { get; set; }
 
     /// <summary>
     /// Is the line only needed for context information?
     /// If true, Active is false for this line.
     /// </summary>
-    public bool OnlyNeededForContext
-    {
-      get { return this.onlyNeededForContext; }
-      set { this.onlyNeededForContext = value; }
-    }
+    public bool OnlyNeededForContext { get; set; }
 
+    public InfoCombined()
+    {
+      Subs1 = new InfoLine();
+      Subs2 = new InfoLine();
+      Active = true;
+      OnlyNeededForContext = false;
+    }
 
     public InfoCombined(InfoLine subs1, InfoLine subs2)
     {
-      this.subs1 = subs1;
-      this.subs2 = subs2;
-      this.active = true;
-      this.onlyNeededForContext = false;
+      Subs1 = subs1;
+      Subs2 = subs2;
+      Active = true;
+      OnlyNeededForContext = false;
     }
 
     public InfoCombined(InfoLine subs1, InfoLine subs2, bool active)
     {
-      this.subs1 = subs1;
-      this.subs2 = subs2;
-      this.active = active;
-      this.onlyNeededForContext = false;
+      Subs1 = subs1;
+      Subs2 = subs2;
+      Active = active;
+      OnlyNeededForContext = false;
     }
-
 
     public override string ToString()
     {
-      return String.Format("{0}, {1}, {2}, {3}",
-        this.active, this.onlyNeededForContext, this.subs1.StartTime, this.subs1.EndTime);
+      return $"{Active}, {OnlyNeededForContext}, {Subs1.StartTime}, {Subs1.EndTime}";
     }
-
-
   }
 }
