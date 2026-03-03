@@ -19,14 +19,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Diagnostics;
 using System.IO;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 
 
 namespace subs2srs
@@ -45,7 +41,7 @@ namespace subs2srs
 
     private DateTime lastTime = new DateTime();
     private UtilsName name = null;
-    private int progessCount = 0;
+    private int progressCount = 0;
     private InfoCombined mainComb;
 
 
@@ -124,11 +120,9 @@ namespace subs2srs
       
       // Create filename
       // Example: <outdir>\Toki_wo_Kakeru_Shoujo.tsv
-      string srsFilename = String.Format("{0}{1}{2}",
-                                          Settings.Instance.OutputDir,
-                                          Path.DirectorySeparatorChar,
-                                          nameStr);
-      TextWriter srsWriter = new StreamWriter(srsFilename, false, Encoding.UTF8);
+      string srsFilename = Path.Combine(Settings.Instance.OutputDir, nameStr);
+
+      using var srsWriter = new StreamWriter(srsFilename, false, Encoding.UTF8);
       
       // For each episode
       foreach (List<InfoCombined> combArray in workerVars.CombinedAll)
@@ -139,7 +133,7 @@ namespace subs2srs
         // For each line in episode, process
         foreach (InfoCombined comb in combArray)
         {
-          progessCount++;
+          progressCount++;
           lineIdx++;
           mainComb = comb;
 
@@ -207,24 +201,19 @@ namespace subs2srs
           // Write line to file
           srsWriter.WriteLine(srsLine);
 
-          string progressText = string.Format("Generating SRS (ex. Anki) import file: line {0} of {1}",
-                                              progessCount.ToString(),
-                                              totalLines.ToString());
+          string progressText = $"Generating SRS (ex. Anki) import file: line {progressCount} of {totalLines}";
 
-          int progress = Convert.ToInt32(progessCount * (100.0 / totalLines));
+          int progress = Convert.ToInt32(progressCount * (100.0 / totalLines));
 
           dialogProgress.UpdateProgress(progress, progressText);
 
           // Did the user press the cancel button?
           if (dialogProgress.Cancel)
           {
-            srsWriter.Close();
             return false;
           }
         }
       }
-
-      srsWriter.Close();
 
       return true;
     }
@@ -363,18 +352,11 @@ namespace subs2srs
     /// </summary>
     private string formatTag(InfoCombined comb, int episodeIndex)
     {
-      string outText = "";
-
       DateTime startTime = comb.Subs1.StartTime;
       DateTime endTime = comb.Subs1.EndTime;
 
-      string nameStr = name.createName(ConstantSettings.SrsTagFormat, episodeIndex + Settings.Instance.EpisodeStartNumber,
-         progessCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
-
-      outText = String.Format("{0}",
-                              nameStr);
-
-      return outText;
+      return name.createName(ConstantSettings.SrsTagFormat, episodeIndex + Settings.Instance.EpisodeStartNumber,
+         progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
     }
 
 
@@ -385,15 +367,9 @@ namespace subs2srs
     {
       DateTime startTime = comb.Subs1.StartTime;
       DateTime endTime = comb.Subs1.EndTime;
-      string outText = "";
 
-      string nameStr = name.createName(ConstantSettings.SrsSequenceMarkerFormat, episodeIndex + Settings.Instance.EpisodeStartNumber,
-        progessCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
-
-      outText = String.Format("{0}",
-                              nameStr); // {0}  
-
-      return outText;
+      return name.createName(ConstantSettings.SrsSequenceMarkerFormat, episodeIndex + Settings.Instance.EpisodeStartNumber,
+        progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
     }
 
 
@@ -404,7 +380,6 @@ namespace subs2srs
     {
       DateTime startTime;
       DateTime endTime;
-      string outText = "";
 
       // Apply pad (if requested)
       if (Settings.Instance.AudioClips.PadEnabled)
@@ -419,20 +394,15 @@ namespace subs2srs
       }
 
       string prefixStr = name.createName(ConstantSettings.SrsAudioFilenamePrefix, episodeIndex + Settings.Instance.EpisodeStartNumber,
-         progessCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
+         progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
       
       string nameStr = name.createName(ConstantSettings.AudioFilenameFormat, episodeIndex + Settings.Instance.EpisodeStartNumber,
-         progessCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
+         progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
 
       string suffixStr = name.createName(ConstantSettings.SrsAudioFilenameSuffix, episodeIndex + Settings.Instance.EpisodeStartNumber,
-         progessCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
+         progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
 
-      outText = String.Format("{0}{1}{2}",
-                              prefixStr,    // {0}
-                              nameStr,      // {1}
-                              suffixStr);   // {2}
-
-      return outText;
+      return $"{prefixStr}{nameStr}{suffixStr}";
     }
 
 
@@ -444,23 +414,17 @@ namespace subs2srs
       DateTime startTime = comb.Subs1.StartTime;
       DateTime endTime = comb.Subs1.EndTime;
       DateTime midTime = UtilsSubs.getMidpointTime(comb.Subs1.StartTime, comb.Subs1.EndTime);
-      string outText = "";
 
       string prefixStr = name.createName(ConstantSettings.SrsSnapshotFilenamePrefix, episodeIndex + Settings.Instance.EpisodeStartNumber,
-        progessCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
+        progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
 
       string nameStr = name.createName(ConstantSettings.SnapshotFilenameFormat, episodeIndex + Settings.Instance.EpisodeStartNumber,
-        progessCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
+        progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
 
       string suffixStr = name.createName(ConstantSettings.SrsSnapshotFilenameSuffix, episodeIndex + Settings.Instance.EpisodeStartNumber,
-        progessCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
+        progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
 
-      outText = String.Format("{0}{1}{2}",
-                              prefixStr,    // {0}
-                              nameStr,      // {1}
-                              suffixStr);   // {2}
-
-      return outText;
+      return $"{prefixStr}{nameStr}{suffixStr}";
     }
 
 
@@ -471,7 +435,6 @@ namespace subs2srs
     {
       DateTime startTime;
       DateTime endTime;
-      string outText = "";
 
       // Apply pad (if requested)
       if (Settings.Instance.VideoClips.PadEnabled)
@@ -493,21 +456,15 @@ namespace subs2srs
       }
 
       string prefixStr = name.createName(ConstantSettings.SrsVideoFilenamePrefix, episodeIndex + Settings.Instance.EpisodeStartNumber,
-        progessCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
+        progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
 
       string nameStr = name.createName(ConstantSettings.VideoFilenameFormat, episodeIndex + Settings.Instance.EpisodeStartNumber,
-        progessCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
+        progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
 
       string suffixStr = name.createName(ConstantSettings.SrsVideoFilenameSuffix, episodeIndex + Settings.Instance.EpisodeStartNumber,
-        progessCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
+        progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
 
-      outText = String.Format("{0}{1}{2}{3}",
-                              prefixStr,      // {0}
-                              nameStr,        // {1}
-                              videoExtension, // {2}
-                              suffixStr);     // {3}
-         
-      return outText;
+      return $"{prefixStr}{nameStr}{videoExtension}{suffixStr}";
     }
 
 
@@ -518,15 +475,9 @@ namespace subs2srs
     {
       DateTime startTime = comb.Subs1.StartTime;
       DateTime endTime = comb.Subs1.EndTime;
-      string outText = "";
 
-      string nameStr = name.createName(ConstantSettings.SrsSubs1Format, episodeIndex + Settings.Instance.EpisodeStartNumber,
-        progessCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
-
-      outText = String.Format("{0}",
-                              nameStr); // {0}
-
-      return outText;
+      return name.createName(ConstantSettings.SrsSubs1Format, episodeIndex + Settings.Instance.EpisodeStartNumber,
+        progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
     }
 
 
@@ -537,18 +488,9 @@ namespace subs2srs
     {
       DateTime startTime = comb.Subs1.StartTime;
       DateTime endTime = comb.Subs1.EndTime;
-      string outText = "";
 
-      string nameStr = name.createName(ConstantSettings.SrsSubs2Format, episodeIndex + Settings.Instance.EpisodeStartNumber,
-        progessCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
-
-      outText = String.Format("{0}",
-                              nameStr); // {0}
-
-      return outText;
+      return name.createName(ConstantSettings.SrsSubs2Format, episodeIndex + Settings.Instance.EpisodeStartNumber,
+        progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
     }
-
-
-
   }
 }
