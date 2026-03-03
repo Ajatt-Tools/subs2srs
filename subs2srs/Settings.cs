@@ -21,7 +21,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
+using System.Text.Json.Serialization;
 
 namespace subs2srs
 {
@@ -880,803 +880,226 @@ namespace subs2srs
     }
   }
 
-
-  [Serializable]
   public class SubSettings
   {
-    private string filePattern; // File (can include wildcards: * and ?)
-    [NonSerialized()]
-    private string[] files;
-    private InfoStream vobsubStream;
-    private bool timingsEnabled;
-    private int timeShift; // ms
-    private string[] includedWords;
-    private string[] excludedWords;
-    private bool removeNoCounterpart;
-    private bool removeStyledLines; // Styled-lined begin with '{'
-    private bool excludeDuplicateLinesEnabled;
-    private bool excludeFewerEnabled;
-    private int excludeFewerCount; // Number of chars
-    private bool excludeShorterThanTimeEnabled;
-    private int excludeShorterThanTime; // ms
-    private bool excludeLongerThanTimeEnabled;
-    private int excludeLongerThanTime; // ms
-    private bool joinSentencesEnabled;
-    private string joinSentencesCharList;
-    private bool actorsEnabled;
-    private string encoding;
+    public string FilePattern { get; set; } = "";
 
-    public string FilePattern
-    {
-      get { return filePattern; }
-      set { filePattern = value; }
-    }
+    [JsonIgnore]
+    public string[] Files { get; set; } = Array.Empty<string>();
 
-    public string[] Files
-    {
-      get { return files; }
-      set { files = value; }
-    }
-
-    public InfoStream VobsubStream
-    {
-      get { return vobsubStream; }
-      set { vobsubStream = value; }
-    }
-
-    public bool TimingsEnabled
-    {
-      get { return timingsEnabled; }
-      set { timingsEnabled = value; }
-    }
-
-    public int TimeShift
-    {
-      get { return timeShift; }
-      set { timeShift = value; }
-    }
-
-    public string[] IncludedWords
-    {
-      get { return includedWords; }
-      set { includedWords = value; }
-    }
-
-    public string[] ExcludedWords
-    {
-      get { return excludedWords; }
-      set { excludedWords = value; }
-    }
-
-    public bool RemoveNoCounterpart
-    {
-      get { return removeNoCounterpart; }
-      set { removeNoCounterpart = value; }
-    }
-
-    public bool RemoveStyledLines
-    {
-      get { return removeStyledLines; }
-      set { removeStyledLines = value; }
-    }
-
-    public bool ExcludeDuplicateLinesEnabled
-    {
-      get { return excludeDuplicateLinesEnabled; }
-      set { excludeDuplicateLinesEnabled = value; }
-    }
-
-    public bool ExcludeFewerEnabled
-    {
-      get { return excludeFewerEnabled; }
-      set { excludeFewerEnabled = value; }
-    }
-
-    public int ExcludeFewerCount
-    {
-      get { return excludeFewerCount; }
-      set { excludeFewerCount = value; }
-    }
-
-    public bool ExcludeShorterThanTimeEnabled
-    {
-      get { return excludeShorterThanTimeEnabled; }
-      set { excludeShorterThanTimeEnabled = value; }
-    }
-
-    public int ExcludeShorterThanTime
-    {
-      get { return excludeShorterThanTime; }
-      set { excludeShorterThanTime = value; }
-    }
-
-    public bool ExcludeLongerThanTimeEnabled
-    {
-      get { return excludeLongerThanTimeEnabled; }
-      set { excludeLongerThanTimeEnabled = value; }
-    }
-
-    public int ExcludeLongerThanTime
-    {
-      get { return excludeLongerThanTime; }
-      set { excludeLongerThanTime = value; }
-    }
-
-    public bool JoinSentencesEnabled
-    {
-      get { return joinSentencesEnabled; }
-      set { joinSentencesEnabled = value; }
-    }
-
-    public string JoinSentencesCharList
-    {
-      get { return joinSentencesCharList; }
-      set { joinSentencesCharList = value; }
-    }
-
-    public bool ActorsEnabled
-    {
-      get { return actorsEnabled; }
-      set { actorsEnabled = value; }
-    }
-
-    public string Encoding
-    {
-      get { return encoding; }
-      set { encoding = value; }
-    }
-
-    public SubSettings()
-    {
-      filePattern = "";
-      vobsubStream = null;
-      timingsEnabled = false;
-      timeShift = 0;
-      includedWords = Array.Empty<string>();
-      excludedWords = Array.Empty<string>();
-      removeNoCounterpart = true;
-      removeStyledLines = true;
-      excludeDuplicateLinesEnabled = false;
-      excludeFewerEnabled = false;
-      excludeFewerCount = 8;
-      excludeShorterThanTimeEnabled = false;
-      excludeShorterThanTime = 800;
-      excludeLongerThanTimeEnabled = false;
-      excludeLongerThanTime = 5000;
-      joinSentencesEnabled = true;
-      joinSentencesCharList = ",、→";
-      actorsEnabled = false;
-      encoding = "utf-8";
-      files =  Array.Empty<string>();
-    }
+    public InfoStream VobsubStream { get; set; }
+    public bool TimingsEnabled { get; set; }
+    public int TimeShift { get; set; }
+    public string[] IncludedWords { get; set; } = Array.Empty<string>();
+    public string[] ExcludedWords { get; set; } = Array.Empty<string>();
+    public bool RemoveNoCounterpart { get; set; } = true;
+    public bool RemoveStyledLines { get; set; } = true;
+    public bool ExcludeDuplicateLinesEnabled { get; set; }
+    public bool ExcludeFewerEnabled { get; set; }
+    public int ExcludeFewerCount { get; set; } = 8;
+    public bool ExcludeShorterThanTimeEnabled { get; set; }
+    public int ExcludeShorterThanTime { get; set; } = 800;
+    public bool ExcludeLongerThanTimeEnabled { get; set; }
+    public int ExcludeLongerThanTime { get; set; } = 5000;
+    public bool JoinSentencesEnabled { get; set; } = true;
+    public string JoinSentencesCharList { get; set; } = ",、→";
+    public bool ActorsEnabled { get; set; }
+    public string Encoding { get; set; } = "utf-8";
   }
 
-  [Serializable]
+
   public class ImageSize
   {
-    private int width; // Width in pixels
-    private int height;  // Hieght in pixels
+    public int Width { get; set; }
+    public int Height { get; set; }
 
-    public int Width
-    {
-      get { return width; }
-      set { width = value; }
-    }
-
-    public int Height
-    {
-      get { return height; }
-      set { height = value; }
-    }
-
-    public ImageSize()
-    {
-      this.width = 0;
-      this.height = 0;
-    }
+    public ImageSize() { }
 
     public ImageSize(int width, int height)
     {
-      this.width = width;
-      this.height = height;
+      Width = width;
+      Height = height;
     }
   }
 
-  [Serializable]
+
   public class ImageCrop
   {
-    private int top;
-    private int bottom;
-    private int left;
-    private int right;
+    public int Top { get; set; }
+    public int Bottom { get; set; }
+    public int Left { get; set; }
+    public int Right { get; set; }
 
-    public int Top
-    {
-      get { return top; }
-      set { top = value; }
-    }
-
-    public int Bottom
-    {
-      get { return bottom; }
-      set { bottom = value; }
-    }
-
-    public int Left
-    {
-      get { return left; }
-      set { left = value; }
-    }
-
-    public int Right
-    {
-      get { return right; }
-      set { right = value; }
-    }
-
-    public ImageCrop()
-    {
-      this.top = 0;
-      this.bottom = 0;
-      this.left = 0;
-      this.right = 0;
-    }
+    public ImageCrop() { }
 
     public ImageCrop(int top, int bottom, int left, int right)
     {
-      this.top = top;
-      this.bottom = bottom;
-      this.left = left;
-      this.right = right;
+      Top = top;
+      Bottom = bottom;
+      Left = left;
+      Right = right;
     }
   }
 
 
-  [Serializable]
   public class VideoClips
   {
-    private bool enabled;
-    private string dir;
-    private InfoStream audioStream;
-    [NonSerialized()]
-    private string[] files;
-    ImageSize size; // Width Must be a multiple of 16, Height must be a multiple of 2
-    private int bitrateVideo; // kb/s
-    private int bitrateAudio; // kb/s
-    private bool padEnabled;
-    private int padStart; // ms
-    private int padEnd; // ms
-    private ImageCrop crop; // Pixels, must be a multiple of 2
-    private bool iPodSupport;
+    public bool Enabled { get; set; }
+    public string FilePattern { get; set; } = "";
+    public InfoStream AudioStream { get; set; }
 
-    public bool Enabled
-    {
-      get { return enabled; }
-      set { enabled = value; }
-    }
+    [JsonIgnore]
+    public string[] Files { get; set; } = Array.Empty<string>();
 
-    public string FilePattern
-    {
-      get { return dir; }
-      set { dir = value; }
-    }
-
-    public InfoStream AudioStream
-    {
-      get { return audioStream; }
-      set { audioStream = value; }
-    }
-
-    public string[] Files
-    {
-      get { return files; }
-      set { files = value; }
-    }
-
-    public ImageSize Size
-    {
-      get { return size; }
-      set { size = value; }
-    }
-
-    public int BitrateVideo
-    {
-      get { return bitrateVideo; }
-      set { bitrateVideo = value; }
-    }
-
-    public int BitrateAudio
-    {
-      get { return bitrateAudio; }
-      set { bitrateAudio = value; }
-    }
-
-    public bool PadEnabled
-    {
-      get { return padEnabled; }
-      set { padEnabled = value; }
-    }
-
-    public int PadStart
-    {
-      get { return padStart; }
-      set { padStart = value; }
-    }
-
-    public int PadEnd
-    {
-      get { return padEnd; }
-      set { padEnd = value; }
-    }
-
-    public ImageCrop Crop
-    {
-      get { return crop; }
-      set { crop = value; }
-    }
-
-    public bool IPodSupport
-    {
-      get { return iPodSupport; }
-      set { iPodSupport = value; }
-    }
-
-    public VideoClips()
-    {
-      enabled = false;
-      dir = "";
-      audioStream = null;
-      files = Array.Empty<string>();
-      size = new ImageSize((int)(720 / 3), (int)(480 / 3));
-      bitrateVideo = 700;
-      bitrateAudio = 128;
-      padEnabled = false;
-      padStart = 250;
-      padEnd = 250;
-      crop = new ImageCrop(0, 0, 0, 0);
-      iPodSupport = false;
-    }
+    public ImageSize Size { get; set; } = new ImageSize(240, 160);
+    public int BitrateVideo { get; set; } = 700;
+    public int BitrateAudio { get; set; } = 128;
+    public bool PadEnabled { get; set; }
+    public int PadStart { get; set; } = 250;
+    public int PadEnd { get; set; } = 250;
+    public ImageCrop Crop { get; set; } = new ImageCrop();
+    public bool IPodSupport { get; set; }
   }
 
 
-  [Serializable]
   public class AudioClips
   {
-    private bool enabled;
-    private string dir;
-    [NonSerialized()]
-    private string[] files;
-    private bool padEnabled;
-    private int padStart; // ms
-    private int padEnd; // ms
-    private int bitrate; // kb/s
-    private bool useAudioFromVideo;
-    private bool useExistingAudio;
-    private bool normalize;
+    public bool Enabled { get; set; } = true;
+    public string filePattern { get; set; } = "";
 
-    public bool Enabled
-    {
-      get { return enabled; }
-      set { enabled = value; }
-    }
+    [JsonIgnore]
+    public string[] Files { get; set; } = Array.Empty<string>();
 
-    public string filePattern
-    {
-      get { return dir; }
-      set { dir = value; }
-    }
-
-    public string[] Files
-    {
-      get { return files; }
-      set { files = value; }
-    }
-
-    public bool PadEnabled
-    {
-      get { return padEnabled; }
-      set { padEnabled = value; }
-    }
-
-    public int PadStart
-    {
-      get { return padStart; }
-      set { padStart = value; }
-    }
-
-    public int PadEnd
-    {
-      get { return padEnd; }
-      set { padEnd = value; }
-    }
-
-    public int Bitrate
-    {
-      get { return bitrate; }
-      set { bitrate = value; }
-    }
-
-    public bool UseAudioFromVideo
-    {
-      get { return useAudioFromVideo; }
-      set { useAudioFromVideo = value; }
-    }
-
-    public bool UseExistingAudio
-    {
-      get { return useExistingAudio; }
-      set { useExistingAudio = value; }
-    }
-
-    public bool Normalize
-    {
-      get { return normalize; }
-      set { normalize = value; }
-    }
-
-    public AudioClips()
-    {
-      enabled = true;
-      dir = "";
-      files = Array.Empty<string>();
-      padEnabled = false;
-      padStart = 250;
-      padEnd = 250;
-      bitrate = 128;
-      useAudioFromVideo = true;
-      useExistingAudio = false;
-      normalize = false;
-    }
+    public bool PadEnabled { get; set; }
+    public int PadStart { get; set; } = 250;
+    public int PadEnd { get; set; } = 250;
+    public int Bitrate { get; set; } = 128;
+    public bool UseAudioFromVideo { get; set; } = true;
+    public bool UseExistingAudio { get; set; }
+    public bool Normalize { get; set; }
   }
 
 
-  [Serializable]
   public class Snapshots
   {
-    private bool enabled;
-    private ImageSize size;
-    private ImageCrop crop; // Pixels, must be a multiple of 2
-
-    public bool Enabled
-    {
-      get { return enabled; }
-      set { enabled = value; }
-    }
-
-    public ImageSize Size
-    {
-      get { return size; }
-      set { size = value; }
-    }
-
-    public ImageCrop Crop
-    {
-      get { return crop; }
-      set { crop = value; }
-    }
-
-    public Snapshots()
-    {
-      enabled = true;
-      size = new ImageSize((int)(720 / 3), (int)(480 / 3));
-      crop = new ImageCrop(0, 0, 0, 0);
-    }
+    public bool Enabled { get; set; } = true;
+    public ImageSize Size { get; set; } = new ImageSize(240, 160);
+    public ImageCrop Crop { get; set; } = new ImageCrop();
   }
 
 
 #if ENABLE_VOBSUB
-  [Serializable]
   public class VobSubColors
   {
-    private bool enabled;
-    private System.Drawing.Color[] colors;
-    private bool[] transparencyEnabled;
-
-    public bool Enabled
-    {
-      get { return enabled; }
-      set { enabled = value; }
-    }
-
-    public System.Drawing.Color[] Colors
-    {
-      get { return colors; }
-      set { colors = value; }
-    }
-
-    public bool[] TransparencyEnabled
-    {
-      get { return transparencyEnabled; }
-      set { transparencyEnabled = value; }
-    }
+    public bool Enabled { get; set; }
+    public System.Drawing.Color[] Colors { get; set; }
+    public bool[] TransparencyEnabled { get; set; }
 
     public VobSubColors()
     {
-      enabled = false;
-      colors = new System.Drawing.Color[4];
-      colors[0] = System.Drawing.Color.FromArgb(253, 253, 253);
-      colors[1] = System.Drawing.Color.FromArgb(189, 189, 189);
-      colors[2] = System.Drawing.Color.FromArgb(126, 126, 126);
-      colors[3] = System.Drawing.Color.FromArgb(29, 29, 29);
-      transparencyEnabled = new bool[4];
-      transparencyEnabled[0] = true;
-      transparencyEnabled[1] = false;
-      transparencyEnabled[2] = false;
-      transparencyEnabled[3] = false;
+      Colors = new System.Drawing.Color[4];
+      Colors[0] = System.Drawing.Color.FromArgb(253, 253, 253);
+      Colors[1] = System.Drawing.Color.FromArgb(189, 189, 189);
+      Colors[2] = System.Drawing.Color.FromArgb(126, 126, 126);
+      Colors[3] = System.Drawing.Color.FromArgb(29, 29, 29);
+      TransparencyEnabled = new bool[4];
+      TransparencyEnabled[0] = true;
     }
   }
 #else
-  [Serializable]
   public class VobSubColors
   {
-    public bool Enabled { get; set; } = false;
+    public bool Enabled { get; set; }
     public bool[] TransparencyEnabled { get; set; } = new bool[4];
   }
 #endif
 
-  [Serializable]
+
   public class LanguageSpecific
   {
-    // Japanese
-    private bool kanjiLinesOnly;
-
-    public bool KanjiLinesOnly
-    {
-      get { return kanjiLinesOnly; }
-      set { kanjiLinesOnly = value; }
-    }
-
-    public LanguageSpecific()
-    {
-      kanjiLinesOnly = false;
-    }
+    public bool KanjiLinesOnly { get; set; }
   }
 
 
-  [Serializable]
-  public sealed class Settings// : ISerializable 
+  public sealed class Settings
   {
     private static readonly Settings instance = new Settings();
 
-    private SubSettings[] subs;
-    private VideoClips videoClips;
-    private AudioClips audioClips;
-    private Snapshots snapshots;
-    private VobSubColors vobSubColors;
-    private LanguageSpecific languageSpecific;
+    public SubSettings[] Subs { get; set; }
+    public VideoClips VideoClips { get; set; }
+    public AudioClips AudioClips { get; set; }
+    public Snapshots Snapshots { get; set; }
+    public VobSubColors VobSubColors { get; set; }
+    public LanguageSpecific LanguageSpecific { get; set; }
+    public string OutputDir { get; set; }
+    public bool TimeShiftEnabled { get; set; }
+    public bool SpanEnabled { get; set; }
+    public DateTime SpanStart { get; set; }
+    public DateTime SpanEnd { get; set; }
 
-    private string outputDir;
-
-    private bool timeShiftEnabled;
-
-    private bool spanEnabled;
-    private DateTime spanStart;
-    private DateTime spanEnd;
-  
-    private string deckName;
-    private int episodeStartNumber;
-
-    private List<string> actorList;
-
-    private int contextLeadingCount;
-    private int contextTrailingCount;
-
-    private bool contextLeadingIncludeSnapshots;
-    private bool contextLeadingIncludeAudioClips;
-    private bool contextLeadingIncludeVideoClips;
-    private int contextLeadingRange;
-
-    private bool contextTrailingIncludeSnapshots;
-    private bool contextTrailingIncludeAudioClips;
-    private bool contextTrailingIncludeVideoClips;
-    private int contextTrailingRange;
-
-    public SubSettings[] Subs
-    {
-      get { return subs; }
-      set { subs = value; }
-    }
-
-    public VideoClips VideoClips
-    {
-      get { return videoClips; }
-      set { videoClips = value; }
-    }
-
-    public AudioClips AudioClips
-    {
-      get { return audioClips; }
-      set { audioClips = value; }
-    }
-
-    public Snapshots Snapshots
-    {
-      get { return snapshots; }
-      set { snapshots = value; }
-    }
-
-    public VobSubColors VobSubColors
-    {
-      get { return vobSubColors; }
-      set { vobSubColors = value; }
-    }
-
-    public LanguageSpecific LanguageSpecific
-    {
-      get { return languageSpecific; }
-      set { languageSpecific = value; }
-    }
-
-    public string OutputDir
-    {
-      get { return outputDir; }
-      set { outputDir = value; }
-    }
-
-    public bool TimeShiftEnabled
-    {
-      get { return timeShiftEnabled; }
-      set { timeShiftEnabled = value; }
-    }
-
-    public bool SpanEnabled
-    {
-      get { return spanEnabled; }
-      set { spanEnabled = value; }
-    }
-
-    public DateTime SpanStart
-    {
-      get { return spanStart; }
-      set { spanStart = value; }
-    }
-
-    public DateTime SpanEnd
-    {
-      get { return spanEnd; }
-      set { spanEnd = value; }
-    }
-
+    private string _deckName = "";
     public string DeckName
     {
-      get { return deckName; }
-      set { deckName = value.Trim().Replace(" ", "_"); }
+      get => _deckName;
+      set => _deckName = value.Trim().Replace(" ", "_");
     }
 
-    public int EpisodeStartNumber
-    {
-      get { return episodeStartNumber; }
-      set { episodeStartNumber = value; }
-    }
+    public int EpisodeStartNumber { get; set; }
+    public List<string> ActorList { get; set; }
 
-    public List<string> ActorList
-    {
-      get { return actorList; }
-      set { actorList = value; }
-    }
+    public int ContextLeadingCount { get; set; }
+    public int ContextTrailingCount { get; set; }
+    public bool ContextLeadingIncludeSnapshots { get; set; }
+    public bool ContextLeadingIncludeAudioClips { get; set; }
+    public bool ContextLeadingIncludeVideoClips { get; set; }
+    public int ContextLeadingRange { get; set; }
+    public bool ContextTrailingIncludeSnapshots { get; set; }
+    public bool ContextTrailingIncludeAudioClips { get; set; }
+    public bool ContextTrailingIncludeVideoClips { get; set; }
+    public int ContextTrailingRange { get; set; }
 
-    public int ContextLeadingCount
-    {
-      get { return contextLeadingCount; }
-      set { contextLeadingCount = value; }
-    }
+    public static Settings Instance => instance;
 
-    public int ContextTrailingCount
-    {
-      get { return contextTrailingCount; }
-      set { contextTrailingCount = value; }
-    }
-
-    public bool ContextLeadingIncludeSnapshots
-    {
-      get { return contextLeadingIncludeSnapshots; }
-      set { contextLeadingIncludeSnapshots = value; }
-    }
-
-    public bool ContextLeadingIncludeAudioClips
-    {
-      get { return contextLeadingIncludeAudioClips; }
-      set { contextLeadingIncludeAudioClips = value; }
-    }
-
-    public bool ContextLeadingIncludeVideoClips
-    {
-      get { return contextLeadingIncludeVideoClips; }
-      set { contextLeadingIncludeVideoClips = value; }
-    }
-
-    public int ContextLeadingRange
-    {
-      get { return contextLeadingRange; }
-      set { contextLeadingRange = value; }
-    }
-
-    public bool ContextTrailingIncludeSnapshots
-    {
-      get { return contextTrailingIncludeSnapshots; }
-      set { contextTrailingIncludeSnapshots = value; }
-    }
-
-    public bool ContextTrailingIncludeAudioClips
-    {
-      get { return contextTrailingIncludeAudioClips; }
-      set { contextTrailingIncludeAudioClips = value; }
-    }
-
-    public bool ContextTrailingIncludeVideoClips
-    {
-      get { return contextTrailingIncludeVideoClips; }
-      set { contextTrailingIncludeVideoClips = value; }
-    }
-
-    public int ContextTrailingRange
-    {
-      get { return contextTrailingRange; }
-      set { contextTrailingRange = value; }
-    }
-
-    public static Settings Instance
-    {
-      get
-      {
-        return instance;
-      }
-    }
-
-    // Explicit static constructor to tell C# compiler
-    // not to mark type as beforefieldinit
-    static Settings()
-    {
-    }
-
-    private Settings()
-    {
-      reset();
-    }
-
-    //public void GetObjectData(SerializationInfo info, StreamingContext context)
-    //{
-    //  //info.SetType(typeof(SettingsSerializationHelper));
-
-    //}
+    static Settings() { }
+    private Settings() { reset(); }
 
     public void loadSettings(SaveSettings settings)
     {
-      subs = settings.subs;
-      subs[0].Files = Array.Empty<string>();
-      subs[1].Files = Array.Empty<string>();
-      videoClips = settings.videoClips;
-      videoClips.Files = Array.Empty<string>();
-      audioClips = settings.audioClips;
-      audioClips.Files = Array.Empty<string>();
-      snapshots = settings.snapshots;
-      vobSubColors = settings.vobSubColors;
-      languageSpecific = settings.languageSpecific;
+      Subs = settings.subs;
+      Subs[0].Files = Array.Empty<string>();
+      Subs[1].Files = Array.Empty<string>();
+      VideoClips = settings.videoClips;
+      VideoClips.Files = Array.Empty<string>();
+      AudioClips = settings.audioClips;
+      AudioClips.Files = Array.Empty<string>();
+      Snapshots = settings.snapshots;
+      VobSubColors = settings.vobSubColors;
+      LanguageSpecific = settings.languageSpecific;
 
-      outputDir = settings.outputDir;
+      OutputDir = settings.outputDir;
 
-      timeShiftEnabled = settings.timeShiftEnabled;
+      TimeShiftEnabled = settings.timeShiftEnabled;
 
-      spanEnabled = settings.spanEnabled;
-      spanStart = settings.spanStart;
-      spanEnd = settings.spanEnd;
+      SpanEnabled = settings.spanEnabled;
+      SpanStart = settings.spanStart;
+      SpanEnd = settings.spanEnd;
 
-      deckName = settings.deckName;
-      episodeStartNumber = settings.episodeStartNumber;
+      DeckName = settings.deckName;
+      EpisodeStartNumber = settings.episodeStartNumber;
 
-      actorList = settings.actorList;
+      ActorList = settings.actorList;
 
-      contextLeadingCount = settings.contextLeadingCount;
-      contextLeadingIncludeSnapshots = settings.contextLeadingIncludeSnapshots;
-      contextLeadingIncludeAudioClips = settings.contextLeadingIncludeAudioClips;
-      contextLeadingIncludeVideoClips = settings.contextLeadingIncludeVideoClips;
-      contextLeadingRange = settings.contextLeadingRange;
+      ContextLeadingCount = settings.contextLeadingCount;
+      ContextLeadingIncludeSnapshots = settings.contextLeadingIncludeSnapshots;
+      ContextLeadingIncludeAudioClips = settings.contextLeadingIncludeAudioClips;
+      ContextLeadingIncludeVideoClips = settings.contextLeadingIncludeVideoClips;
+      ContextLeadingRange = settings.contextLeadingRange;
 
-      contextTrailingCount = settings.contextTrailingCount;
-      contextTrailingIncludeSnapshots = settings.contextTrailingIncludeSnapshots;
-      contextTrailingIncludeAudioClips = settings.contextTrailingIncludeAudioClips;
-      contextTrailingIncludeVideoClips = settings.contextTrailingIncludeVideoClips;
-      contextTrailingRange = settings.contextTrailingRange;
+      ContextTrailingCount = settings.contextTrailingCount;
+      ContextTrailingIncludeSnapshots = settings.contextTrailingIncludeSnapshots;
+      ContextTrailingIncludeAudioClips = settings.contextTrailingIncludeAudioClips;
+      ContextTrailingIncludeVideoClips = settings.contextTrailingIncludeVideoClips;
+      ContextTrailingRange = settings.contextTrailingRange;
     }
 
     public void reset()
@@ -1685,7 +1108,7 @@ namespace subs2srs
     }
   }
 
-  [Serializable]
+
   public class SaveSettings
   {
     public SubSettings[] subs;
@@ -1693,19 +1116,17 @@ namespace subs2srs
     public AudioClips audioClips;
     public Snapshots snapshots;
     public VobSubColors vobSubColors;
+
+    [JsonPropertyName("langaugeSpecific")]
     public LanguageSpecific languageSpecific;
 
     public string outputDir;
-
     public bool timeShiftEnabled;
-
     public bool spanEnabled;
     public DateTime spanStart;
     public DateTime spanEnd;
-
     public string deckName;
     public int episodeStartNumber;
-
     public List<string> actorList;
 
     public int contextLeadingCount;
@@ -1736,10 +1157,8 @@ namespace subs2srs
       outputDir = "";
       timeShiftEnabled = false;
       spanEnabled = false;
-      spanStart = new DateTime();
-      spanStart = spanEnd.AddMilliseconds((60 * 1.5) * 1000);
-      spanEnd = new DateTime();
-      spanEnd = spanEnd.AddMilliseconds((60 * 22.5) * 1000);
+      spanStart = new DateTime().AddMilliseconds(90_000);
+      spanEnd = new DateTime().AddMilliseconds(1_350_000);
       deckName = "";
       episodeStartNumber = 1;
 
@@ -1793,8 +1212,4 @@ namespace subs2srs
       contextTrailingRange = Settings.Instance.ContextTrailingRange;
     }
   }
-
-
-
-
 }
