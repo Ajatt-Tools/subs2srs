@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System.Threading;
 
 namespace subs2srs
 {
@@ -11,21 +10,14 @@ namespace subs2srs
   /// </summary>
   public class Logger
   {
-    private static Mutex logFileMutex = new Mutex();
+    private static readonly object _logLock = new();
     private StringBuilder builder = new StringBuilder(1000);
     private string logFile = "log.txt";
     private bool initialized = false;
     private static readonly Logger instance = new Logger();
 
 
-    // Singleton instance
-    public static Logger Instance
-    {
-      get
-      {
-        return instance;
-      }
-    }
+    public static Logger Instance => instance;
 
 
     private Logger()
@@ -54,7 +46,7 @@ namespace subs2srs
 
         if (files.Count >= ConstantSettings.MaxLogFiles)
         {
-          files.Sort(compareFileInfo);
+          files.Sort((x, y) => x.LastWriteTime.CompareTo(y.LastWriteTime));
 
           for (int i = 0; i < files.Count - ConstantSettings.MaxLogFiles; i++)
           {
@@ -69,15 +61,6 @@ namespace subs2srs
       {
         // Don't care
       }
-    }
-
-
-    /// <summary>
-    /// Compare FileInfo based on LastWriteTime.
-    /// </summary>
-    private static int compareFileInfo(FileInfo x, FileInfo y)
-    {
-      return x.LastWriteTime.CompareTo(y.LastWriteTime);
     }
 
 
@@ -103,14 +86,9 @@ namespace subs2srs
 
       try
       {
-        logFileMutex.WaitOne();
-        try
+        lock (_logLock)
         {
           File.AppendAllText(logFile, builder.ToString() + Environment.NewLine, Encoding.UTF8);
-        }
-        finally
-        {
-          logFileMutex.ReleaseMutex();
         }
 
         builder = new StringBuilder(1000);
@@ -179,7 +157,7 @@ namespace subs2srs
     /// <summary>
     /// Print the name and value of a variable to the log.
     /// </summary>
-    public void var<T>(T item) where T : class 
+    public void var<T>(T item) where T : class
     {
       this.append($"   {item} ");
     }
@@ -202,7 +180,7 @@ namespace subs2srs
         info("Subs " + i + ":");
         var(new { Settings.Instance.Subs[i].ActorsEnabled });
         var(new { Settings.Instance.Subs[i].Encoding });
-       
+
         string excludedWords = UtilsCommon.makeSemiString(Settings.Instance.Subs[i].ExcludedWords);
         var(new { excludedWords });
 
@@ -228,7 +206,6 @@ namespace subs2srs
         var(new { Settings.Instance.Subs[i].TimeShift });
         var(new { Settings.Instance.Subs[i].TimingsEnabled });
         var(new { Settings.Instance.Subs[i].VobsubStream });
-
       }
 
       var(new { Settings.Instance.VideoClips.Enabled });
