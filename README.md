@@ -53,10 +53,12 @@ is carried over from the original with minimal changes.
 - `PrefIO.read()` — read preferences file ~70 times → single pass into dictionary
 - Workers skip existing output files — interrupted runs resume without re-extracting
 - `WorkerVideo` — skip expensive video conversion when all clips for an episode already exist
+- Audio/snapshot/video clip generation parallelised with `Parallel.ForEach` (configurable via `max_parallel_tasks`)
 
 **Reliability:**
 - Workers write to `.tmp` file then rename — incomplete files from crashes cannot be mistaken for finished output
 - `UtilsMsg` — errors and info messages always echo to `stderr` for terminal visibility
+- Unhandled exceptions and unobserved task exceptions logged to both `stderr` and log file
 
 **Refactoring:**
 - `PrefIO` — `StreamReader`/`StreamWriter` → `File.ReadAllText`/`WriteAllText`; create `preferences.txt` on first launch
@@ -64,6 +66,7 @@ is carried over from the original with minimal changes.
 - `ConstantSettings` — 130 backing field + property pairs → auto-properties (~400 lines removed)
 - `InfoCombined`, `InfoLine` — auto-properties, remove `[Serializable]`
 - `ObjectCloner` — remove `IncludeFields` (no longer needed with auto-properties)
+- `UtilsName` — per-call mutable fields eliminated, state passed via parameters (thread-safe); compiled `Regex` cached as `static readonly`
 - `WorkerVars` — backing fields → auto-properties
 - `PropertyBag` — removed `ICustomTypeDescriptor` (WinForms `PropertyGrid` leftover), `ArrayList`/`Hashtable` → generics
 - `LangaugeSpecific` → `LanguageSpecific` (typo fix across all files, `[JsonPropertyName]` for `.s2s` compat)
@@ -73,7 +76,7 @@ is carried over from the original with minimal changes.
 - `new string[0]` → `Array.Empty<string>()` everywhere
 - `String.Format` → string interpolation throughout
 - Unused `using` directives removed
-- Typos: `progessCount` → `progressCount`, `initalized` → `initialized`, `Creeate` → `Create`
+- Typos: `progessCount` → `progressCount`, `initalized` → `initialized`, `Creeate` → `Create`, `necassary` → `necessary`
 
 ## Dependencies
 
@@ -126,6 +129,13 @@ On first run, `preferences.txt` is created in
 `~/.config/subs2srs/` (or `$XDG_CONFIG_HOME/subs2srs/`).
 
 Edit via **Preferences** dialog or manually.
+
+### Parallelism
+
+Set `max_parallel_tasks` in `preferences.txt`:
+- `0` — auto (number of CPU cores, default)
+- `1` — sequential (no parallelism)
+- `N` — use up to N threads for media generation
 
 ## Building with VobSub support
 
