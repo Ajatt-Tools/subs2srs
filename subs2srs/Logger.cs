@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Linq.Expressions;
-using System.Reflection;
 using System.Threading;
 
 namespace subs2srs
@@ -17,7 +14,7 @@ namespace subs2srs
     private static Mutex logFileMutex = new Mutex();
     private StringBuilder builder = new StringBuilder(1000);
     private string logFile = "log.txt";
-    private bool initalized = false;
+    private bool initialized = false;
     private static readonly Logger instance = new Logger();
 
 
@@ -40,42 +37,18 @@ namespace subs2srs
 
       DateTime now = DateTime.Now;
 
-      logFile = String.Format("{0}log-{1:0000}{2:00}{3:00}-{4:00}{5:00}{6:00}.txt",
-        ConstantSettings.LogDir,
-        now.Year,
-        now.Month,
-        now.Day,
-        now.Hour,
-        now.Minute,
-        now.Second);
+      logFile = $"{ConstantSettings.LogDir}log-{now.Year:0000}{now.Month:00}{now.Day:00}-{now.Hour:00}{now.Minute:00}{now.Second:00}.txt";
 
       try
       {
-        // Write blank file
-        TextWriter writer = new StreamWriter(logFile, false, Encoding.UTF8);
-        writer.Close();
-        initalized = true;
+        Directory.CreateDirectory(ConstantSettings.LogDir);
+        File.WriteAllText(logFile, string.Empty, Encoding.UTF8);
+        initialized = true;
 
-        
         info("subs2srs version: " + UtilsAssembly.Version);
+        info(Environment.OSVersion.VersionString);
 
-        // Windows version. 
-        // Example: Microsoft Windows NT 6.1.7601 Service Pack 1
-        // ------------------------------------------------------------------------------------------------------------------------------------------+
-        // |           |   Windows    |   Windows    |   Windows    |Windows NT| Windows | Windows | Windows | Windows | Windows | Windows | Windows |
-        // |           |     95       |      98      |     Me       |    4.0   |  2000   |   XP    |  2003   |  Vista  |  2008   |    7    | 2008 R2 |
-        // +-----------------------------------------------------------------------------------------------------------------------------------------+
-        // |PlatformID | Win32Windows | Win32Windows | Win32Windows | Win32NT  | Win32NT | Win32NT | Win32NT | Win32NT | Win32NT | Win32NT | Win32NT |
-        // +-----------------------------------------------------------------------------------------------------------------------------------------+
-        // |Major      |              |              |              |          |         |         |         |         |         |         |         |
-        // | version   |      4       |      4       |      4       |    4     |    5    |    5    |    5    |    6    |    6    |    6    |    6    |
-        // +-----------------------------------------------------------------------------------------------------------------------------------------+
-        // |Minor      |              |              |              |          |         |         |         |         |         |         |         |
-        // | version   |      0       |     10       |     90       |    0     |    0    |    1    |    2    |    0    |    0    |    1    |    1    |
-        // +-----------------------------------------------------------------------------------------------------------------------------------------+
-        info(System.Environment.OSVersion.VersionString);
-
-        // Delete all except the 10 newest logs in the log directory
+        // Delete all except the newest logs in the log directory
         DirectoryInfo folder = new DirectoryInfo(ConstantSettings.LogDir);
         List<FileInfo> files = new List<FileInfo>(folder.GetFiles());
 
@@ -109,16 +82,12 @@ namespace subs2srs
 
 
     /// <summary>
-    /// Creeate a timestamp for the log.
+    /// Create a timestamp for the log.
     /// </summary>
     private string createTimestamp()
     {
       DateTime now = DateTime.Now;
-
-      string time = String.Format("{0:00}:{1:00}:{2:00}.{3:000}: ", 
-        now.Hour, now.Minute, now.Second, now.Millisecond);
-
-      return time;
+      return $"{now.Hour:00}:{now.Minute:00}:{now.Second:00}.{now.Millisecond:000}: ";
     }
 
 
@@ -127,7 +96,7 @@ namespace subs2srs
     /// </summary>
     public void flush()
     {
-      if (!ConstantSettings.EnableLogging || !initalized)
+      if (!ConstantSettings.EnableLogging || !initialized)
       {
         return;
       }
@@ -135,12 +104,14 @@ namespace subs2srs
       try
       {
         logFileMutex.WaitOne();
-
-        TextWriter writer = new StreamWriter(logFile, true, Encoding.UTF8);
-        writer.WriteLine(builder.ToString());
-        writer.Close();
-
-        logFileMutex.ReleaseMutex();
+        try
+        {
+          File.AppendAllText(logFile, builder.ToString() + Environment.NewLine, Encoding.UTF8);
+        }
+        finally
+        {
+          logFileMutex.ReleaseMutex();
+        }
 
         builder = new StringBuilder(1000);
       }
@@ -192,9 +163,7 @@ namespace subs2srs
     /// </summary>
     public void startSection(string text)
     {
-      string sectionText = ">> [ " + text + " ]";
-
-      this.append(sectionText);
+      this.append($">> [ {text} ]");
     }
 
 
@@ -203,9 +172,7 @@ namespace subs2srs
     /// </summary>
     public void endSection(string text)
     {
-      string sectionText = "<< [ " + text + " ]";
-
-      this.append(sectionText);
+      this.append($"<< [ {text} ]");
     }
 
 
@@ -214,7 +181,7 @@ namespace subs2srs
     /// </summary>
     public void var<T>(T item) where T : class 
     {
-      this.append(String.Format("   {0} ", item));
+      this.append($"   {item} ");
     }
 
 
@@ -223,7 +190,7 @@ namespace subs2srs
     /// </summary>
     public void writeSettingsToLog()
     {
-      if (!ConstantSettings.EnableLogging || !initalized)
+      if (!ConstantSettings.EnableLogging || !initialized)
       {
         return;
       }
@@ -322,7 +289,7 @@ namespace subs2srs
 
       var(new { Settings.Instance.DeckName });
       var(new { Settings.Instance.EpisodeStartNumber });
-      var(new { Settings.Instance.LangaugeSpecific.KanjiLinesOnly });
+      var(new { Settings.Instance.LanguageSpecific.KanjiLinesOnly });
       var(new { Settings.Instance.OutputDir });
       var(new { Settings.Instance.TimeShiftEnabled });
       var(new { Settings.Instance.SpanEnabled });
@@ -453,7 +420,7 @@ namespace subs2srs
     /// </summary>
     public void writeFileToLog(string file, Encoding encoding)
     {
-      if (!ConstantSettings.EnableLogging || !initalized)
+      if (!ConstantSettings.EnableLogging || !initialized)
       {
         return;
       }
@@ -461,10 +428,8 @@ namespace subs2srs
       try
       {
         startSection("File: " + file);
-        TextReader reader = new StreamReader(file, encoding);
-        string text = reader.ReadToEnd();
+        string text = File.ReadAllText(file, encoding);
         info(text);
-        reader.Close();
         endSection("File: " + file);
         flush();
       }
@@ -473,10 +438,5 @@ namespace subs2srs
         // Don't care
       }
     }
-
-
-
-
-
   }
 }
