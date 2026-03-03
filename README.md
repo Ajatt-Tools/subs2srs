@@ -46,19 +46,24 @@ is carried over from the original with minimal changes.
 - `Logger.flush()` — mutex never released if write throws (deadlock)
 - `Logger` constructor / `writeFileToLog()` — `StreamWriter`/`StreamReader` without `using`
 - `PrefIO.read()` — `DefaultRemoveStyledLinesSubs2` default was `Subs1`; `VobsubFilenameFormat` default was `VideoFilenameFormat`
+- `PrefIO.writeString()` — regex replacement broke on keys containing regex metacharacters
 
 **Performance:**
 - `PrefIO.read()` — read preferences file ~70 times → single pass into dictionary
+- Workers skip existing output files — interrupted runs resume without re-extracting
 
 **Refactoring:**
 - `PrefIO` — `StreamReader`/`StreamWriter` → `File.ReadAllText`/`WriteAllText`; create `preferences.txt` on first launch
-- `Settings.cs` — model classes (`SubSettings`, `AudioClips`, `VideoClips`, `Snapshots`, etc.) converted to auto-properties (~600 lines removed)
+- `Settings.cs` — all model classes (`SubSettings`, `AudioClips`, `VideoClips`, `Snapshots`, `SaveSettings`, etc.) converted to auto-properties
 - `ConstantSettings` — 130 backing field + property pairs → auto-properties (~400 lines removed)
+- `WorkerVars` — backing fields → auto-properties
+- `PropertyBag` — removed `ICustomTypeDescriptor` (WinForms `PropertyGrid` leftover), `ArrayList`/`Hashtable` → generics
 - `LangaugeSpecific` → `LanguageSpecific` (typo fix across all files, `[JsonPropertyName]` for `.s2s` compat)
 - `[Serializable]` / `[NonSerialized]` → removed / `[JsonIgnore]` (unused since `BinaryFormatter` → `System.Text.Json`)
+- `Logger` — `Mutex` → `lock` (single-process, cannot leak)
 - `new string[0]` → `Array.Empty<string>()` everywhere
-- `String.Format("{0}", x)` → `x`; `String.Format` → interpolation throughout
-- Unused `using` directives removed (`System.ComponentModel`, `System.Data`, `System.Linq.Expressions`, etc.)
+- `String.Format` → string interpolation throughout
+- Unused `using` directives removed
 - Typos: `progessCount` → `progressCount`, `initalized` → `initialized`, `Creeate` → `Create`
 
 ## Dependencies
