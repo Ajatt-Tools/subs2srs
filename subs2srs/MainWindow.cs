@@ -79,6 +79,7 @@ namespace subs2srs
         private Button _btnCancel;
         private ProgressBar _progressBar;
         private GtkProgressReporter? _reporter;
+        private List<InfoStream> _audioStreams = new List<InfoStream>();
 
         public MainWindow() : base(WindowType.Toplevel)
         {
@@ -648,9 +649,15 @@ namespace subs2srs
                 Settings.Instance.VideoClips.Files = UtilsCommon.getNonHiddenFiles(
                     Settings.Instance.VideoClips.FilePattern);
         
-                string streamNum = _comboAudioStream.Active >= 0
-                    ? _comboAudioStream.Active.ToString() : "0";
-                Settings.Instance.VideoClips.AudioStream = new InfoStream(streamNum, streamNum, "", "");
+                // Audio stream — store actual ffmpeg stream number, not combo index
+                if (_comboAudioStream.Active >= 0 && _comboAudioStream.Active < _audioStreams.Count)
+                {
+                    Settings.Instance.VideoClips.AudioStream = _audioStreams[_comboAudioStream.Active];
+                }
+                else
+                {
+                    Settings.Instance.VideoClips.AudioStream = new InfoStream("0:a:0", "0", "", "");
+                }
         
                 // Audio
                 Settings.Instance.AudioClips.Enabled = _chkGenerateAudio.Active;
@@ -728,18 +735,35 @@ namespace subs2srs
 
         private void OnVideoChanged(object? sender, EventArgs e)
         {
-            string file = _txtVideo.Text.Trim();
-            if (!System.IO.File.Exists(file)) return;
+            string pattern = _txtVideo.Text.Trim();
+            if (string.IsNullOrEmpty(pattern)) return;
 
-            var streams = UtilsVideo.getAvailableAudioStreams(file);
-            _comboAudioStream.RemoveAll();
-            if (streams.Count > 0)
+            // Find first actual file: either the pattern itself or first match
+            string file = null;
+            if (System.IO.File.Exists(pattern))
             {
-                foreach (var s in streams)
+                file = pattern;
+            }
+            else
+            {
+                var files = UtilsCommon.getNonHiddenFiles(pattern);
+                if (files.Length > 0)
+                    file = files[0];
+            }
+
+            if (file == null) return;
+
+            _audioStreams = UtilsVideo.getAvailableAudioStreams(file);
+            _comboAudioStream.RemoveAll();
+
+            if (_audioStreams.Count > 0)
+            {
+                foreach (var s in _audioStreams)
                     _comboAudioStream.AppendText(s.ToString());
             }
             else
             {
+                _audioStreams.Add(new InfoStream("0:a:0", "0", "", "Default"));
                 _comboAudioStream.AppendText("0 - (Default)");
             }
             _comboAudioStream.Active = 0;
