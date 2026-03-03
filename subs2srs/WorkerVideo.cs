@@ -19,14 +19,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Diagnostics;
 using System.IO;
-using System.Globalization;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
 
 namespace subs2srs
 {
@@ -40,7 +33,7 @@ namespace subs2srs
     /// </summary>
     public bool genVideoClip(WorkerVars workerVars, IProgressReporter dialogProgress)
     {
-      int progessCount = 0;
+      int progressCount = 0;
       int episodeCount = 0;
       int totalEpisodes = workerVars.CombinedAll.Count;
       int totalLines = UtilsSubs.getTotalLineCount(workerVars.CombinedAll);
@@ -51,64 +44,58 @@ namespace subs2srs
 
       dialogProgress.UpdateProgress(0, "Creating video clips.");
 
+      string videoExtension = Settings.Instance.VideoClips.IPodSupport ? ".mp4" : ".avi";
+
       // For each episode
       foreach (List<InfoCombined> combArray in workerVars.CombinedAll)
       {
         episodeCount++;
 
-        // It is possible for all lines in an episode to be set to inactive
         if (combArray.Count == 0)
         {
-          // Skip this episode
           continue;
         }
 
-        string progressText = String.Format("Converting video file {0} of {1}",
-                                            episodeCount,
-                                            totalEpisodes);
-
-        dialogProgress.UpdateProgress(progressText);
-        
         DateTime entireClipStartTime = combArray[0].Subs1.StartTime;
         DateTime entireClipEndTime = combArray[combArray.Count - 1].Subs1.EndTime;
 
-        // Apply pad to entire clip timings  (if requested)
+        // Apply pad to entire clip timings (if requested)
         if (Settings.Instance.VideoClips.PadEnabled)
         {
           entireClipStartTime = UtilsSubs.applyTimePad(entireClipStartTime, -Settings.Instance.VideoClips.PadStart);
           entireClipEndTime = UtilsSubs.applyTimePad(entireClipEndTime, Settings.Instance.VideoClips.PadEnd);
         }
 
-        // Enable detail mode in progress dialog
+        // Skip entire episode (including expensive video conversion) if all clips already exist
+        if (checkAllVideoClipsExist(combArray, name, episodeCount, progressCount, workerVars.MediaDir, videoExtension))
+        {
+          progressCount += combArray.Count;
+          continue;
+        }
+
+        string progressText = $"Converting video file {episodeCount} of {totalEpisodes}";
+        dialogProgress.UpdateProgress(progressText);
+
         dialogProgress.EnableDetail(true);
 
-        // Set the duration of the clip in the progress dialog  (for detail mode)
         DateTime entireClipDuration = UtilsSubs.getDurationTime(entireClipStartTime, entireClipEndTime);
         dialogProgress.SetDuration(entireClipDuration);
 
-        string tempVideoFilename = Path.GetTempPath() + ConstantSettings.TempVideoFilename;
-        string videoExtension = ".avi";
+        string tempVideoFilename = Path.GetTempPath() + ConstantSettings.TempVideoFilename + videoExtension;
 
-        // Convert entire video (from first line to last line) based on user settings (size, crop, bitrate, etc).
-        // It will be cut into smaller video clips later.
         if (Settings.Instance.VideoClips.IPodSupport)
         {
-          videoExtension = ".mp4";
-          tempVideoFilename += videoExtension;
-
           UtilsVideo.convertVideo(Settings.Instance.VideoClips.Files[episodeCount - 1],
             Settings.Instance.VideoClips.AudioStream.Num,
             entireClipStartTime, entireClipEndTime,
             Settings.Instance.VideoClips.Size, Settings.Instance.VideoClips.Crop,
-            Settings.Instance.VideoClips.BitrateVideo, Settings.Instance.VideoClips.BitrateAudio, 
-            UtilsVideo.VideoCodec.h264, UtilsVideo.AudioCodec.AAC, 
+            Settings.Instance.VideoClips.BitrateVideo, Settings.Instance.VideoClips.BitrateAudio,
+            UtilsVideo.VideoCodec.h264, UtilsVideo.AudioCodec.AAC,
             UtilsVideo.Profilex264.IPod640, UtilsVideo.Presetx264.SuperFast,
             tempVideoFilename, dialogProgress);
         }
         else
         {
-          tempVideoFilename += videoExtension;
-
           UtilsVideo.convertVideo(Settings.Instance.VideoClips.Files[episodeCount - 1],
             Settings.Instance.VideoClips.AudioStream.Num,
             entireClipStartTime, entireClipEndTime,
@@ -117,7 +104,6 @@ namespace subs2srs
             UtilsVideo.VideoCodec.MPEG4, UtilsVideo.AudioCodec.MP3,
             UtilsVideo.Profilex264.None, UtilsVideo.Presetx264.None,
             tempVideoFilename, dialogProgress);
-
         }
 
         dialogProgress.EnableDetail(false);
@@ -125,33 +111,25 @@ namespace subs2srs
         // Generate a video clip for each line of the episode
         foreach (InfoCombined comb in combArray)
         {
-          progessCount++;
+          progressCount++;
 
-          progressText = string.Format("Generating video clip: {0} of {1}",
-                                       progessCount.ToString(),
-                                       totalLines.ToString());
+          progressText = $"Generating video clip: {progressCount} of {totalLines}";
+          int progress = Convert.ToInt32(progressCount * (100.0 / totalLines));
 
-          int progress = Convert.ToInt32(progessCount * (100.0 / totalLines));
-
-          // Update the progress dialog
           dialogProgress.UpdateProgress(progress, progressText);
 
-          // Did the user press the cancel button?
           if (dialogProgress.Cancel)
           {
             File.Delete(tempVideoFilename);
             return false;
           }
 
-          // Adjust timing to sync with the start of the converted video (which starts at the episode's first line of dialog)
           DateTime startTime = UtilsSubs.shiftTiming(comb.Subs1.StartTime, -((int)entireClipStartTime.TimeOfDay.TotalMilliseconds));
           DateTime endTime = UtilsSubs.shiftTiming(comb.Subs1.EndTime, -((int)entireClipStartTime.TimeOfDay.TotalMilliseconds));
 
-          // Times used in the filename
           DateTime filenameStartTime = comb.Subs1.StartTime;
           DateTime filenameEndTime = comb.Subs1.EndTime;
-            
-          // Apply pad (if requested)
+
           if (Settings.Instance.VideoClips.PadEnabled)
           {
             startTime = UtilsSubs.applyTimePad(startTime, -Settings.Instance.VideoClips.PadStart);
@@ -160,18 +138,21 @@ namespace subs2srs
             filenameEndTime = UtilsSubs.applyTimePad(comb.Subs1.EndTime, Settings.Instance.VideoClips.PadEnd);
           }
 
-          // Create output filename
-          string nameStr = name.createName(ConstantSettings.VideoFilenameFormat, (int)episodeCount + Settings.Instance.EpisodeStartNumber - 1,
-            progessCount, filenameStartTime, filenameEndTime, comb.Subs1.Text, comb.Subs2.Text);
+          string nameStr = name.createName(ConstantSettings.VideoFilenameFormat,
+            (int)episodeCount + Settings.Instance.EpisodeStartNumber - 1,
+            progressCount, filenameStartTime, filenameEndTime, comb.Subs1.Text, comb.Subs2.Text);
 
-          string outFile = string.Format("{0}{1}{2}{3}",
-                                         workerVars.MediaDir,          // {0}
-                                         Path.DirectorySeparatorChar,  // {1}
-                                         nameStr,                      // {2}
-                                         videoExtension);              // {3}
+          string outFile = $"{workerVars.MediaDir}{Path.DirectorySeparatorChar}{nameStr}{videoExtension}";
 
-          // Cut video clip for current line
-          UtilsVideo.cutVideo(tempVideoFilename, startTime, endTime, outFile);
+          // Skip if already exists (resume support)
+          if (!File.Exists(outFile))
+          {
+            // Write to temp file, then atomic rename — protects against incomplete files from crashes
+            string ext = Path.GetExtension(outFile);
+            string tmpFile = Path.ChangeExtension(outFile, ".tmp" + ext);
+            UtilsVideo.cutVideo(tempVideoFilename, startTime, endTime, tmpFile);
+            File.Move(tmpFile, outFile);
+          }
         }
 
         File.Delete(tempVideoFilename);
@@ -180,7 +161,42 @@ namespace subs2srs
       return true;
     }
 
- 
 
+    /// <summary>
+    /// Check if all video clips for an episode already exist.
+    /// Used to skip the expensive video conversion step on resume.
+    /// </summary>
+    private bool checkAllVideoClipsExist(List<InfoCombined> combArray, UtilsName name,
+      int episodeCount, int progressCountBase, string mediaDir, string videoExtension)
+    {
+      int tempCount = progressCountBase;
+
+      foreach (InfoCombined comb in combArray)
+      {
+        tempCount++;
+
+        DateTime filenameStartTime = comb.Subs1.StartTime;
+        DateTime filenameEndTime = comb.Subs1.EndTime;
+
+        if (Settings.Instance.VideoClips.PadEnabled)
+        {
+          filenameStartTime = UtilsSubs.applyTimePad(filenameStartTime, -Settings.Instance.VideoClips.PadStart);
+          filenameEndTime = UtilsSubs.applyTimePad(filenameEndTime, Settings.Instance.VideoClips.PadEnd);
+        }
+
+        string nameStr = name.createName(ConstantSettings.VideoFilenameFormat,
+          episodeCount + Settings.Instance.EpisodeStartNumber - 1,
+          tempCount, filenameStartTime, filenameEndTime, comb.Subs1.Text, comb.Subs2.Text);
+
+        string outFile = $"{mediaDir}{Path.DirectorySeparatorChar}{nameStr}{videoExtension}";
+
+        if (!File.Exists(outFile))
+        {
+          return false;
+        }
+      }
+
+      return true;
+    }
   }
 }

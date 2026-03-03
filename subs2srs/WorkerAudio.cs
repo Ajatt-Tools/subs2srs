@@ -187,7 +187,11 @@ namespace subs2srs
             continue;
           }
 
-          UtilsAudio.cutAudio(fileToCut, startTime, endTime, outName);
+          // Write to temp file, then atomic rename — protects against incomplete files from crashes
+          string ext = Path.GetExtension(outName);
+          string tmpName = Path.ChangeExtension(outName, ".tmp" + ext);
+          UtilsAudio.cutAudio(fileToCut, startTime, endTime, tmpName);
+          File.Move(tmpName, outName);
 
           this.tagAudio(name, outName, episodeCount, curEpisodeCount, progressCount, combArray.Count,
             filenameStartTime, filenameEndTime, comb.Subs1.Text, lyricSubs2);
