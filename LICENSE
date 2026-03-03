@@ -1,4 +1,18 @@
-                    GNU GENERAL PUBLIC LICENSE
+subs2srs — Generate Anki flashcards from media with subtitles.
+
+Copyright (C) 2009-2016  Christopher Brochtrup
+                         https://sourceforge.net/projects/subs2srs/
+
+GTK3/.NET 10 port:
+Copyright (C) 2026       fkzys
+                         https://gitlab.com/fkzys/subs2srs-gtk3
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+		    GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 
  Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>

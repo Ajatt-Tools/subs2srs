@@ -1,3 +1,22 @@
+//  Copyright (C) 2026 fkzys
+//
+//  This file is part of subs2srs.
+//
+//  subs2srs is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  subs2srs is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with subs2srs.  If not, see <http://www.gnu.org/licenses/>.
+//
+//////////////////////////////////////////////////////////////////////////////
+
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -104,11 +123,11 @@ namespace subs2srs
             {
                 ProgramName = UtilsAssembly.Title,
                 Version = UtilsAssembly.Version,
-                Comments = UtilsAssembly.Product
-                    + "\n\nOriginal project: https://subs2srs.sourceforge.net/",
-                Authors = new[] { UtilsAssembly.Author },
+                Comments = UtilsAssembly.Product,
+                Authors = new[] { "Original author: Christopher Brochtrup" },
                 Website = "https://gitlab.com/fkzys/subs2srs-gtk3",
-                WebsiteLabel = "Source Code",
+                WebsiteLabel = "Source Code (GTK3 port)",
+                Copyright = UtilsAssembly.Copyright,
                 License = "GNU General Public License v3",
                 TransientFor = this
             };

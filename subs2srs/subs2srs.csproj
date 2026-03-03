@@ -9,13 +9,13 @@
     <DefineConstants Condition="'$(EnableVobSub)' == 'true'">$(DefineConstants);ENABLE_VOBSUB</DefineConstants>
 
     <!-- Assembly info → UtilsAssembly reads these -->
-    <PackageProjectUrl>https://gitlab/fkzys/subs2srs-gtk3</PackageProjectUrl>
-    <AssemblyTitle>subs2srs</AssemblyTitle>
-    <Product>Generate audio/snapshot/video cards from media and subtitles for Anki</Product>
+    <Authors>Christopher Brochtrup;fkzys</Authors>
     <Company>Christopher Brochtrup</Company>
-    <Copyright>Copyright © 2009-2016 Christopher Brochtrup, 2026 GTK3 port</Copyright>
-    <Description>subs2srs GTK3 port</Description>
-    <Version>0.0.1</Version>
+    <Copyright>Copyright © 2009-2016 Christopher Brochtrup. GTK3 port © 2026 fkzys</Copyright>
+    <Description>subs2srs GTK3/.NET 10 port — generate Anki cards from media with subtitles</Description>
+    <PackageProjectUrl>https://gitlab.com/fkzys/subs2srs-gtk3</PackageProjectUrl>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <Version>0.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
