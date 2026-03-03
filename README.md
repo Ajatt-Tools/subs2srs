@@ -37,14 +37,38 @@ is carried over from the original with minimal changes.
 - **DialogVideoDimensionsChooser** — removed (size set directly in settings)
 - **GroupBoxCheck** — WinForms custom control, not needed in GTK
 
+### Post-port cleanup (38a6d4e → HEAD)
+
+**Bug fixes:**
+- `SaveSettings.gatherData()` — `ContextLeadingIncludeSnapshots` was copied from `AudioClips` instead of `Snapshots`
+- `WorkerSrs.genSrs()` — `TextWriter` without `using`, file descriptor leak on exception
+- `SubsProcessor.DoWork()` — empty `catch {}` silently swallowed VobSub copy errors
+- `Logger.flush()` — mutex never released if write throws (deadlock)
+- `Logger` constructor / `writeFileToLog()` — `StreamWriter`/`StreamReader` without `using`
+- `PrefIO.read()` — `DefaultRemoveStyledLinesSubs2` default was `Subs1`; `VobsubFilenameFormat` default was `VideoFilenameFormat`
+
+**Performance:**
+- `PrefIO.read()` — read preferences file ~70 times → single pass into dictionary
+
+**Refactoring:**
+- `PrefIO` — `StreamReader`/`StreamWriter` → `File.ReadAllText`/`WriteAllText`; create `preferences.txt` on first launch
+- `Settings.cs` — model classes (`SubSettings`, `AudioClips`, `VideoClips`, `Snapshots`, etc.) converted to auto-properties (~600 lines removed)
+- `ConstantSettings` — 130 backing field + property pairs → auto-properties (~400 lines removed)
+- `LangaugeSpecific` → `LanguageSpecific` (typo fix across all files, `[JsonPropertyName]` for `.s2s` compat)
+- `[Serializable]` / `[NonSerialized]` → removed / `[JsonIgnore]` (unused since `BinaryFormatter` → `System.Text.Json`)
+- `new string[0]` → `Array.Empty<string>()` everywhere
+- `String.Format("{0}", x)` → `x`; `String.Format` → interpolation throughout
+- Unused `using` directives removed (`System.ComponentModel`, `System.Data`, `System.Linq.Expressions`, etc.)
+- Typos: `progessCount` → `progressCount`, `initalized` → `initialized`, `Creeate` → `Create`
+
 ## Dependencies
 
 **Runtime:**
 - [.NET 10+](https://dotnet.microsoft.com/) runtime
 - [GTK 3](https://gtk.org/)
 - [ffmpeg](https://ffmpeg.org/)
-- [mp3gain](https://mp3gain.sourceforge.net/)
-- [mkvtoolnix](https://mkvtoolnix.download/) (`mkvextract`, `mkvinfo`)
+- [mp3gain](https://mp3gain.sourceforge.net/) *(only if using audio normalization)*
+- [mkvtoolnix](https://mkvtoolnix.download/) (`mkvextract`, `mkvinfo`) *(only for MKV track extraction)*
 
 **Build:**
 - [.NET 10+ SDK](https://dotnet.microsoft.com/)
@@ -86,6 +110,8 @@ sudo make uninstall
 
 On first run, `preferences.txt` is created in
 `~/.config/subs2srs/` (or `$XDG_CONFIG_HOME/subs2srs/`).
+
+Edit via **Preferences** dialog or manually.
 
 ## Building with VobSub support
 
