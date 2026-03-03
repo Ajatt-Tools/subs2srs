@@ -52,10 +52,7 @@ namespace subs2srs
     {
       try
       {
-        // Read settings file into memory
-        StreamReader reader = new StreamReader(ConstantSettings.SettingsFilename, Encoding.UTF8);
-        string contents = reader.ReadToEnd();
-        reader.Close();
+        string contents = File.ReadAllText(ConstantSettings.SettingsFilename, Encoding.UTF8);
 
         // Replace each setting in list
         foreach (SettingsPair pair in settingsList)
@@ -65,16 +62,14 @@ namespace subs2srs
           contents = Regex.Replace(contents, regex, replacement, RegexOptions.Multiline);
         }
 
-        // Write settings back out to file
-        TextWriter writer = new StreamWriter(ConstantSettings.SettingsFilename, false, Encoding.UTF8);
-        writer.Write(contents);
-        writer.Close();
+        File.WriteAllText(ConstantSettings.SettingsFilename, contents, Encoding.UTF8);
       }
       catch
       {
         UtilsMsg.showErrMsg("Unable to find the preferences file: '" + ConstantSettings.SettingsFilename + "'\r\nPreferences will not be saved.");
       }
     }
+
     /// <summary>
     /// Convert a string value to token representation for storage.
     /// Empty strings become "none".
@@ -94,6 +89,10 @@ namespace subs2srs
     {
       try
       {
+        var dir = Path.GetDirectoryName(ConstantSettings.SettingsFilename);
+        if (!string.IsNullOrEmpty(dir))
+          Directory.CreateDirectory(dir);
+
         var sb = new StringBuilder();
         sb.AppendLine("# subs2srs preferences file");
         sb.AppendLine("# Auto-generated with default values");
@@ -239,19 +238,19 @@ namespace subs2srs
     /// </summary>
     public static string getString(string key, string def)
     {
-      string fileLine = "";
       string value = "";
 
       try
       {
-        StreamReader settingsFile = new StreamReader(ConstantSettings.SettingsFilename, Encoding.UTF8);
-     
+        using var settingsFile = new StreamReader(ConstantSettings.SettingsFilename, Encoding.UTF8);
+        string fileLine;
+
         // Read each line of the settings file, try to find the key and its value
         while ((fileLine = settingsFile.ReadLine()) != null)
         {
           Match lineMatch = Regex.Match(fileLine,
             @"^(?<Key>" + key + @")\s*=\s*(?<Value>.*)",
-            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+            RegexOptions.IgnoreCase);
 
           if (lineMatch.Success)
           {
@@ -266,8 +265,6 @@ namespace subs2srs
             }
           }
         }
-
-        settingsFile.Close();
 
         // If the value is set to "none", blank it
         if (value.ToLower() == "none")
@@ -294,17 +291,9 @@ namespace subs2srs
     public static bool getBool(string key, bool def)
     {
       string defString = def.ToString();
-      string valString = "";
-      bool value = false;
+      string valString = PrefIO.getString(key, defString);
 
-      valString = PrefIO.getString(key, defString);
-
-      if (valString.ToLower() == "true")
-      {
-        value = true;
-      }
-
-      return value;
+      return valString.Equals("true", StringComparison.OrdinalIgnoreCase);
     }
 
 
@@ -313,22 +302,9 @@ namespace subs2srs
     /// </summary>
     public static int getInt(string key, int def)
     {
-      string defString = def.ToString();
-      string valString = "";
-      int value = 0;
+      string valString = PrefIO.getString(key, def.ToString());
 
-      valString = PrefIO.getString(key, defString);
-
-      try
-      {
-        value = Int32.Parse(valString);
-      }
-      catch
-      {
-        value = def;
-      }
-
-      return value;
+      return int.TryParse(valString, out int result) ? result : def;
     }
 
 
@@ -337,22 +313,16 @@ namespace subs2srs
     /// </summary>
     public static float getFloat(string key, float def)
     {
-      string defString = def.ToString();
-      string valString = "";
-      float value = 0;
-
-      valString = PrefIO.getString(key, defString);
+      string valString = PrefIO.getString(key, def.ToString());
 
       try
       {
-        value = (float)UtilsLang.toDouble(valString);
+        return (float)UtilsLang.toDouble(valString);
       }
       catch
       {
-        value = def;
+        return def;
       }
-
-      return value;
     }
 
 
@@ -373,127 +343,161 @@ namespace subs2srs
 
     /// <summary>
     /// Read all the settings in the settings file and store globally.
+    /// One pass: file is read once into a dictionary, then all keys are looked up in memory.
     /// </summary>
     public static void read()
     {
-      ConstantSettings.MainWindowWidth = getInt("main_window_width", PrefDefaults.MainWindowWidth);
-      ConstantSettings.MainWindowHeight = getInt("main_window_height", PrefDefaults.MainWindowHeight);
+      // Create default preferences file on first launch
+      if (!File.Exists(ConstantSettings.SettingsFilename))
+      {
+        writeDefaultPreferences();
+      }
 
-      ConstantSettings.DefaultEnableAudioClipGeneration = getBool("default_enable_audio_clip_generation", PrefDefaults.DefaultEnableAudioClipGeneration);
-      ConstantSettings.DefaultEnableSnapshotsGeneration = getBool("default_enable_snapshots_generation", PrefDefaults.DefaultEnableSnapshotsGeneration);
-      ConstantSettings.DefaultEnableVideoClipsGeneration = getBool("default_enable_video_clips_generation", PrefDefaults.DefaultEnableVideoClipsGeneration);
+      // Read entire file once into a dictionary
+      var pairs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+      try
+      {
+        foreach (var line in File.ReadAllLines(ConstantSettings.SettingsFilename, Encoding.UTF8))
+        {
+          if (line.TrimStart().StartsWith('#')) continue;
+          int eqIdx = line.IndexOf('=');
+          if (eqIdx < 0) continue;
+          string key = line[..eqIdx].Trim();
+          if (key.Length > 0)
+            pairs[key] = line[(eqIdx + 1)..].Trim();
+        }
+      }
+      catch
+      {
+        // If file can't be read, all settings will use defaults
+      }
 
-      ConstantSettings.VideoPlayer = getString("video_player", PrefDefaults.VideoPlayer);
-      ConstantSettings.VideoPlayerArgs = getString("video_player_args", PrefDefaults.VideoPlayerArgs);
+      // Local lookup helpers — no file I/O
+      string getStr(string key, string def)
+      {
+        if (!pairs.TryGetValue(key, out string raw))
+          return def;
+        string val = convertFromTokens(raw);
+        if (val.Equals("none", StringComparison.OrdinalIgnoreCase))
+          return "";
+        return val.Length == 0 ? def : val;
+      }
 
-      ConstantSettings.ReencodeBeforeSplittingAudio = getBool("reencode_before_splitting_audio", PrefDefaults.ReencodeBeforeSplittingAudio);
-      ConstantSettings.EnableLogging = getBool("enable_logging", PrefDefaults.EnableLogging);
-      ConstantSettings.AudioNormalizeArgs = getString("audio_normalize_args", PrefDefaults.AudioNormalizeArgs);
-      ConstantSettings.LongClipWarningSeconds = getInt("long_clip_warning_seconds", PrefDefaults.LongClipWarningSeconds);
+      bool getBl(string key, bool def) =>
+        getStr(key, def.ToString()).Equals("true", StringComparison.OrdinalIgnoreCase);
 
-      ConstantSettings.DefaultAudioClipBitrate = getInt("default_audio_clip_bitrate", PrefDefaults.DefaultAudioClipBitrate);
-      ConstantSettings.DefaultAudioNormalize = getBool("default_audio_normalize", PrefDefaults.DefaultAudioNormalize);
+      int getI(string key, int def) =>
+        int.TryParse(getStr(key, def.ToString()), out int v) ? v : def;
 
-      ConstantSettings.DefaultVideoClipVideoBitrate = getInt("default_video_clip_video_bitrate", PrefDefaults.DefaultVideoClipVideoBitrate);
-      ConstantSettings.DefaultVideoClipAudioBitrate = getInt("default_video_clip_audio_bitrate", PrefDefaults.DefaultVideoClipAudioBitrate);
-      ConstantSettings.DefaultIphoneSupport = getBool("default_ipod_support", PrefDefaults.DefaultIphoneSupport);
+      // --- Apply all settings ---
 
-      ConstantSettings.DefaultEncodingSubs1 = getString("default_encoding_subs1", PrefDefaults.DefaultEncodingSubs1);
-      ConstantSettings.DefaultEncodingSubs2 = getString("default_encoding_subs2", PrefDefaults.DefaultEncodingSubs2);
+      ConstantSettings.MainWindowWidth = getI("main_window_width", PrefDefaults.MainWindowWidth);
+      ConstantSettings.MainWindowHeight = getI("main_window_height", PrefDefaults.MainWindowHeight);
 
-      ConstantSettings.DefaultContextNumLeading = getInt("default_context_num_leading", PrefDefaults.DefaultContextNumLeading);
-      ConstantSettings.DefaultContextNumTrailing = getInt("default_context_num_trailing", PrefDefaults.DefaultContextNumTrailing);
+      ConstantSettings.DefaultEnableAudioClipGeneration = getBl("default_enable_audio_clip_generation", PrefDefaults.DefaultEnableAudioClipGeneration);
+      ConstantSettings.DefaultEnableSnapshotsGeneration = getBl("default_enable_snapshots_generation", PrefDefaults.DefaultEnableSnapshotsGeneration);
+      ConstantSettings.DefaultEnableVideoClipsGeneration = getBl("default_enable_video_clips_generation", PrefDefaults.DefaultEnableVideoClipsGeneration);
 
-      ConstantSettings.DefaultContextLeadingRange = getInt("default_context_leading_range", PrefDefaults.DefaultContextLeadingRange);
-      ConstantSettings.DefaultContextTrailingRange = getInt("default_context_trailing_range", PrefDefaults.DefaultContextTrailingRange);
+      ConstantSettings.VideoPlayer = getStr("video_player", PrefDefaults.VideoPlayer);
+      ConstantSettings.VideoPlayerArgs = getStr("video_player_args", PrefDefaults.VideoPlayerArgs);
 
-      ConstantSettings.DefaultRemoveStyledLinesSubs1 = getBool("default_remove_styled_lines_subs1", PrefDefaults.DefaultRemoveStyledLinesSubs1);
-      ConstantSettings.DefaultRemoveStyledLinesSubs2 = getBool("default_remove_styled_lines_subs2", PrefDefaults.DefaultRemoveStyledLinesSubs1);
+      ConstantSettings.ReencodeBeforeSplittingAudio = getBl("reencode_before_splitting_audio", PrefDefaults.ReencodeBeforeSplittingAudio);
+      ConstantSettings.EnableLogging = getBl("enable_logging", PrefDefaults.EnableLogging);
+      ConstantSettings.AudioNormalizeArgs = getStr("audio_normalize_args", PrefDefaults.AudioNormalizeArgs);
+      ConstantSettings.LongClipWarningSeconds = getI("long_clip_warning_seconds", PrefDefaults.LongClipWarningSeconds);
 
-      ConstantSettings.DefaultRemoveNoCounterpartSubs1 = getBool("default_remove_no_counterpart_subs1", PrefDefaults.DefaultRemoveNoCounterpartSubs1);
-      ConstantSettings.DefaultRemoveNoCounterpartSubs2 = getBool("default_remove_no_counterpart_subs2", PrefDefaults.DefaultRemoveNoCounterpartSubs2);
+      ConstantSettings.DefaultAudioClipBitrate = getI("default_audio_clip_bitrate", PrefDefaults.DefaultAudioClipBitrate);
+      ConstantSettings.DefaultAudioNormalize = getBl("default_audio_normalize", PrefDefaults.DefaultAudioNormalize);
 
-      ConstantSettings.DefaultIncludeTextSubs1 = getString("default_included_text_subs1", PrefDefaults.DefaultIncludeTextSubs1);
-      ConstantSettings.DefaultIncludeTextSubs2 = getString("default_included_text_subs2", PrefDefaults.DefaultIncludeTextSubs2);
+      ConstantSettings.DefaultVideoClipVideoBitrate = getI("default_video_clip_video_bitrate", PrefDefaults.DefaultVideoClipVideoBitrate);
+      ConstantSettings.DefaultVideoClipAudioBitrate = getI("default_video_clip_audio_bitrate", PrefDefaults.DefaultVideoClipAudioBitrate);
+      ConstantSettings.DefaultIphoneSupport = getBl("default_ipod_support", PrefDefaults.DefaultIphoneSupport);
 
-      ConstantSettings.DefaultExcludeTextSubs1 = getString("default_excluded_text_subs1", PrefDefaults.DefaultExcludeTextSubs1);
-      ConstantSettings.DefaultExcludeTextSubs2 = getString("default_excluded_text_subs2", PrefDefaults.DefaultExcludeTextSubs2);
+      ConstantSettings.DefaultEncodingSubs1 = getStr("default_encoding_subs1", PrefDefaults.DefaultEncodingSubs1);
+      ConstantSettings.DefaultEncodingSubs2 = getStr("default_encoding_subs2", PrefDefaults.DefaultEncodingSubs2);
 
-      ConstantSettings.DefaultExcludeDuplicateLinesSubs1 = getBool("default_exclude_duplicate_lines_subs1", PrefDefaults.DefaultExcludeDuplicateLinesSubs1);
-      ConstantSettings.DefaultExcludeDuplicateLinesSubs2 = getBool("default_exclude_duplicate_lines_subs2", PrefDefaults.DefaultExcludeDuplicateLinesSubs2);
+      ConstantSettings.DefaultContextNumLeading = getI("default_context_num_leading", PrefDefaults.DefaultContextNumLeading);
+      ConstantSettings.DefaultContextNumTrailing = getI("default_context_num_trailing", PrefDefaults.DefaultContextNumTrailing);
 
-      ConstantSettings.DefaultExcludeLinesFewerThanCharsSubs1 = getBool("default_exclude_lines_with_fewer_than_n_chars_subs1", PrefDefaults.DefaultExcludeLinesFewerThanCharsSubs1);
-      ConstantSettings.DefaultExcludeLinesFewerThanCharsSubs2 = getBool("default_exclude_lines_with_fewer_than_n_chars_subs2", PrefDefaults.DefaultExcludeLinesFewerThanCharsSubs2);
-      ConstantSettings.DefaultExcludeLinesFewerThanCharsNumSubs1 = getInt("default_exclude_lines_with_fewer_than_n_chars_num_subs1", PrefDefaults.DefaultExcludeLinesFewerThanCharsNumSubs1);
-      ConstantSettings.DefaultExcludeLinesFewerThanCharsNumSubs2 = getInt("default_exclude_lines_with_fewer_than_n_chars_num_subs2", PrefDefaults.DefaultExcludeLinesFewerThanCharsNumSubs2);
+      ConstantSettings.DefaultContextLeadingRange = getI("default_context_leading_range", PrefDefaults.DefaultContextLeadingRange);
+      ConstantSettings.DefaultContextTrailingRange = getI("default_context_trailing_range", PrefDefaults.DefaultContextTrailingRange);
 
-      ConstantSettings.DefaultExcludeLinesShorterThanMsSubs1 = getBool("default_exclude_lines_shorter_than_n_ms_subs1", PrefDefaults.DefaultExcludeLinesShorterThanMsSubs1);
-      ConstantSettings.DefaultExcludeLinesShorterThanMsSubs2 = getBool("default_exclude_lines_shorter_than_n_ms_subs2", PrefDefaults.DefaultExcludeLinesShorterThanMsSubs2);
-      ConstantSettings.DefaultExcludeLinesShorterThanMsNumSubs1 = getInt("default_exclude_lines_shorter_than_n_ms_num_subs1", PrefDefaults.DefaultExcludeLinesShorterThanMsNumSubs1);
-      ConstantSettings.DefaultExcludeLinesShorterThanMsNumSubs2 = getInt("default_exclude_lines_shorter_than_n_ms_num_subs2", PrefDefaults.DefaultExcludeLinesShorterThanMsNumSubs2);
+      ConstantSettings.DefaultRemoveStyledLinesSubs1 = getBl("default_remove_styled_lines_subs1", PrefDefaults.DefaultRemoveStyledLinesSubs1);
+      ConstantSettings.DefaultRemoveStyledLinesSubs2 = getBl("default_remove_styled_lines_subs2", PrefDefaults.DefaultRemoveStyledLinesSubs2); // FIX: was Subs1
 
-      ConstantSettings.DefaultExcludeLinesLongerThanMsSubs1 = getBool("default_exclude_lines_longer_than_n_ms_subs1", PrefDefaults.DefaultExcludeLinesLongerThanMsSubs1);
-      ConstantSettings.DefaultExcludeLinesLongerThanMsSubs2 = getBool("default_exclude_lines_longer_than_n_ms_subs2", PrefDefaults.DefaultExcludeLinesLongerThanMsSubs2);
-      ConstantSettings.DefaultExcludeLinesLongerThanMsNumSubs1 = getInt("default_exclude_lines_longer_than_n_ms_num_subs1", PrefDefaults.DefaultExcludeLinesLongerThanMsNumSubs1);
-      ConstantSettings.DefaultExcludeLinesLongerThanMsNumSubs2 = getInt("default_exclude_lines_longer_than_n_ms_num_subs2", PrefDefaults.DefaultExcludeLinesLongerThanMsNumSubs2);
+      ConstantSettings.DefaultRemoveNoCounterpartSubs1 = getBl("default_remove_no_counterpart_subs1", PrefDefaults.DefaultRemoveNoCounterpartSubs1);
+      ConstantSettings.DefaultRemoveNoCounterpartSubs2 = getBl("default_remove_no_counterpart_subs2", PrefDefaults.DefaultRemoveNoCounterpartSubs2);
 
-      ConstantSettings.DefaultJoinSentencesSubs1 = getBool("default_join_sentences_subs1", PrefDefaults.DefaultJoinSentencesSubs1);
-      ConstantSettings.DefaultJoinSentencesSubs2 = getBool("default_join_sentences_subs2", PrefDefaults.DefaultJoinSentencesSubs2);
-      ConstantSettings.DefaultJoinSentencesCharListSubs1 = getString("default_join_sentences_char_list_subs1", PrefDefaults.DefaultJoinSentencesCharListSubs1);
-      ConstantSettings.DefaultJoinSentencesCharListSubs2 = getString("default_join_sentences_char_list_subs2", PrefDefaults.DefaultJoinSentencesCharListSubs2);
+      ConstantSettings.DefaultIncludeTextSubs1 = getStr("default_included_text_subs1", PrefDefaults.DefaultIncludeTextSubs1);
+      ConstantSettings.DefaultIncludeTextSubs2 = getStr("default_included_text_subs2", PrefDefaults.DefaultIncludeTextSubs2);
 
-      ConstantSettings.DefaultFileBrowserStartDir = getString("default_file_browser_start_dir", PrefDefaults.DefaultFileBrowserStartDir);
+      ConstantSettings.DefaultExcludeTextSubs1 = getStr("default_excluded_text_subs1", PrefDefaults.DefaultExcludeTextSubs1);
+      ConstantSettings.DefaultExcludeTextSubs2 = getStr("default_excluded_text_subs2", PrefDefaults.DefaultExcludeTextSubs2);
 
-      ConstantSettings.SrsFilenameFormat = getString("srs_filename_format", PrefDefaults.SrsFilenameFormat);
+      ConstantSettings.DefaultExcludeDuplicateLinesSubs1 = getBl("default_exclude_duplicate_lines_subs1", PrefDefaults.DefaultExcludeDuplicateLinesSubs1);
+      ConstantSettings.DefaultExcludeDuplicateLinesSubs2 = getBl("default_exclude_duplicate_lines_subs2", PrefDefaults.DefaultExcludeDuplicateLinesSubs2);
 
-      ConstantSettings.SrsDelimiter = getString("srs_delimiter", PrefDefaults.SrsDelimiter);
+      ConstantSettings.DefaultExcludeLinesFewerThanCharsSubs1 = getBl("default_exclude_lines_with_fewer_than_n_chars_subs1", PrefDefaults.DefaultExcludeLinesFewerThanCharsSubs1);
+      ConstantSettings.DefaultExcludeLinesFewerThanCharsSubs2 = getBl("default_exclude_lines_with_fewer_than_n_chars_subs2", PrefDefaults.DefaultExcludeLinesFewerThanCharsSubs2);
+      ConstantSettings.DefaultExcludeLinesFewerThanCharsNumSubs1 = getI("default_exclude_lines_with_fewer_than_n_chars_num_subs1", PrefDefaults.DefaultExcludeLinesFewerThanCharsNumSubs1);
+      ConstantSettings.DefaultExcludeLinesFewerThanCharsNumSubs2 = getI("default_exclude_lines_with_fewer_than_n_chars_num_subs2", PrefDefaults.DefaultExcludeLinesFewerThanCharsNumSubs2);
 
-      ConstantSettings.SrsTagFormat = getString("srs_tag_format", PrefDefaults.SrsTagFormat);
-      ConstantSettings.SrsSequenceMarkerFormat = getString("srs_sequence_marker_format", PrefDefaults.SrsSequenceMarkerFormat);
+      ConstantSettings.DefaultExcludeLinesShorterThanMsSubs1 = getBl("default_exclude_lines_shorter_than_n_ms_subs1", PrefDefaults.DefaultExcludeLinesShorterThanMsSubs1);
+      ConstantSettings.DefaultExcludeLinesShorterThanMsSubs2 = getBl("default_exclude_lines_shorter_than_n_ms_subs2", PrefDefaults.DefaultExcludeLinesShorterThanMsSubs2);
+      ConstantSettings.DefaultExcludeLinesShorterThanMsNumSubs1 = getI("default_exclude_lines_shorter_than_n_ms_num_subs1", PrefDefaults.DefaultExcludeLinesShorterThanMsNumSubs1);
+      ConstantSettings.DefaultExcludeLinesShorterThanMsNumSubs2 = getI("default_exclude_lines_shorter_than_n_ms_num_subs2", PrefDefaults.DefaultExcludeLinesShorterThanMsNumSubs2);
 
-      ConstantSettings.SrsAudioFilenamePrefix = getString("srs_audio_filename_prefix", PrefDefaults.SrsAudioFilenamePrefix);
-      ConstantSettings.AudioFilenameFormat = getString("audio_filename_format", PrefDefaults.AudioFilenameFormat);
-      ConstantSettings.AudioId3Artist = getString("audio_id3_artist", PrefDefaults.AudioId3Artist);
-      ConstantSettings.AudioId3Album = getString("audio_id3_album", PrefDefaults.AudioId3Album);
-      ConstantSettings.AudioId3Title = getString("audio_id3_title", PrefDefaults.AudioId3Title);
-      ConstantSettings.AudioId3Genre = getString("audio_id3_genre", PrefDefaults.AudioId3Genre);
-      ConstantSettings.AudioId3Lyrics = getString("audio_id3_lyrics", PrefDefaults.AudioId3Lyrics);
-      ConstantSettings.SrsAudioFilenameSuffix = getString("srs_audio_filename_suffix", PrefDefaults.SrsAudioFilenameSuffix);
+      ConstantSettings.DefaultExcludeLinesLongerThanMsSubs1 = getBl("default_exclude_lines_longer_than_n_ms_subs1", PrefDefaults.DefaultExcludeLinesLongerThanMsSubs1);
+      ConstantSettings.DefaultExcludeLinesLongerThanMsSubs2 = getBl("default_exclude_lines_longer_than_n_ms_subs2", PrefDefaults.DefaultExcludeLinesLongerThanMsSubs2);
+      ConstantSettings.DefaultExcludeLinesLongerThanMsNumSubs1 = getI("default_exclude_lines_longer_than_n_ms_num_subs1", PrefDefaults.DefaultExcludeLinesLongerThanMsNumSubs1);
+      ConstantSettings.DefaultExcludeLinesLongerThanMsNumSubs2 = getI("default_exclude_lines_longer_than_n_ms_num_subs2", PrefDefaults.DefaultExcludeLinesLongerThanMsNumSubs2);
 
-      ConstantSettings.SrsSnapshotFilenamePrefix = getString("srs_snapshot_filename_prefix", PrefDefaults.SrsSnapshotFilenamePrefix);
-      ConstantSettings.SnapshotFilenameFormat = getString("snapshot_filename_format", PrefDefaults.SnapshotFilenameFormat);
-      ConstantSettings.SrsSnapshotFilenameSuffix = getString("srs_snapshot_filename_suffix", PrefDefaults.SrsSnapshotFilenameSuffix);
+      ConstantSettings.DefaultJoinSentencesSubs1 = getBl("default_join_sentences_subs1", PrefDefaults.DefaultJoinSentencesSubs1);
+      ConstantSettings.DefaultJoinSentencesSubs2 = getBl("default_join_sentences_subs2", PrefDefaults.DefaultJoinSentencesSubs2);
+      ConstantSettings.DefaultJoinSentencesCharListSubs1 = getStr("default_join_sentences_char_list_subs1", PrefDefaults.DefaultJoinSentencesCharListSubs1);
+      ConstantSettings.DefaultJoinSentencesCharListSubs2 = getStr("default_join_sentences_char_list_subs2", PrefDefaults.DefaultJoinSentencesCharListSubs2);
 
-      ConstantSettings.SrsVideoFilenamePrefix = getString("srs_video_filename_prefix", PrefDefaults.SrsVideoFilenamePrefix);
-      ConstantSettings.VideoFilenameFormat = getString("video_filename_format", PrefDefaults.VideoFilenameFormat);
-      ConstantSettings.SrsVideoFilenameSuffix = getString("srs_video_filename_suffix", PrefDefaults.SrsVideoFilenameSuffix);
+      ConstantSettings.DefaultFileBrowserStartDir = getStr("default_file_browser_start_dir", PrefDefaults.DefaultFileBrowserStartDir);
 
-      ConstantSettings.SrsSubs1Format = getString("srs_subs1_format", PrefDefaults.SrsSubs1Format);
-      ConstantSettings.SrsSubs2Format = getString("srs_subs2_format", PrefDefaults.SrsSubs2Format);
+      ConstantSettings.SrsFilenameFormat = getStr("srs_filename_format", PrefDefaults.SrsFilenameFormat);
 
-      ConstantSettings.ExtractMediaAudioFilenameFormat = getString("extract_media_audio_filename_format", PrefDefaults.ExtractMediaAudioFilenameFormat);
-      ConstantSettings.ExtractMediaLyricsSubs1Format = getString("extract_media_lyrics_subs1_format", PrefDefaults.ExtractMediaLyricsSubs1Format);
-      ConstantSettings.ExtractMediaLyricsSubs2Format = getString("extract_media_lyrics_subs2_format", PrefDefaults.ExtractMediaLyricsSubs2Format);
+      ConstantSettings.SrsDelimiter = getStr("srs_delimiter", PrefDefaults.SrsDelimiter);
 
-      ConstantSettings.DuelingSubtitleFilenameFormat = getString("dueling_subtitle_filename_format", PrefDefaults.DuelingSubtitleFilenameFormat);
-      ConstantSettings.DuelingQuickRefFilenameFormat = getString("dueling_quick_ref_filename_format", PrefDefaults.DuelingQuickRefFilenameFormat);
-      ConstantSettings.DuelingQuickRefSubs1Format = getString("dueling_quick_ref_subs1_format", PrefDefaults.DuelingQuickRefSubs1Format);
-      ConstantSettings.DuelingQuickRefSubs2Format = getString("dueling_quick_ref_subs2_format", PrefDefaults.DuelingQuickRefSubs2Format);
+      ConstantSettings.SrsTagFormat = getStr("srs_tag_format", PrefDefaults.SrsTagFormat);
+      ConstantSettings.SrsSequenceMarkerFormat = getStr("srs_sequence_marker_format", PrefDefaults.SrsSequenceMarkerFormat);
 
-      ConstantSettings.SrsVobsubFilenamePrefix = getString("srs_vobsub_filename_prefix", PrefDefaults.SrsVobsubFilenamePrefix);
+      ConstantSettings.SrsAudioFilenamePrefix = getStr("srs_audio_filename_prefix", PrefDefaults.SrsAudioFilenamePrefix);
+      ConstantSettings.AudioFilenameFormat = getStr("audio_filename_format", PrefDefaults.AudioFilenameFormat);
+      ConstantSettings.AudioId3Artist = getStr("audio_id3_artist", PrefDefaults.AudioId3Artist);
+      ConstantSettings.AudioId3Album = getStr("audio_id3_album", PrefDefaults.AudioId3Album);
+      ConstantSettings.AudioId3Title = getStr("audio_id3_title", PrefDefaults.AudioId3Title);
+      ConstantSettings.AudioId3Genre = getStr("audio_id3_genre", PrefDefaults.AudioId3Genre);
+      ConstantSettings.AudioId3Lyrics = getStr("audio_id3_lyrics", PrefDefaults.AudioId3Lyrics);
+      ConstantSettings.SrsAudioFilenameSuffix = getStr("srs_audio_filename_suffix", PrefDefaults.SrsAudioFilenameSuffix);
 
-      // NOTE: vobsub filename format is not in the settings file
-      ConstantSettings.VobsubFilenameFormat = getString("vobsub_filename_format", PrefDefaults.VideoFilenameFormat);
-      ConstantSettings.SrsVobsubFilenameSuffix = getString("srs_vobsub_filename_suffix", PrefDefaults.SrsVobsubFilenameSuffix);
+      ConstantSettings.SrsSnapshotFilenamePrefix = getStr("srs_snapshot_filename_prefix", PrefDefaults.SrsSnapshotFilenamePrefix);
+      ConstantSettings.SnapshotFilenameFormat = getStr("snapshot_filename_format", PrefDefaults.SnapshotFilenameFormat);
+      ConstantSettings.SrsSnapshotFilenameSuffix = getStr("srs_snapshot_filename_suffix", PrefDefaults.SrsSnapshotFilenameSuffix);
 
-      
+      ConstantSettings.SrsVideoFilenamePrefix = getStr("srs_video_filename_prefix", PrefDefaults.SrsVideoFilenamePrefix);
+      ConstantSettings.VideoFilenameFormat = getStr("video_filename_format", PrefDefaults.VideoFilenameFormat);
+      ConstantSettings.SrsVideoFilenameSuffix = getStr("srs_video_filename_suffix", PrefDefaults.SrsVideoFilenameSuffix);
 
+      ConstantSettings.SrsSubs1Format = getStr("srs_subs1_format", PrefDefaults.SrsSubs1Format);
+      ConstantSettings.SrsSubs2Format = getStr("srs_subs2_format", PrefDefaults.SrsSubs2Format);
 
+      ConstantSettings.ExtractMediaAudioFilenameFormat = getStr("extract_media_audio_filename_format", PrefDefaults.ExtractMediaAudioFilenameFormat);
+      ConstantSettings.ExtractMediaLyricsSubs1Format = getStr("extract_media_lyrics_subs1_format", PrefDefaults.ExtractMediaLyricsSubs1Format);
+      ConstantSettings.ExtractMediaLyricsSubs2Format = getStr("extract_media_lyrics_subs2_format", PrefDefaults.ExtractMediaLyricsSubs2Format);
+
+      ConstantSettings.DuelingSubtitleFilenameFormat = getStr("dueling_subtitle_filename_format", PrefDefaults.DuelingSubtitleFilenameFormat);
+      ConstantSettings.DuelingQuickRefFilenameFormat = getStr("dueling_quick_ref_filename_format", PrefDefaults.DuelingQuickRefFilenameFormat);
+      ConstantSettings.DuelingQuickRefSubs1Format = getStr("dueling_quick_ref_subs1_format", PrefDefaults.DuelingQuickRefSubs1Format);
+      ConstantSettings.DuelingQuickRefSubs2Format = getStr("dueling_quick_ref_subs2_format", PrefDefaults.DuelingQuickRefSubs2Format);
+
+      ConstantSettings.SrsVobsubFilenamePrefix = getStr("srs_vobsub_filename_prefix", PrefDefaults.SrsVobsubFilenamePrefix);
+      ConstantSettings.VobsubFilenameFormat = getStr("vobsub_filename_format", PrefDefaults.VobsubFilenameFormat); // FIX: was VideoFilenameFormat
+      ConstantSettings.SrsVobsubFilenameSuffix = getStr("srs_vobsub_filename_suffix", PrefDefaults.SrsVobsubFilenameSuffix);
     }
-
-
-
-
-
   }
 }
