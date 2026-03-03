@@ -18,9 +18,6 @@
 //////////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace subs2srs
@@ -30,32 +27,31 @@ namespace subs2srs
   /// </summary>
   public class UtilsName
   {
-    private string deckName;
-    private int episodeNum;
-    private int totalNumEpisodes;
-    private int sequenceNum;
-    private int totalNumLines;
-    private DateTime startTime;
-    private DateTime endTime;
-    private DateTime lastTime;
-    private string subs1Text;
-    private string subs2Text;
-    private int width;
-    private int height;
-    private int vobsubStreamNum;
+    private readonly string deckName;
+    private readonly int totalNumEpisodes;
+    private readonly DateTime lastTime;
+    private readonly int width;
+    private readonly int height;
+    private readonly int vobsubStreamNum;
 
-    public int TotalNumLines
-    {
-      get { return totalNumLines; }
-      set { totalNumLines = value; }
-    }
+    public int TotalNumLines { get; set; }
+
+    private static readonly Regex NumberTokenRegex = new(
+      @"\$\{((\d*):)?(" +
+      "s_hour|s_min|s_sec|s_hsec|s_msec|s_total_hour|s_total_min|s_total_sec|s_total_hsec|s_total_msec|" +
+      "e_hour|e_min|e_sec|e_hsec|e_msec|e_total_hour|e_total_min|e_total_sec|e_total_hsec|e_total_msec|" +
+      "d_hour|d_min|d_sec|d_hsec|d_msec|d_total_hour|d_total_min|d_total_sec|d_total_hsec|d_total_msec|" +
+      "m_hour|m_min|m_sec|m_hsec|m_msec|m_total_hour|m_total_min|m_total_sec|m_total_hsec|m_total_msec|" +
+      "episode_num|sequence_num|total_line_num|vobsub_stream_num" +
+      @")\}",
+      RegexOptions.Compiled);
 
     public UtilsName(string deckName, int totalNumEpisodes, int totalNumLines,
       DateTime lastTime, int width, int height)
     {
       this.deckName = deckName;
       this.totalNumEpisodes = totalNumEpisodes;
-      this.totalNumLines = totalNumLines;
+      this.TotalNumLines = totalNumLines;
       this.lastTime = lastTime;
       this.width = width;
       this.height = height;
@@ -67,7 +63,7 @@ namespace subs2srs
     {
       this.deckName = deckName;
       this.totalNumEpisodes = totalNumEpisodes;
-      this.totalNumLines = totalNumLines;
+      this.TotalNumLines = totalNumLines;
       this.lastTime = lastTime;
       this.width = width;
       this.height = height;
@@ -76,33 +72,34 @@ namespace subs2srs
 
 
     /// <summary>
-    /// If the provided interger where converted to a string, how many characters would it use?
+    /// If the provided integer were converted to a string, how many characters would it use?
     /// </summary>
-    private int getMaxNecassaryLeadingZeroes(int num)
+    private static int getMaxNecessaryLeadingZeroes(int num)
     {
       return num.ToString().Length;
     }
 
 
     /// <summary>
-    /// Format tokens related to numbers that can have leading zeroes. Takes into account optional leading zeroes.
+    /// Format tokens related to numbers that can have leading zeroes.
+    /// All per-call state is passed explicitly — safe for concurrent use.
     /// </summary>
-    private string formatNumberTokens(Match match)
+    private string formatNumberTokens(Match match, int episodeNum, int sequenceNum,
+      DateTime startTime, DateTime endTime)
     {
       int numZeroes = 0;
       bool numZeroesGiven = false;
       string token = "";
       string zeroString = "";
-      string formatString = "";
-      string finalString = "";
       int value = 0;
       DateTime diffTime = UtilsSubs.getDurationTime(startTime, endTime);
       DateTime midTime = UtilsSubs.getMidpointTime(startTime, endTime);
+      int totalNumLines = TotalNumLines;
 
       // Get number of leading zeroes (if any)
       if (match.Groups[2].Success)
       {
-        numZeroes = Int32.Parse(match.Groups[2].ToString());
+        numZeroes = int.Parse(match.Groups[2].ToString());
         numZeroesGiven = true;
       }
 
@@ -114,67 +111,65 @@ namespace subs2srs
 
       if (numZeroesGiven)
       {
-        // Zero is special, it means use the minimum necassary number of leading zeroes based on some maximum (like the total number of lines)
+        // Zero is special: use minimum necessary leading zeroes based on some maximum
         if (numZeroes == 0)
         {
-          // Start times (use the end times)
+          // Start times
           if (token == "s_hour") numZeroes = 1;
-          else if (token == "s_min") numZeroes = getMaxNecassaryLeadingZeroes(lastTime.TimeOfDay.Minutes); // 2;
+          else if (token == "s_min") numZeroes = getMaxNecessaryLeadingZeroes(lastTime.TimeOfDay.Minutes);
           else if (token == "s_sec") numZeroes = 2;
           else if (token == "s_hsec") numZeroes = 2;
           else if (token == "s_msec") numZeroes = 3;
-          else if (token == "s_total_hour") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalHours); // 1
-          else if (token == "s_total_min") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMinutes); // 3
-          else if (token == "s_total_sec") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalSeconds); // 4
-          else if (token == "s_total_hsec") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds / 10); // 6
-          else if (token == "s_total_msec") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds); // 7
-          // End times 
+          else if (token == "s_total_hour") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalHours);
+          else if (token == "s_total_min") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMinutes);
+          else if (token == "s_total_sec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalSeconds);
+          else if (token == "s_total_hsec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds / 10);
+          else if (token == "s_total_msec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds);
+          // End times
           else if (token == "e_hour") numZeroes = 1;
-          else if (token == "e_min") numZeroes = getMaxNecassaryLeadingZeroes(lastTime.TimeOfDay.Minutes); // 2;
+          else if (token == "e_min") numZeroes = getMaxNecessaryLeadingZeroes(lastTime.TimeOfDay.Minutes);
           else if (token == "e_sec") numZeroes = 2;
           else if (token == "e_hsec") numZeroes = 2;
           else if (token == "e_msec") numZeroes = 3;
-          else if (token == "e_total_hour") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalHours); // 1
-          else if (token == "e_total_min") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMinutes); // 3
-          else if (token == "e_total_sec") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalSeconds); // 4
-          else if (token == "e_total_hsec") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds / 10); // 6
-          else if (token == "e_total_msec") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds); // 7
-          // Duration times (use the end times)
+          else if (token == "e_total_hour") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalHours);
+          else if (token == "e_total_min") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMinutes);
+          else if (token == "e_total_sec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalSeconds);
+          else if (token == "e_total_hsec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds / 10);
+          else if (token == "e_total_msec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds);
+          // Duration times
           else if (token == "d_hour") numZeroes = 1;
-          else if (token == "d_min") numZeroes = getMaxNecassaryLeadingZeroes(lastTime.TimeOfDay.Minutes); // 2;
+          else if (token == "d_min") numZeroes = getMaxNecessaryLeadingZeroes(lastTime.TimeOfDay.Minutes);
           else if (token == "d_sec") numZeroes = 2;
           else if (token == "d_hsec") numZeroes = 2;
           else if (token == "d_msec") numZeroes = 3;
-          else if (token == "d_total_hour") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalHours); // 1
-          else if (token == "d_total_min") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMinutes); // 3
-          else if (token == "d_total_sec") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalSeconds); // 4
-          else if (token == "d_total_hsec") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds / 10); // 6
-          else if (token == "d_total_msec") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds); // 7
-          // Middle times (use the end times)
+          else if (token == "d_total_hour") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalHours);
+          else if (token == "d_total_min") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMinutes);
+          else if (token == "d_total_sec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalSeconds);
+          else if (token == "d_total_hsec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds / 10);
+          else if (token == "d_total_msec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds);
+          // Middle times
           else if (token == "m_hour") numZeroes = 1;
-          else if (token == "m_min") numZeroes = getMaxNecassaryLeadingZeroes(lastTime.TimeOfDay.Minutes); // 2;
+          else if (token == "m_min") numZeroes = getMaxNecessaryLeadingZeroes(lastTime.TimeOfDay.Minutes);
           else if (token == "m_sec") numZeroes = 2;
           else if (token == "m_hsec") numZeroes = 2;
           else if (token == "m_msec") numZeroes = 3;
-          else if (token == "m_total_hour") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalHours); // 1
-          else if (token == "m_total_min") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMinutes); // 3
-          else if (token == "m_total_sec") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalSeconds); // 4
-          else if (token == "m_total_hsec") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds / 10); // 6
-          else if (token == "m_total_msec") numZeroes = getMaxNecassaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds); // 7
+          else if (token == "m_total_hour") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalHours);
+          else if (token == "m_total_min") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMinutes);
+          else if (token == "m_total_sec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalSeconds);
+          else if (token == "m_total_hsec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds / 10);
+          else if (token == "m_total_msec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds);
           // The rest
-          else if (token == "episode_num") numZeroes = getMaxNecassaryLeadingZeroes(totalNumEpisodes);
-          else if (token == "sequence_num") numZeroes = getMaxNecassaryLeadingZeroes(totalNumLines);
-          else if (token == "total_line_num") numZeroes = getMaxNecassaryLeadingZeroes(totalNumLines);
+          else if (token == "episode_num") numZeroes = getMaxNecessaryLeadingZeroes(totalNumEpisodes);
+          else if (token == "sequence_num") numZeroes = getMaxNecessaryLeadingZeroes(totalNumLines);
+          else if (token == "total_line_num") numZeroes = getMaxNecessaryLeadingZeroes(totalNumLines);
           else if (token == "vobsub_stream_num") numZeroes = 1;
         }
 
-        // Limit the number of zeroes
         if (numZeroes > 9)
         {
           numZeroes = 9;
         }
 
-        // Create a format string that can include leading zeroes
         if (numZeroes > 0)
         {
           zeroString += ":";
@@ -186,7 +181,7 @@ namespace subs2srs
         }
       }
 
-      formatString = "{0" + zeroString + "}";
+      string formatString = "{0" + zeroString + "}";
 
       // Start times
       if (token == "s_hour") value = startTime.TimeOfDay.Hours;
@@ -238,39 +233,22 @@ namespace subs2srs
       else if (token == "total_line_num") value = totalNumLines;
       else if (token == "vobsub_stream_num") value = vobsubStreamNum;
 
-      finalString = String.Format(formatString, value);
-      
-      return finalString;
+      return string.Format(formatString, value);
     }
 
 
     /// <summary>
     /// Create a filename based on the provided format.
+    /// Thread-safe: all per-call state is captured in the lambda closure.
     /// </summary>
-    public string createName(string format, int episodeNum, int sequenceNum, DateTime startTime, DateTime endTime, string subs1Text, string subs2Text)
+    public string createName(string format, int episodeNum, int sequenceNum,
+      DateTime startTime, DateTime endTime, string subs1Text, string subs2Text)
     {
-      string finalName = format;
+      string finalName = NumberTokenRegex.Replace(format,
+        match => formatNumberTokens(match, episodeNum, sequenceNum, startTime, endTime));
 
-      this.episodeNum = episodeNum;
-      this.sequenceNum = sequenceNum;
-      this.startTime = startTime;
-      this.endTime = endTime;
-      this.subs1Text = subs1Text;
-      this.subs2Text = subs2Text;
-
-      // Replace tokens related to numbers that can have leading zeroes
-      finalName = Regex.Replace(finalName, 
-        @"\$\{((\d*):)?(" +
-        "s_hour|s_min|s_sec|s_hsec|s_msec|s_total_hour|s_total_min|s_total_sec|s_total_hsec|s_total_msec|" + 
-        "e_hour|e_min|e_sec|e_hsec|e_msec|e_total_hour|e_total_min|e_total_sec|e_total_hsec|e_total_msec|" +
-        "d_hour|d_min|d_sec|d_hsec|d_msec|d_total_hour|d_total_min|d_total_sec|d_total_hsec|d_total_msec|" +
-        "m_hour|m_min|m_sec|m_hsec|m_msec|m_total_hour|m_total_min|m_total_sec|m_total_hsec|m_total_msec|" +
-        "episode_num|sequence_num|total_line_num|vobsub_stream_num" +
-        @")\}", new MatchEvaluator(formatNumberTokens), RegexOptions.Compiled);
-
-      if(width > -1)
+      if (width > -1)
       {
-        // Replace tokens related to numbers that don't have leading zeroes
         finalName = finalName.Replace("${width}", width.ToString());
         finalName = finalName.Replace("${height}", height.ToString());
       }
@@ -284,12 +262,8 @@ namespace subs2srs
       finalName = finalName.Replace("${cr}", "\r");
       finalName = finalName.Replace("${lf}", "\n");
       finalName = finalName.Replace("${tab}", "\t");
-   
+
       return finalName;
     }
-
-
-
-
   }
 }
