@@ -583,10 +583,12 @@ namespace subs2srs
 
         private void OnEpisodeChanged()
         {
-            if (_wv == null) return;
+            if (_guard || _wv == null) return;
             int ep = _comboEp.Active;
             if (ep < 0 || ep >= _wv.CombinedAll.Count) return;
+            _guard = true;
             PopulateTree(ep);
+            _guard = false;
             UpdateStats();
             _findIdx = 0;
         }
