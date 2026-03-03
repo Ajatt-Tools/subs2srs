@@ -18,86 +18,57 @@
 //////////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace subs2srs
 {
   /// <summary>
   /// Represents a single subtitle line.
   /// </summary>
-  [Serializable]
   public class InfoLine : IComparable<InfoLine>
   {
-    private DateTime startTime;
-    private DateTime endTime;
-    private string text;
-    private string actor;
-
-
     /// <summary>
     /// The start time of the line.
     /// </summary>
-    public DateTime StartTime
-    {
-      get { return startTime; }
-      set { startTime = value; }
-    }
+    public DateTime StartTime { get; set; }
 
     /// <summary>
     /// The end time of the line.
     /// </summary>
-    public DateTime EndTime
-    {
-      get { return endTime; }
-      set { endTime = value; }
-    }
+    public DateTime EndTime { get; set; }
 
     /// <summary>
     /// The actual subtitle text. For Vobsubs, it's the file name of the extracted image file for this line.
     /// </summary>
-    public string Text
-    {
-      get { return text; }
-      set { text = value; }
-    }
+    public string Text { get; set; }
 
     /// <summary>
     /// Actor is a field unique to .ass subtitles.
     /// </summary>
-    public string Actor
-    {
-      get { return actor; }
-      set { actor = value; }
-    }
+    public string Actor { get; set; }
 
-    /// <summary>
-    /// Constructor.
-    /// </summary>
     public InfoLine()
     {
-      this.startTime = new DateTime();
-      this.endTime = new DateTime();
-      this.text = "";
-      this.actor = "";
+      StartTime = new DateTime();
+      EndTime = new DateTime();
+      Text = "";
+      Actor = "";
     }
 
     public InfoLine(DateTime startTime, DateTime endTime, string text)
     {
-      this.startTime = startTime;
-      this.endTime = endTime;
-      this.text = text;
-      this.actor = "";
+      StartTime = startTime;
+      EndTime = endTime;
+      Text = text;
+      Actor = "";
     }
 
     public InfoLine(DateTime startTime, DateTime endTime, string text, string actor)
     {
-      this.startTime = startTime;
-      this.endTime = endTime;
-      this.text = text;
-      this.actor = actor;
+      StartTime = startTime;
+      EndTime = endTime;
+      Text = text;
+      Actor = actor;
     }
-
 
     /// <summary>
     /// Compare lines based on their Start Times.
@@ -109,9 +80,7 @@ namespace subs2srs
 
     public override string ToString()
     {
-      return text + " " + UtilsSubs.timeToString(startTime) + ", " + UtilsSubs.timeToString(endTime);
+      return $"{Text} {UtilsSubs.timeToString(StartTime)}, {UtilsSubs.timeToString(EndTime)}";
     }
-
-
   }
 }
