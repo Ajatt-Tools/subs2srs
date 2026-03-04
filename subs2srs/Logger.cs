@@ -220,7 +220,7 @@ namespace subs2srs
 
       info("Audio Clips:");
       var(new { Settings.Instance.AudioClips.Enabled });
-      var(new { Settings.Instance.AudioClips.filePattern });
+      var(new { Settings.Instance.AudioClips.FilePattern });
 
       foreach (string file in Settings.Instance.AudioClips.Files)
       {

@@ -371,7 +371,9 @@ namespace subs2srs
   public class AudioClips
   {
     public bool Enabled { get; set; } = true;
-    public string filePattern { get; set; } = "";
+
+    [JsonPropertyName("filePattern")]
+    public string FilePattern { get; set; } = "";
 
     [JsonIgnore]
     public string[] Files { get; set; } = Array.Empty<string>();

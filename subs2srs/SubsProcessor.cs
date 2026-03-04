@@ -81,7 +81,7 @@ namespace subs2srs
 
             if (needToGenerateCombinedAll)
             {
-                DialogProgress.nextStepInvoke(dialogProgress, ++currentStep, "Combine subs");
+                dialogProgress.NextStep(++currentStep, "Combine subs");
                 combinedAll = subsWorker.combineAllSubs(workerVars, dialogProgress);
 
                 if (combinedAll != null) workerVars.CombinedAll = combinedAll;
@@ -93,7 +93,7 @@ namespace subs2srs
                 if (totalLines == 0)
                     throw new Exception("No lines of dialog could be parsed from the subtitle files.\nPlease check that they are valid.");
 
-                DialogProgress.nextStepInvoke(dialogProgress, ++currentStep, "Inactivate lines");
+                dialogProgress.NextStep(++currentStep, "Inactivate lines");
                 combinedAll = subsWorker.inactivateLines(workerVars, dialogProgress);
 
                 if (combinedAll != null) workerVars.CombinedAll = combinedAll;
@@ -102,14 +102,14 @@ namespace subs2srs
 
             if ((Settings.Instance.ContextLeadingCount > 0) || (Settings.Instance.ContextTrailingCount > 0))
             {
-                DialogProgress.nextStepInvoke(dialogProgress, ++currentStep, "Find context lines");
+                dialogProgress.NextStep(++currentStep, "Find context lines");
                 combinedAll = subsWorker.markLinesOnlyNeededForContext(workerVars, dialogProgress);
 
                 if (combinedAll != null) workerVars.CombinedAll = combinedAll;
                 else throw new OperationCanceledException();
             }
 
-            DialogProgress.nextStepInvoke(dialogProgress, ++currentStep, "Remove inactive lines");
+            dialogProgress.NextStep(++currentStep, "Remove inactive lines");
             combinedAll = subsWorker.removeInactiveLines(workerVars, dialogProgress, true);
 
             if (combinedAll != null) workerVars.CombinedAll = combinedAll;
@@ -133,7 +133,7 @@ namespace subs2srs
             catch (OperationCanceledException) { throw; }
             catch (Exception ex) { Logger.Instance.info($"VobSub copy failed: {ex.Message}"); }
 
-            DialogProgress.nextStepInvoke(dialogProgress, ++currentStep, "Generate import file");
+            dialogProgress.NextStep(++currentStep, "Generate import file");
             WorkerSrs srsWorker = new WorkerSrs();
 
             if (!srsWorker.genSrs(workerVars, dialogProgress))
@@ -143,7 +143,7 @@ namespace subs2srs
 
             if (Settings.Instance.AudioClips.Enabled)
             {
-                DialogProgress.nextStepInvoke(dialogProgress, ++currentStep, "Generate audio clips");
+                dialogProgress.NextStep(++currentStep, "Generate audio clips");
 
                 if (((Settings.Instance.ContextLeadingCount > 0) && Settings.Instance.ContextLeadingIncludeAudioClips) || ((Settings.Instance.ContextTrailingCount > 0) && Settings.Instance.ContextTrailingIncludeAudioClips))
                     workerVars.CombinedAll = combinedAllWithContext;
@@ -156,7 +156,7 @@ namespace subs2srs
 
             if (Settings.Instance.Snapshots.Enabled)
             {
-                DialogProgress.nextStepInvoke(dialogProgress, ++currentStep, "Generate snapshots");
+                dialogProgress.NextStep(++currentStep, "Generate snapshots");
 
                 if (((Settings.Instance.ContextLeadingCount > 0) && Settings.Instance.ContextLeadingIncludeSnapshots) || ((Settings.Instance.ContextTrailingCount > 0) && Settings.Instance.ContextTrailingIncludeSnapshots))
                     workerVars.CombinedAll = combinedAllWithContext;
@@ -169,7 +169,7 @@ namespace subs2srs
 
             if (Settings.Instance.VideoClips.Enabled)
             {
-                DialogProgress.nextStepInvoke(dialogProgress, ++currentStep, "Generate video clips");
+                dialogProgress.NextStep(++currentStep, "Generate video clips");
 
                 if (((Settings.Instance.ContextLeadingCount > 0) && Settings.Instance.ContextLeadingIncludeVideoClips) || ((Settings.Instance.ContextTrailingCount > 0) && Settings.Instance.ContextTrailingIncludeVideoClips))
                     workerVars.CombinedAll = combinedAllWithContext;
