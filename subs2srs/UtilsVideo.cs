@@ -266,7 +266,7 @@ namespace subs2srs
     public static string formatStartTimeArg(TimeSpan startTime)
     {
       // Example: -ss 00:00:07.920
-      string startTimeArg = String.Format("-ss {0:00.}:{1:00.}:{2:00.}.{3:000.}",
+      string startTimeArg = String.Format("-ss {0:00}:{1:00}:{2:00}.{3:000}",
                                   (int)startTime.TotalHours,       // {0}
                                   (int)startTime.Minutes,          // {1}
                                   (int)startTime.Seconds,          // {2}
@@ -284,7 +284,7 @@ namespace subs2srs
       TimeSpan diffTime = UtilsSubs.getDurationTime(startTime, endTime);
 
       // Example: -ss 00:00:07.920 -t 00:24:35.120
-      string durationArg = String.Format("-t {0:00.}:{1:00.}:{2:00.}.{3:000.}",
+      string durationArg = String.Format("-t {0:00}:{1:00}:{2:00}.{3:000}",
                                  (int)diffTime.TotalHours,        // {0}
                                  (int)diffTime.Minutes,           // {1}
                                  (int)diffTime.Seconds,           // {2}

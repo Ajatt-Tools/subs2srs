@@ -69,7 +69,10 @@ namespace subs2srs
 
         TimeSpan entireClipStartTime = combArray[0].Subs1.StartTime;
         TimeSpan entireClipEndTime = combArray[combArray.Count - 1].Subs1.EndTime;
-        string tempMp3Filename = Path.GetTempPath() + ConstantSettings.TempAudioFilename;
+
+        // Use a unique temp file per episode to avoid collisions on retry
+        string tempMp3Filename = Path.Combine(Path.GetTempPath(),
+          $"{Path.GetFileNameWithoutExtension(ConstantSettings.TempAudioFilename)}_{episodeCount}{Path.GetExtension(ConstantSettings.TempAudioFilename)}");
 
         // Apply pad to entire clip timings (if requested)
         if (Settings.Instance.AudioClips.PadEnabled)
@@ -105,6 +108,9 @@ namespace subs2srs
 
           if (!success)
           {
+            if (dialogProgress.Cancel)
+              return false;
+
             UtilsMsg.showErrMsg("Failed to extract the audio from the video.\n" +
                                 "Make sure that the video does not have any DRM restrictions.");
             return false;
@@ -126,6 +132,9 @@ namespace subs2srs
 
           if (!success)
           {
+            if (dialogProgress.Cancel)
+              return false;
+
             UtilsMsg.showErrMsg("Failed to reencode the audio file.\n" +
                                 "Make sure that the audio file does not have any DRM restrictions.");
             return false;
@@ -194,11 +203,33 @@ namespace subs2srs
             // Write to temp file, then atomic rename
             string ext = Path.GetExtension(outName);
             string tmpName = Path.ChangeExtension(outName, ".tmp" + ext);
-            UtilsAudio.cutAudio(fileToCut, startTime, endTime, tmpName);
-            File.Move(tmpName, outName, overwrite: true);
 
-            this.tagAudio(name, outName, epNum, item.epLineNum, item.seqNum, combArray.Count,
-              filenameStartTime, filenameEndTime, item.comb.Subs1.Text, lyricSubs2);
+            try
+            {
+              UtilsAudio.cutAudio(fileToCut, startTime, endTime, tmpName);
+
+              if (File.Exists(tmpName))
+              {
+                File.Move(tmpName, outName, overwrite: true);
+
+                this.tagAudio(name, outName, epNum, item.epLineNum, item.seqNum, combArray.Count,
+                  filenameStartTime, filenameEndTime, item.comb.Subs1.Text, lyricSubs2);
+              }
+            }
+            catch (Exception)
+            {
+              // Clean up partial temp file
+              try { if (File.Exists(tmpName)) File.Delete(tmpName); } catch { }
+
+              // If source file was deleted (cancellation race), treat as cancel
+              if (!File.Exists(fileToCut))
+              {
+                cancelled = true;
+                state.Stop();
+                return;
+              }
+              throw;
+            }
           }
 
           int done = Interlocked.Increment(ref completed);
@@ -210,7 +241,8 @@ namespace subs2srs
 
         progressCount += combArray.Count;
 
-        File.Delete(tempMp3Filename);
+        // Delete temp file only after Parallel.ForEach has fully completed
+        try { File.Delete(tempMp3Filename); } catch { }
 
         if (cancelled)
           return false;
