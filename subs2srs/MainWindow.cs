@@ -80,13 +80,23 @@ namespace subs2srs
         private ProgressBar _progressBar;
         private GtkProgressReporter? _reporter;
         private List<InfoStream> _audioStreams = new List<InfoStream>();
+        private DialogPreview _preview;
 
         public MainWindow() : base(WindowType.Toplevel)
         {
             Title = "subs2srs";
             SetDefaultSize(700, 650);
             WindowPosition = WindowPosition.Center;
-            DeleteEvent += (o, args) => { Logger.Instance.flush(); Application.Quit(); };
+            DeleteEvent += (o, args) =>
+            {
+                if (_preview != null)
+                {
+                    _preview.CleanupAndDestroy();
+                    _preview = null;
+                }
+                Logger.Instance.flush();
+                Application.Quit();
+            };
 
             BuildUI();
             LoadSettings();
@@ -95,7 +105,7 @@ namespace subs2srs
         private void BuildUI()
         {
             var mainVBox = new Box(Orientation.Vertical, 5) { BorderWidth = 8 };
-        
+
             var notebook = new Notebook();
             notebook.AppendPage(BuildMainTab(), new Label("Main"));
             notebook.AppendPage(BuildAudioTab(), new Label("Audio"));
@@ -103,39 +113,43 @@ namespace subs2srs
             notebook.AppendPage(BuildVideoTab(), new Label("Video Clips"));
             notebook.AppendPage(BuildToolsTab(), new Label("Tools"));
             mainVBox.PackStart(notebook, true, true, 0);
-        
+
             _progressBar = new ProgressBar { Fraction = 0.0, ShowText = true, Text = "Ready" };
             mainVBox.PackStart(_progressBar, false, false, 0);
-        
+
             var bottomHBox = new Box(Orientation.Horizontal, 5);
             var btnPreview = new Button("Preview...");
             btnPreview.Clicked += (s, e) =>
             {
                 SaveSettings();
-                var preview = new DialogPreview();
-                preview.RefreshSettings += (s2, e2) => SaveSettings();
-                preview.StartPreview();
+                if (_preview == null || _preview.IsDestroyed)
+                {
+                    _preview = new DialogPreview();
+                    _preview.RefreshSettings += (s2, e2) => SaveSettings();
+                    _preview.GoRequested += (s2, e2) => OnGoClicked(null, null);
+                }
+                _preview.StartPreview();
             };
-        
+
             var btnAbout = new Button("About");
             btnAbout.Clicked += (s, e) =>
             {
-            var dlg = new AboutDialog
-            {
-                ProgramName = UtilsAssembly.Title,
-                Version = UtilsAssembly.Version,
-                Comments = UtilsAssembly.Product,
-                Authors = new[] { "Original author: Christopher Brochtrup" },
-                Website = "https://gitlab.com/fkzys/subs2srs-gtk3",
-                WebsiteLabel = "Source Code (GTK3 port)",
-                Copyright = UtilsAssembly.Copyright,
-                License = "GNU General Public License v3",
-                TransientFor = this
+                var dlg = new AboutDialog
+                {
+                    ProgramName = UtilsAssembly.Title,
+                    Version = UtilsAssembly.Version,
+                    Comments = UtilsAssembly.Product,
+                    Authors = new[] { "Original author: Christopher Brochtrup" },
+                    Website = "https://gitlab.com/fkzys/subs2srs-gtk3",
+                    WebsiteLabel = "Source Code (GTK3 port)",
+                    Copyright = UtilsAssembly.Copyright,
+                    License = "GNU General Public License v3",
+                    TransientFor = this
+                };
+                dlg.Run();
+                dlg.Destroy();
             };
-            dlg.Run();
-            dlg.Destroy();
-            };
-        
+
             var btnPref = new Button("Preferences...");
             btnPref.Clicked += (s, e) =>
             {
@@ -146,28 +160,29 @@ namespace subs2srs
                 SetDefaultSize(ConstantSettings.MainWindowWidth, ConstantSettings.MainWindowHeight);
             };
             bottomHBox.PackStart(btnPref, false, false, 0);
-        
+
             bottomHBox.PackStart(btnAbout, false, false, 0);
-        
+
             _btnGo = new Button("Go!") { WidthRequest = 100 };
             _btnGo.Clicked += OnGoClicked;
-        
+
             _btnCancel = new Button("Cancel") { WidthRequest = 100, Sensitive = false };
             _btnCancel.Clicked += (s, e) => { if (_reporter != null) _reporter.Cancel = true; };
-        
+
             bottomHBox.PackStart(btnPreview, false, false, 0);
             bottomHBox.PackEnd(_btnGo, false, false, 0);
             bottomHBox.PackEnd(_btnCancel, false, false, 0);
-        
+
             mainVBox.PackStart(bottomHBox, false, false, 0);
             Add(mainVBox);
         }
 
-    //── TOOLS TAB ─────────────────────────────────────────────────────────
+        // ── TOOLS TAB ─────────────────────────────────────────────────────────
+
         private Widget BuildToolsTab()
         {
             var vbox = new Box(Orientation.Vertical, 12) { BorderWidth = 10 };
-        
+
             // Extract Audio
             var extractFrame = new Frame("Extract Audio from Media");
             var extractBox = new Box(Orientation.Vertical, 6) { BorderWidth = 8 };
@@ -191,7 +206,7 @@ namespace subs2srs
             extractBox.PackStart(btnExtractAudio, false, false, 0);
             extractFrame.Add(extractBox);
             vbox.PackStart(extractFrame, false, false, 0);
-        
+
             // Dueling Subtitles
             var duelingFrame = new Frame("Dueling Subtitles");
             var duelingBox = new Box(Orientation.Vertical, 6) { BorderWidth = 8 };
@@ -208,7 +223,7 @@ namespace subs2srs
             duelingBox.PackStart(btnDueling, false, false, 0);
             duelingFrame.Add(duelingBox);
             vbox.PackStart(duelingFrame, false, false, 0);
-        
+
             // Advanced Subtitle Options
             var advFrame = new Frame("Advanced Subtitle Options");
             var advBox = new Box(Orientation.Vertical, 6) { BorderWidth = 8 };
@@ -232,7 +247,7 @@ namespace subs2srs
             advBox.PackStart(btnAdvanced, false, false, 0);
             advFrame.Add(advBox);
             vbox.PackStart(advFrame, false, false, 0);
-        
+
             return vbox;
         }
 
@@ -570,7 +585,7 @@ namespace subs2srs
                 Settings.Instance.DeckName = _txtDeckName.Text.Trim();
                 Settings.Instance.OutputDir = _txtOutputDir.Text.Trim();
                 Settings.Instance.EpisodeStartNumber = (int)_spinEpisodeStart.Value;
-        
+
                 // Subs
                 Settings.Instance.Subs[0].FilePattern = _txtSubs1.Text.Trim();
                 Settings.Instance.Subs[0].Encoding = GetSelectedEncoding(_comboEncodingSubs1);
@@ -578,7 +593,7 @@ namespace subs2srs
                 Settings.Instance.Subs[0].TimeShift = (int)_spinTimeShiftSubs1.Value;
                 Settings.Instance.Subs[0].Files = UtilsSubs.getSubsFiles(
                     Settings.Instance.Subs[0].FilePattern).ToArray();
-        
+
                 Settings.Instance.Subs[1].FilePattern = _txtSubs2.Text.Trim();
                 Settings.Instance.Subs[1].Encoding = GetSelectedEncoding(_comboEncodingSubs2);
                 Settings.Instance.Subs[1].TimingsEnabled = _radioTimingSubs2.Active;
@@ -588,21 +603,21 @@ namespace subs2srs
                         Settings.Instance.Subs[1].FilePattern).ToArray();
                 else
                     Settings.Instance.Subs[1].Files = Array.Empty<string>();
-        
+
                 Settings.Instance.TimeShiftEnabled = _chkTimeShift.Active;
-        
+
                 Settings.Instance.SpanEnabled = _chkSpan.Active;
                 if (_chkSpan.Active)
                 {
                     Settings.Instance.SpanStart = UtilsSubs.stringToTime(_txtSpanStart.Text.Trim());
                     Settings.Instance.SpanEnd = UtilsSubs.stringToTime(_txtSpanEnd.Text.Trim());
                 }
-        
+
                 // Video
                 Settings.Instance.VideoClips.FilePattern = _txtVideo.Text.Trim();
                 Settings.Instance.VideoClips.Files = UtilsCommon.getNonHiddenFiles(
                     Settings.Instance.VideoClips.FilePattern);
-        
+
                 // Audio stream — store actual ffmpeg stream number, not combo index
                 if (_comboAudioStream.Active >= 0 && _comboAudioStream.Active < _audioStreams.Count)
                 {
@@ -612,7 +627,7 @@ namespace subs2srs
                 {
                     Settings.Instance.VideoClips.AudioStream = new InfoStream("0:a:0", "0", "", "");
                 }
-        
+
                 // Audio
                 Settings.Instance.AudioClips.Enabled = _chkGenerateAudio.Active;
                 Settings.Instance.AudioClips.UseAudioFromVideo = _radioAudioFromVideo.Active;
@@ -622,17 +637,17 @@ namespace subs2srs
                 Settings.Instance.AudioClips.PadStart = (int)_spinAudioPadStart.Value;
                 Settings.Instance.AudioClips.PadEnd = (int)_spinAudioPadEnd.Value;
                 Settings.Instance.AudioClips.Normalize = _chkNormalize.Active;
-        
+
                 Settings.Instance.AudioClips.FilePattern = _txtAudioFile.Text.Trim();
                 Settings.Instance.AudioClips.Files = UtilsCommon.getNonHiddenFiles(
                     Settings.Instance.AudioClips.FilePattern);
-        
+
                 // Snapshots
                 Settings.Instance.Snapshots.Enabled = _chkGenerateSnapshots.Active;
                 Settings.Instance.Snapshots.Size.Width = (int)_spinSnapshotWidth.Value;
                 Settings.Instance.Snapshots.Size.Height = (int)_spinSnapshotHeight.Value;
                 Settings.Instance.Snapshots.Crop.Bottom = (int)_spinSnapshotCropBottom.Value;
-        
+
                 // Video clips
                 Settings.Instance.VideoClips.Enabled = _chkGenerateVideo.Active;
                 Settings.Instance.VideoClips.Size.Width = (int)_spinVideoWidth.Value;
@@ -731,6 +746,8 @@ namespace subs2srs
 
         private async void OnGoClicked(object? sender, EventArgs e)
         {
+            if (!_btnGo.Sensitive) return;
+
             if (string.IsNullOrWhiteSpace(_txtSubs1.Text))
             {
                 UtilsMsg.showErrMsg("Please provide at least Subtitle 1.");
@@ -746,15 +763,15 @@ namespace subs2srs
                 UtilsMsg.showErrMsg("Please provide Deck Name.");
                 return;
             }
-        
+
             SaveSettings();
-        
+
             _btnGo.Sensitive = false;
             _btnCancel.Sensitive = true;
-        
+
             _reporter = new GtkProgressReporter(_progressBar);
             var processor = new SubsProcessor();
-        
+
             try
             {
                 await processor.StartAsync(_reporter);
@@ -762,20 +779,18 @@ namespace subs2srs
             catch (Exception ex)
             {
                 Console.Error.WriteLine(ex);
-                Application.Invoke((s2, e2) =>
-                    UtilsMsg.showErrMsg($"Error: {ex.Message}\n\n{ex.StackTrace}"));
+                UtilsMsg.showErrMsg($"Error: {ex.Message}\n\n{ex.StackTrace}");
             }
-        
-            Gtk.Application.Invoke((s2, e2) =>
+
+            _reporter.Stop();
+
+            _btnGo.Sensitive = true;
+            _btnCancel.Sensitive = false;
+            if (_reporter != null)
             {
-                _btnGo.Sensitive = true;
-                _btnCancel.Sensitive = false;
-                if (_reporter != null)
-                {
-                    _progressBar.Text = _reporter.Cancel ? "Cancelled" : "Finished!";
-                    _progressBar.Fraction = _reporter.Cancel ? 0.0 : 1.0;
-                }
-            });
+                _progressBar.Text = _reporter.Cancel ? "Cancelled" : "Finished!";
+                _progressBar.Fraction = _reporter.Cancel ? 0.0 : 1.0;
+            }
         }
 
         // ── FILE DIALOGS ─────────────────────────────────────────────────────
@@ -807,30 +822,60 @@ namespace subs2srs
         private class GtkProgressReporter : IProgressReporter
         {
             private readonly ProgressBar _bar;
-            public bool Cancel { get; set; } = false;
+            public bool Cancel { get; set; }
             public int StepsTotal { get; set; }
 
-            public GtkProgressReporter(ProgressBar bar) { _bar = bar; }
+            private string _text;
+            private double _fraction = -1;
+            private bool _dirty;
+            private readonly object _sync = new object();
+            private bool _active = true;
+
+            public GtkProgressReporter(ProgressBar bar)
+            {
+                _bar = bar;
+                GLib.Timeout.Add(50, OnPoll);
+            }
+
+            public void Stop()
+            {
+                _active = false;
+                OnPoll();
+            }
+
+            private bool OnPoll()
+            {
+                string text;
+                double frac;
+                bool dirty;
+                lock (_sync)
+                {
+                    text = _text;
+                    frac = _fraction;
+                    dirty = _dirty;
+                    _dirty = false;
+                }
+                if (dirty)
+                {
+                    if (text != null) _bar.Text = text;
+                    if (frac >= 0) _bar.Fraction = frac;
+                }
+                return _active;
+            }
 
             public void NextStep(int step, string description)
             {
-                Application.Invoke((s, e) => {
-                    _bar.Text = $"[{step}/{StepsTotal}] {description}";
-                    _bar.Fraction = 0.0;
-                });
+                lock (_sync) { _text = $"[{step}/{StepsTotal}] {description}"; _fraction = 0.0; _dirty = true; }
             }
 
             public void UpdateProgress(int percent, string text)
             {
-                Application.Invoke((s, e) => {
-                    _bar.Text = text;
-                    _bar.Fraction = Math.Max(0, Math.Min(1, percent / 100.0));
-                });
+                lock (_sync) { _text = text; _fraction = Math.Max(0, Math.Min(1, percent / 100.0)); _dirty = true; }
             }
 
             public void UpdateProgress(string text)
             {
-                Application.Invoke((s, e) => { _bar.Text = text; });
+                lock (_sync) { _text = text; _dirty = true; }
             }
 
             public void EnableDetail(bool enable) { }

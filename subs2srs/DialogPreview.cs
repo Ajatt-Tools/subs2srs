@@ -52,27 +52,62 @@ namespace subs2srs
         private InfoCombined _cur;
         private bool _guard, _changed;
         private int _findIdx;
+        private bool _running;
+        private bool _destroyed;
+
+        /// <summary>Whether this window has been destroyed or hidden permanently.</summary>
+        public bool IsDestroyed => _destroyed;
 
         public event EventHandler RefreshSettings;
+
+        /// <summary>
+        /// Raised when the user clicks Go in Preview.
+        /// MainWindow subscribes and triggers its own Go logic.
+        /// </summary>
+        public event EventHandler GoRequested;
 
         public DialogPreview() : base(WindowType.Toplevel)
         {
             Title = "Preview";
             SetDefaultSize(1000, 750);
             WindowPosition = WindowPosition.Center;
-            DeleteEvent += (o, a) => { Cleanup(); Destroy(); };
+            DeleteEvent += (o, a) => { a.RetVal = true; Hide(); };
             BuildUI();
         }
 
         public void StartPreview()
         {
+            _destroyed = false;
             ShowAll();
             PopulateEpCombo();
             RunPreviewAsync();
         }
 
+        /// <summary>
+        /// Clean up temp files and dispose snapshot pixbuf.
+        /// Called internally and by MainWindow on application exit.
+        /// </summary>
+        public void CleanupAndDestroy()
+        {
+            _destroyed = true;
+            Cleanup();
+            Destroy();
+        }
+
         private void Cleanup()
         {
+            // Dispose snapshot pixbuf deterministically
+            try
+            {
+                var pb = _imgSnap?.Pixbuf;
+                if (pb != null)
+                {
+                    _imgSnap.Pixbuf = null;
+                    pb.Dispose();
+                }
+            }
+            catch { }
+
             if (_wv?.MediaDir != null && Directory.Exists(_wv.MediaDir))
                 try { Directory.Delete(_wv.MediaDir, true); } catch { }
         }
@@ -181,7 +216,7 @@ namespace subs2srs
             _btnGo = new Button("Go!") { WidthRequest = 100 };
             _btnGo.Clicked += OnGoClicked;
             var btnClose = new Button("Close") { WidthRequest = 100 };
-            btnClose.Clicked += (s, e) => { Cleanup(); Destroy(); };
+            btnClose.Clicked += (s, e) => Hide();
             bot.PackEnd(_btnGo, false, false, 0);
             bot.PackEnd(btnClose, false, false, 0);
             vbox.PackStart(bot, false, false, 0);
@@ -227,11 +262,11 @@ namespace subs2srs
             if (_running) return;
             _running = true;
             Sensitive = false;
-            var reporter = new PProgress(_progress);
-        
+            var reporter = new PProgress(_progress, () => _destroyed);
+
             WorkerVars result = null;
             Exception err = null;
-        
+
             try
             {
                 result = await Task.Run(() => DoPreviewWork(reporter));
@@ -240,35 +275,36 @@ namespace subs2srs
             {
                 err = ex;
             }
-        
-            Application.Invoke((s, e) =>
+
+            reporter.Stop();
+
+            if (_destroyed) return;
+
+            _running = false;
+            Sensitive = true;
+            if (err != null)
             {
-                _running = false;
-                Sensitive = true;
-                if (err != null)
-                {
-                    _progress.Text = "Error";
-                    _progress.Fraction = 0;
-                    if (!(err is OperationCanceledException))
-                        UtilsMsg.showErrMsg(err.Message);
-                    return;
-                }
-        
-                _wv = result;
-                int ep = _comboEp.Active >= 0 ? _comboEp.Active : 0;
-                _guard = true;
-                PopulateTree(ep);
-                _guard = false;
-                UpdateStats();
-                _progress.Text = "Preview ready";
-                _progress.Fraction = 1.0;
-        
-                if (_store.GetIterFirst(out var iter))
-                {
-                    _tv.Selection.SelectIter(iter);
-                    _tv.GrabFocus();
-                }
-            });
+                _progress.Text = "Error";
+                _progress.Fraction = 0;
+                if (!(err is OperationCanceledException))
+                    UtilsMsg.showErrMsg(err.Message);
+                return;
+            }
+
+            _wv = result;
+            int ep = _comboEp.Active >= 0 ? _comboEp.Active : 0;
+            _guard = true;
+            PopulateTree(ep);
+            _guard = false;
+            UpdateStats();
+            _progress.Text = "Preview ready";
+            _progress.Fraction = 1.0;
+
+            if (_store.GetIterFirst(out var iter))
+            {
+                _tv.Selection.SelectIter(iter);
+                _tv.GrabFocus();
+            }
         }
 
         private WorkerVars DoPreviewWork(IProgressReporter rpt)
@@ -386,14 +422,18 @@ namespace subs2srs
                     Settings.Instance.Snapshots.Size, Settings.Instance.Snapshots.Crop, outFile);
             }).ContinueWith(_ =>
             {
+                if (_destroyed) return;
                 Application.Invoke((s2, e2) =>
                 {
+                    if (_destroyed) return;
                     try
                     {
                         if (File.Exists(outFile))
                         {
                             var pb = new Gdk.Pixbuf(outFile);
+                            var old = _imgSnap.Pixbuf;
                             _imgSnap.Pixbuf = pb;
+                            old?.Dispose();
                         }
                     }
                     catch { }
@@ -558,25 +598,24 @@ namespace subs2srs
                     UtilsAudio.convertAudioFormat(mp3, wav, 2);
             });
 
-            Application.Invoke((s2, e2) =>
-            {
-                _btnAudio.Sensitive = true;
-                _btnAudio.Label = "Preview Audio";
+            if (_destroyed) return;
 
-                if (File.Exists(wav))
+            _btnAudio.Sensitive = true;
+            _btnAudio.Label = "Preview Audio";
+
+            if (File.Exists(wav))
+            {
+                try
                 {
-                    try
-                    {
-                        var p = new Process();
-                        p.StartInfo.FileName = "ffplay";
-                        p.StartInfo.Arguments = $"-nodisp -autoexit -loglevel quiet \"{wav}\"";
-                        p.StartInfo.UseShellExecute = false;
-                        p.StartInfo.CreateNoWindow = true;
-                        p.Start();
-                    }
-                    catch { }
+                    var p = new Process();
+                    p.StartInfo.FileName = "ffplay";
+                    p.StartInfo.Arguments = $"-nodisp -autoexit -loglevel quiet \"{wav}\"";
+                    p.StartInfo.UseShellExecute = false;
+                    p.StartInfo.CreateNoWindow = true;
+                    p.Start();
                 }
-            });
+                catch { }
+            }
         }
 
         // ── EPISODE CHANGE ──────────────────────────────────────────────────
@@ -623,7 +662,6 @@ namespace subs2srs
         }
 
         // ── REGENERATE ──────────────────────────────────────────────────────
-    private bool _running;
 
         private void OnRegenClicked(object s, EventArgs e)
         {
@@ -635,42 +673,28 @@ namespace subs2srs
             }
             _changed = false;
             RefreshSettings?.Invoke(this, EventArgs.Empty);
-        
+
             _guard = true;
             _wv = null;
             _cur = null;
             _store.Clear();
             _guard = false;
-        
+
             PopulateEpCombo();
             RunPreviewAsync();
         }
 
-        // ── GO (process from preview) ───────────────────────────────────────
+        // ── GO (delegate to MainWindow) ─────────────────────────────────────
 
-        private async void OnGoClicked(object s, EventArgs e)
+        private void OnGoClicked(object s, EventArgs e)
         {
             if (_wv?.CombinedAll == null) return;
 
-            _btnGo.Sensitive = false;
-            var reporter = new PProgress(_progress);
-            var proc = new SubsProcessor();
+            // Save any text edits / active state back to settings
+            RefreshSettings?.Invoke(this, EventArgs.Empty);
 
-            try
-            {
-                await proc.StartAsync(reporter, _wv.CombinedAll);
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine(ex);
-            }
-
-            Application.Invoke((s2, e2) =>
-            {
-                _btnGo.Sensitive = true;
-                _progress.Text = "Done";
-                _progress.Fraction = 1.0;
-            });
+            // Raise event — MainWindow handles actual processing
+            GoRequested?.Invoke(this, EventArgs.Empty);
         }
 
         // ── PROGRESS REPORTER ───────────────────────────────────────────────
@@ -678,16 +702,65 @@ namespace subs2srs
         private class PProgress : IProgressReporter
         {
             private readonly ProgressBar _b;
+            private readonly Func<bool> _isDestroyed;
             public bool Cancel { get; set; }
             public int StepsTotal { get; set; }
-            public PProgress(ProgressBar b) { _b = b; }
 
-            public void NextStep(int step, string desc) =>
-                Application.Invoke((s, e) => { _b.Text = $"[{step}/{StepsTotal}] {desc}"; _b.Fraction = 0; });
-            public void UpdateProgress(int pct, string text) =>
-                Application.Invoke((s, e) => { _b.Text = text; _b.Fraction = Math.Max(0, Math.Min(1, pct / 100.0)); });
-            public void UpdateProgress(string text) =>
-                Application.Invoke((s, e) => { _b.Text = text; });
+            private string _text;
+            private double _fraction = -1;
+            private bool _dirty;
+            private readonly object _sync = new object();
+            private bool _active = true;
+
+            public PProgress(ProgressBar b, Func<bool> isDestroyed)
+            {
+                _b = b;
+                _isDestroyed = isDestroyed;
+                GLib.Timeout.Add(50, OnPoll);
+            }
+
+            public void Stop()
+            {
+                _active = false;
+                if (!_isDestroyed()) OnPoll();
+            }
+
+            private bool OnPoll()
+            {
+                if (_isDestroyed()) return false;
+                string text;
+                double frac;
+                bool dirty;
+                lock (_sync)
+                {
+                    text = _text;
+                    frac = _fraction;
+                    dirty = _dirty;
+                    _dirty = false;
+                }
+                if (dirty)
+                {
+                    if (text != null) _b.Text = text;
+                    if (frac >= 0) _b.Fraction = frac;
+                }
+                return _active;
+            }
+
+            public void NextStep(int step, string desc)
+            {
+                lock (_sync) { _text = $"[{step}/{StepsTotal}] {desc}"; _fraction = 0.0; _dirty = true; }
+            }
+
+            public void UpdateProgress(int pct, string text)
+            {
+                lock (_sync) { _text = text; _fraction = Math.Max(0, Math.Min(1, pct / 100.0)); _dirty = true; }
+            }
+
+            public void UpdateProgress(string text)
+            {
+                lock (_sync) { _text = text; _dirty = true; }
+            }
+
             public void EnableDetail(bool en) { }
             public void SetDuration(TimeSpan d) { }
             public void OnFFmpegOutput(object sender, DataReceivedEventArgs e) { }
