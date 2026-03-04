@@ -555,7 +555,7 @@ namespace subs2srs
                     writer.WriteLine(FormatDialogPair(workerVars.CombinedAll, epIdx, lineIdx));
 
                     int pct = (int)(progressCount * 100.0 / totalLines);
-                    DialogProgress.updateProgressInvoke(reporter, pct,
+                    reporter?.UpdateProgress(pct,
                         $"Generating subtitle file: line {progressCount} of {totalLines}");
 
                     if (reporter.Cancel) return false;
@@ -593,7 +593,7 @@ namespace subs2srs
                     writer.WriteLine(FormatQuickRefPair(comb, name, episode, progressCount));
 
                     int pct = (int)(progressCount * 100.0 / totalLines);
-                    DialogProgress.updateProgressInvoke(reporter, pct,
+                    reporter?.UpdateProgress(pct,
                         $"Generating quick reference: line {progressCount} of {totalLines}");
 
                     if (reporter.Cancel) return false;
