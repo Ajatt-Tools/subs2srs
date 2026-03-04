@@ -54,6 +54,11 @@ is carried over from the original with minimal changes.
 - Episode change in Preview dialog triggered infinite re-entrant loop (missing guard), causing 100% CPU
 - Audio stream combo not populated when video path uses a glob pattern (`*.mkv`)
 - `File.Move` in workers without `overwrite: true` — atomic rename could throw on interrupted retry
+- `UtilsCommon.getExePaths` — substring `Contains` check could false-match partial path segments; now uses exact `HashSet` match
+
+**Architecture:**
+- `ConstantSettings` → `Settings.Instance` synchronization moved from `MainWindow.LoadSettings()` into `SaveSettings` constructor — adding a new preference no longer requires manual sync in 6 places
+- Legacy per-key `PrefIO.getString/getBool/getInt/getFloat` methods removed (were `[Obsolete]`, unused)
 
 **Performance:**
 - `PrefIO.read()` — read preferences file ~70 times → single pass into dictionary
@@ -83,7 +88,7 @@ is carried over from the original with minimal changes.
 - `LangaugeSpecific` → `LanguageSpecific` (typo fix across all files, `[JsonPropertyName]` for `.s2s` compat)
 - `[Serializable]` / `[NonSerialized]` → removed / `[JsonIgnore]` (unused since `BinaryFormatter` → `System.Text.Json`)
 - `Logger` — `Mutex` → `lock` (single-process, cannot leak)
-- `PrefIO` — legacy per-key read methods marked `[Obsolete]`
+- `PrefIO` — legacy per-key read methods removed
 - `new string[0]` → `Array.Empty<string>()` everywhere
 - `String.Format` → string interpolation throughout
 - Unused `using` directives removed
@@ -140,6 +145,17 @@ On first run, `preferences.txt` is created in
 `~/.config/subs2srs/` (or `$XDG_CONFIG_HOME/subs2srs/`).
 
 Edit via **Preferences** dialog or manually.
+
+### Adding a new preference
+
+1. Add entry to `PrefIO.writeDefaultPreferences()`
+2. Add default constant to `PrefDefaults`
+3. Add mutable property to `ConstantSettings`
+4. Add read logic to `PrefIO.read()`
+5. Add to `DialogPref.BuildPropTable()`
+6. Add to `DialogPref.SavePreferences()`
+7. Add to `Logger.writeSettingsToLog()`
+8. If the preference maps to `Settings.Instance`, add to `SaveSettings` constructor
 
 ### Parallelism
 

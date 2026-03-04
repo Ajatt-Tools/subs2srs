@@ -11,6 +11,14 @@
   Current regex-based replacement is fragile. Read both formats, write JSON.
   Would break manual editing of `preferences.txt` — needs migration path.
 
+- [ ] **`DateTime` → `TimeSpan` for durations and time offsets**
+  `Settings.SpanStart/SpanEnd`, `InfoLine.StartTime/EndTime`,
+  `UtilsSubs.getDurationTime`, `IProgressReporter.SetDuration` all use
+  `DateTime` for values that represent durations, not points in time.
+  Semantically wrong and will break on files longer than 24 hours
+  (rare, but possible for audiobooks). Requires coordinated change
+  across `UtilsName`, `UtilsSubs`, all parsers, and workers.
+
 ## Low priority
 
 - [ ] **Unit tests**
@@ -19,7 +27,8 @@
 
 - [ ] **Remove `SaveSettings` class**
   Serialize `Settings.Instance` directly with `[JsonIgnore]` on transient
-  fields. Requires analysis of all `.s2s` consumers.
+  fields. `SaveSettings.gatherData()` and `Settings.loadSettings()` become
+  unnecessary. Requires analysis of all `.s2s` consumers.
 
 - [ ] **`Process` → async with `CancellationToken`**
   Replace `Thread.Sleep(100)` polling in `startFFmpegProgress()` with
@@ -27,7 +36,3 @@
 
 - [ ] **GTK4 migration**
   GtkSharp for GTK4 is not yet stable. Revisit when upstream is ready.
-
-- [ ] **Delete legacy `PrefIO.getString/getBool/getInt/getFloat`**
-  Already marked `[Obsolete]`. Remove once `DialogPref` is refactored
-  to use the dictionary-based `read()` approach.
