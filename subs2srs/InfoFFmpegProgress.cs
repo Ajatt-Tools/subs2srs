@@ -34,7 +34,7 @@ namespace subs2srs
     int fps;
     double q;
     int fileSize;
-    DateTime time;
+    TimeSpan time;
     double bitrate;
     bool videoProgess; // False = Audio progress
 
@@ -81,7 +81,7 @@ namespace subs2srs
     /// <summary>
     /// The timestamp of the frame currently being processed.
     /// </summary>
-    public DateTime Time
+    public TimeSpan Time
     {
       get { return time; }
       set { time = value; }
@@ -111,7 +111,7 @@ namespace subs2srs
       this.fps = 0;
       this.q = 0;
       this.fileSize = 0;
-      this.time = new DateTime();
+      this.time = TimeSpan.Zero;
       this.bitrate = 0;
       this.videoProgess = false;
     }
@@ -149,11 +149,13 @@ namespace subs2srs
         }
 
         this.fileSize = Convert.ToInt32(match.Groups["Size"].ToString().Trim());
-        this.time = new DateTime();
-        this.time = this.time.AddHours(Convert.ToInt32(match.Groups["Hours"].ToString().Trim()));
-        this.time = this.time.AddMinutes(Convert.ToInt32(match.Groups["Minutes"].ToString().Trim()));
-        this.time = this.time.AddSeconds(Convert.ToInt32(match.Groups["Seconds"].ToString().Trim()));
-        this.time = this.time.AddMilliseconds(10 * Convert.ToInt32(match.Groups["CentiSeconds"].ToString().Trim()));
+
+        int hours = Convert.ToInt32(match.Groups["Hours"].ToString().Trim());
+        int minutes = Convert.ToInt32(match.Groups["Minutes"].ToString().Trim());
+        int seconds = Convert.ToInt32(match.Groups["Seconds"].ToString().Trim());
+        int centiseconds = Convert.ToInt32(match.Groups["CentiSeconds"].ToString().Trim());
+        this.time = new TimeSpan(0, hours, minutes, seconds, centiseconds * 10);
+
         this.bitrate = Convert.ToDouble(match.Groups["Bitrate"].ToString().Trim());
       }
       catch
