@@ -87,6 +87,7 @@ is carried over from the original with minimal changes.
 - `PropertyBag` — removed `ICustomTypeDescriptor` (WinForms `PropertyGrid` leftover), `ArrayList`/`Hashtable` → generics
 - `LangaugeSpecific` → `LanguageSpecific` (typo fix across all files, `[JsonPropertyName]` for `.s2s` compat)
 - `[Serializable]` / `[NonSerialized]` → removed / `[JsonIgnore]` (unused since `BinaryFormatter` → `System.Text.Json`)
+- `DateTime` → `TimeSpan` for all duration/position values (`InfoLine`, `Settings.SpanStart/SpanEnd`, `UtilsSubs`, parsers, workers, dialogs) — semantically correct, supports files >24h
 - `Logger` — `Mutex` → `lock` (single-process, cannot leak)
 - `PrefIO` — legacy per-key read methods removed
 - `new string[0]` → `Array.Empty<string>()` everywhere
