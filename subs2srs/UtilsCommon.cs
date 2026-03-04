@@ -155,7 +155,8 @@ namespace subs2srs
       if (!string.IsNullOrEmpty(dir))
       {
         string oldPath = Environment.GetEnvironmentVariable("PATH") ?? "";
-        if (!oldPath.Contains(dir))
+        var pathDirs = new HashSet<string>(oldPath.Split(Path.PathSeparator));
+        if (!pathDirs.Contains(dir))
           Environment.SetEnvironmentVariable("PATH", oldPath + Path.PathSeparator + dir);
       }
 
