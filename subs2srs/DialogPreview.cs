@@ -323,14 +323,14 @@ namespace subs2srs
             }
         }
 
-        private string FmtTime(DateTime t) =>
-            $"{(int)t.TimeOfDay.TotalHours}:{t.TimeOfDay.Minutes:00}:{t.TimeOfDay.Seconds:00}.{t.TimeOfDay.Milliseconds:000}";
+        private string FmtTime(TimeSpan t) =>
+            $"{(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00}.{t.Milliseconds:000}";
 
         private bool IsLong(InfoCombined cb)
         {
             var d = UtilsSubs.getDurationTime(cb.Subs1.StartTime, cb.Subs1.EndTime);
             return ConstantSettings.LongClipWarningSeconds > 0 &&
-                   d.TimeOfDay.TotalMilliseconds > ConstantSettings.LongClipWarningSeconds * 1000;
+                   d.TotalMilliseconds > ConstantSettings.LongClipWarningSeconds * 1000;
         }
 
         // ── SELECTION ───────────────────────────────────────────────────────
@@ -375,7 +375,7 @@ namespace subs2srs
             if (ep < 0 || ep >= Settings.Instance.VideoClips.Files.Length) return;
 
             string video = Settings.Instance.VideoClips.Files[ep];
-            DateTime mid = UtilsSubs.getMidpointTime(comb.Subs1.StartTime, comb.Subs1.EndTime);
+            TimeSpan mid = UtilsSubs.getMidpointTime(comb.Subs1.StartTime, comb.Subs1.EndTime);
             string outFile = SysPath.Combine(_wv.MediaDir, ConstantSettings.TempImageFilename);
 
             try { File.Delete(outFile); } catch { }
@@ -534,7 +534,7 @@ namespace subs2srs
                 try { if (File.Exists(mp3)) File.Delete(mp3); } catch { }
                 try { if (File.Exists(wav)) File.Delete(wav); } catch { }
 
-                DateTime st = comb.Subs1.StartTime, en = comb.Subs1.EndTime;
+                TimeSpan st = comb.Subs1.StartTime, en = comb.Subs1.EndTime;
                 if (Settings.Instance.AudioClips.PadEnabled)
                 {
                     st = UtilsSubs.applyTimePad(st, -Settings.Instance.AudioClips.PadStart);
@@ -623,7 +623,7 @@ namespace subs2srs
         }
 
         // ── REGENERATE ──────────────────────────────────────────────────────
-	private bool _running;
+    private bool _running;
 
         private void OnRegenClicked(object s, EventArgs e)
         {
@@ -689,7 +689,7 @@ namespace subs2srs
             public void UpdateProgress(string text) =>
                 Application.Invoke((s, e) => { _b.Text = text; });
             public void EnableDetail(bool en) { }
-            public void SetDuration(DateTime d) { }
+            public void SetDuration(TimeSpan d) { }
             public void OnFFmpegOutput(object sender, DataReceivedEventArgs e) { }
         }
     }

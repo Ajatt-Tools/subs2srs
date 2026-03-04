@@ -30,7 +30,7 @@ namespace subs2srs
   {
     private readonly string deckName;
     private readonly int totalNumEpisodes;
-    private readonly DateTime lastTime;
+    private readonly TimeSpan lastTime;
     private readonly int width;
     private readonly int height;
     private readonly int vobsubStreamNum;
@@ -48,7 +48,7 @@ namespace subs2srs
       RegexOptions.Compiled);
 
     public UtilsName(string deckName, int totalNumEpisodes, int totalNumLines,
-      DateTime lastTime, int width, int height)
+      TimeSpan lastTime, int width, int height)
     {
       this.deckName = deckName;
       this.totalNumEpisodes = totalNumEpisodes;
@@ -60,7 +60,7 @@ namespace subs2srs
     }
 
     public UtilsName(string deckName, int totalNumEpisodes, int totalNumLines,
-      DateTime lastTime, int width, int height, int vobsubStreamNum)
+      TimeSpan lastTime, int width, int height, int vobsubStreamNum)
     {
       this.deckName = deckName;
       this.totalNumEpisodes = totalNumEpisodes;
@@ -86,15 +86,15 @@ namespace subs2srs
     /// All per-call state is passed explicitly — safe for concurrent use.
     /// </summary>
     private string formatNumberTokens(Match match, int episodeNum, int sequenceNum,
-      DateTime startTime, DateTime endTime)
+      TimeSpan startTime, TimeSpan endTime)
     {
       int numZeroes = 0;
       bool numZeroesGiven = false;
       string token = "";
       string zeroString = "";
       int value = 0;
-      DateTime diffTime = UtilsSubs.getDurationTime(startTime, endTime);
-      DateTime midTime = UtilsSubs.getMidpointTime(startTime, endTime);
+      TimeSpan diffTime = UtilsSubs.getDurationTime(startTime, endTime);
+      TimeSpan midTime = UtilsSubs.getMidpointTime(startTime, endTime);
       int totalNumLines = TotalNumLines;
 
       // Get number of leading zeroes (if any)
@@ -117,48 +117,48 @@ namespace subs2srs
         {
           // Start times
           if (token == "s_hour") numZeroes = 1;
-          else if (token == "s_min") numZeroes = getMaxNecessaryLeadingZeroes(lastTime.TimeOfDay.Minutes);
+          else if (token == "s_min") numZeroes = getMaxNecessaryLeadingZeroes(lastTime.Minutes);
           else if (token == "s_sec") numZeroes = 2;
           else if (token == "s_hsec") numZeroes = 2;
           else if (token == "s_msec") numZeroes = 3;
-          else if (token == "s_total_hour") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalHours);
-          else if (token == "s_total_min") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMinutes);
-          else if (token == "s_total_sec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalSeconds);
-          else if (token == "s_total_hsec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds / 10);
-          else if (token == "s_total_msec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds);
+          else if (token == "s_total_hour") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalHours);
+          else if (token == "s_total_min") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalMinutes);
+          else if (token == "s_total_sec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalSeconds);
+          else if (token == "s_total_hsec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalMilliseconds / 10);
+          else if (token == "s_total_msec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalMilliseconds);
           // End times
           else if (token == "e_hour") numZeroes = 1;
-          else if (token == "e_min") numZeroes = getMaxNecessaryLeadingZeroes(lastTime.TimeOfDay.Minutes);
+          else if (token == "e_min") numZeroes = getMaxNecessaryLeadingZeroes(lastTime.Minutes);
           else if (token == "e_sec") numZeroes = 2;
           else if (token == "e_hsec") numZeroes = 2;
           else if (token == "e_msec") numZeroes = 3;
-          else if (token == "e_total_hour") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalHours);
-          else if (token == "e_total_min") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMinutes);
-          else if (token == "e_total_sec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalSeconds);
-          else if (token == "e_total_hsec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds / 10);
-          else if (token == "e_total_msec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds);
+          else if (token == "e_total_hour") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalHours);
+          else if (token == "e_total_min") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalMinutes);
+          else if (token == "e_total_sec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalSeconds);
+          else if (token == "e_total_hsec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalMilliseconds / 10);
+          else if (token == "e_total_msec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalMilliseconds);
           // Duration times
           else if (token == "d_hour") numZeroes = 1;
-          else if (token == "d_min") numZeroes = getMaxNecessaryLeadingZeroes(lastTime.TimeOfDay.Minutes);
+          else if (token == "d_min") numZeroes = getMaxNecessaryLeadingZeroes(lastTime.Minutes);
           else if (token == "d_sec") numZeroes = 2;
           else if (token == "d_hsec") numZeroes = 2;
           else if (token == "d_msec") numZeroes = 3;
-          else if (token == "d_total_hour") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalHours);
-          else if (token == "d_total_min") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMinutes);
-          else if (token == "d_total_sec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalSeconds);
-          else if (token == "d_total_hsec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds / 10);
-          else if (token == "d_total_msec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds);
+          else if (token == "d_total_hour") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalHours);
+          else if (token == "d_total_min") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalMinutes);
+          else if (token == "d_total_sec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalSeconds);
+          else if (token == "d_total_hsec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalMilliseconds / 10);
+          else if (token == "d_total_msec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalMilliseconds);
           // Middle times
           else if (token == "m_hour") numZeroes = 1;
-          else if (token == "m_min") numZeroes = getMaxNecessaryLeadingZeroes(lastTime.TimeOfDay.Minutes);
+          else if (token == "m_min") numZeroes = getMaxNecessaryLeadingZeroes(lastTime.Minutes);
           else if (token == "m_sec") numZeroes = 2;
           else if (token == "m_hsec") numZeroes = 2;
           else if (token == "m_msec") numZeroes = 3;
-          else if (token == "m_total_hour") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalHours);
-          else if (token == "m_total_min") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMinutes);
-          else if (token == "m_total_sec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalSeconds);
-          else if (token == "m_total_hsec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds / 10);
-          else if (token == "m_total_msec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TimeOfDay.TotalMilliseconds);
+          else if (token == "m_total_hour") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalHours);
+          else if (token == "m_total_min") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalMinutes);
+          else if (token == "m_total_sec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalSeconds);
+          else if (token == "m_total_hsec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalMilliseconds / 10);
+          else if (token == "m_total_msec") numZeroes = getMaxNecessaryLeadingZeroes((int)lastTime.TotalMilliseconds);
           // The rest
           else if (token == "episode_num") numZeroes = getMaxNecessaryLeadingZeroes(totalNumEpisodes);
           else if (token == "sequence_num") numZeroes = getMaxNecessaryLeadingZeroes(totalNumLines);
@@ -185,49 +185,49 @@ namespace subs2srs
       string formatString = "{0" + zeroString + "}";
 
       // Start times
-      if (token == "s_hour") value = startTime.TimeOfDay.Hours;
-      else if (token == "s_min") value = startTime.TimeOfDay.Minutes;
-      else if (token == "s_sec") value = startTime.TimeOfDay.Seconds;
-      else if (token == "s_hsec") value = startTime.TimeOfDay.Milliseconds / 10;
-      else if (token == "s_msec") value = startTime.TimeOfDay.Milliseconds;
-      else if (token == "s_total_hour") value = (int)startTime.TimeOfDay.TotalHours;
-      else if (token == "s_total_min") value = (int)startTime.TimeOfDay.TotalMinutes;
-      else if (token == "s_total_sec") value = (int)startTime.TimeOfDay.TotalSeconds;
-      else if (token == "s_total_hsec") value = (int)startTime.TimeOfDay.TotalMilliseconds / 10;
-      else if (token == "s_total_msec") value = (int)startTime.TimeOfDay.TotalMilliseconds;
+      if (token == "s_hour") value = startTime.Hours;
+      else if (token == "s_min") value = startTime.Minutes;
+      else if (token == "s_sec") value = startTime.Seconds;
+      else if (token == "s_hsec") value = startTime.Milliseconds / 10;
+      else if (token == "s_msec") value = startTime.Milliseconds;
+      else if (token == "s_total_hour") value = (int)startTime.TotalHours;
+      else if (token == "s_total_min") value = (int)startTime.TotalMinutes;
+      else if (token == "s_total_sec") value = (int)startTime.TotalSeconds;
+      else if (token == "s_total_hsec") value = (int)startTime.TotalMilliseconds / 10;
+      else if (token == "s_total_msec") value = (int)startTime.TotalMilliseconds;
       // End times
-      else if (token == "e_hour") value = endTime.TimeOfDay.Hours;
-      else if (token == "e_min") value = endTime.TimeOfDay.Minutes;
-      else if (token == "e_sec") value = endTime.TimeOfDay.Seconds;
-      else if (token == "e_hsec") value = endTime.TimeOfDay.Milliseconds / 10;
-      else if (token == "e_msec") value = endTime.TimeOfDay.Milliseconds;
-      else if (token == "e_total_hour") value = (int)endTime.TimeOfDay.TotalHours;
-      else if (token == "e_total_min") value = (int)endTime.TimeOfDay.TotalMinutes;
-      else if (token == "e_total_sec") value = (int)endTime.TimeOfDay.TotalSeconds;
-      else if (token == "e_total_hsec") value = (int)endTime.TimeOfDay.TotalMilliseconds / 10;
-      else if (token == "e_total_msec") value = (int)endTime.TimeOfDay.TotalMilliseconds;
+      else if (token == "e_hour") value = endTime.Hours;
+      else if (token == "e_min") value = endTime.Minutes;
+      else if (token == "e_sec") value = endTime.Seconds;
+      else if (token == "e_hsec") value = endTime.Milliseconds / 10;
+      else if (token == "e_msec") value = endTime.Milliseconds;
+      else if (token == "e_total_hour") value = (int)endTime.TotalHours;
+      else if (token == "e_total_min") value = (int)endTime.TotalMinutes;
+      else if (token == "e_total_sec") value = (int)endTime.TotalSeconds;
+      else if (token == "e_total_hsec") value = (int)endTime.TotalMilliseconds / 10;
+      else if (token == "e_total_msec") value = (int)endTime.TotalMilliseconds;
       // Duration times
-      else if (token == "d_hour") value = diffTime.TimeOfDay.Hours;
-      else if (token == "d_min") value = diffTime.TimeOfDay.Minutes;
-      else if (token == "d_sec") value = diffTime.TimeOfDay.Seconds;
-      else if (token == "d_hsec") value = diffTime.TimeOfDay.Milliseconds / 10;
-      else if (token == "d_msec") value = diffTime.TimeOfDay.Milliseconds;
-      else if (token == "d_total_hour") value = (int)diffTime.TimeOfDay.TotalHours;
-      else if (token == "d_total_min") value = (int)diffTime.TimeOfDay.TotalMinutes;
-      else if (token == "d_total_sec") value = (int)diffTime.TimeOfDay.TotalSeconds;
-      else if (token == "d_total_hsec") value = (int)diffTime.TimeOfDay.TotalMilliseconds / 10;
-      else if (token == "d_total_msec") value = (int)diffTime.TimeOfDay.TotalMilliseconds;
+      else if (token == "d_hour") value = diffTime.Hours;
+      else if (token == "d_min") value = diffTime.Minutes;
+      else if (token == "d_sec") value = diffTime.Seconds;
+      else if (token == "d_hsec") value = diffTime.Milliseconds / 10;
+      else if (token == "d_msec") value = diffTime.Milliseconds;
+      else if (token == "d_total_hour") value = (int)diffTime.TotalHours;
+      else if (token == "d_total_min") value = (int)diffTime.TotalMinutes;
+      else if (token == "d_total_sec") value = (int)diffTime.TotalSeconds;
+      else if (token == "d_total_hsec") value = (int)diffTime.TotalMilliseconds / 10;
+      else if (token == "d_total_msec") value = (int)diffTime.TotalMilliseconds;
       // Middle times
-      else if (token == "m_hour") value = midTime.TimeOfDay.Hours;
-      else if (token == "m_min") value = midTime.TimeOfDay.Minutes;
-      else if (token == "m_sec") value = midTime.TimeOfDay.Seconds;
-      else if (token == "m_hsec") value = midTime.TimeOfDay.Milliseconds / 10;
-      else if (token == "m_msec") value = midTime.TimeOfDay.Milliseconds;
-      else if (token == "m_total_hour") value = (int)midTime.TimeOfDay.TotalHours;
-      else if (token == "m_total_min") value = (int)midTime.TimeOfDay.TotalMinutes;
-      else if (token == "m_total_sec") value = (int)midTime.TimeOfDay.TotalSeconds;
-      else if (token == "m_total_hsec") value = (int)midTime.TimeOfDay.TotalMilliseconds / 10;
-      else if (token == "m_total_msec") value = (int)midTime.TimeOfDay.TotalMilliseconds;
+      else if (token == "m_hour") value = midTime.Hours;
+      else if (token == "m_min") value = midTime.Minutes;
+      else if (token == "m_sec") value = midTime.Seconds;
+      else if (token == "m_hsec") value = midTime.Milliseconds / 10;
+      else if (token == "m_msec") value = midTime.Milliseconds;
+      else if (token == "m_total_hour") value = (int)midTime.TotalHours;
+      else if (token == "m_total_min") value = (int)midTime.TotalMinutes;
+      else if (token == "m_total_sec") value = (int)midTime.TotalSeconds;
+      else if (token == "m_total_hsec") value = (int)midTime.TotalMilliseconds / 10;
+      else if (token == "m_total_msec") value = (int)midTime.TotalMilliseconds;
       // The rest
       else if (token == "episode_num") value = episodeNum;
       else if (token == "sequence_num") value = sequenceNum;
@@ -243,7 +243,7 @@ namespace subs2srs
     /// Thread-safe: all per-call state is captured in the lambda closure.
     /// </summary>
     public string createName(string format, int episodeNum, int sequenceNum,
-      DateTime startTime, DateTime endTime, string subs1Text, string subs2Text)
+      TimeSpan startTime, TimeSpan endTime, string subs1Text, string subs2Text)
     {
       string finalName = NumberTokenRegex.Replace(format,
         match => formatNumberTokens(match, episodeNum, sequenceNum, startTime, endTime));

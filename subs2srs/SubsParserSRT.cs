@@ -140,8 +140,8 @@ namespace subs2srs
     /// </summary>
     private InfoLine createLineInfo(string lineText, string rawStartTime, string rawEndTime)
     {
-      DateTime startTime = this.parseTime(rawStartTime);
-      DateTime endTime = this.parseTime(rawEndTime);
+      TimeSpan startTime = this.parseTime(rawStartTime);
+      TimeSpan endTime = this.parseTime(rawEndTime);
 
       lineText = lineText.Replace("\t", " ");
       lineText = Regex.Replace(lineText, "</?[ibuIBU]>", "").Trim();
@@ -155,9 +155,9 @@ namespace subs2srs
     /// <summary>
     /// Parse a .srt formmated timestamp.
     /// </summary>
-    private DateTime parseTime(string rawTime)
+    private TimeSpan parseTime(string rawTime)
     {
-      DateTime time = new DateTime();
+      TimeSpan time = TimeSpan.Zero;
 
       // Format: 
       // "hour:min:sec,msec" (00:00:00,000)
@@ -173,10 +173,10 @@ namespace subs2srs
 
       try
       {
-        time = time.AddHours(Int32.Parse(match.Groups["Hours"].ToString().Trim()));
-        time = time.AddMinutes(Int32.Parse(match.Groups["Mins"].ToString().Trim()));
-        time = time.AddSeconds(Int32.Parse(match.Groups["Secs"].ToString().Trim()));
-        time = time.AddMilliseconds(Int32.Parse(match.Groups["MSecs"].ToString().Trim()));
+        time = time + TimeSpan.FromHours(Int32.Parse(match.Groups["Hours"].ToString().Trim()));
+        time = time + TimeSpan.FromMinutes(Int32.Parse(match.Groups["Mins"].ToString().Trim()));
+        time = time + TimeSpan.FromSeconds(Int32.Parse(match.Groups["Secs"].ToString().Trim()));
+        time = time + TimeSpan.FromMilliseconds(Int32.Parse(match.Groups["MSecs"].ToString().Trim()));
       }
       catch
       {

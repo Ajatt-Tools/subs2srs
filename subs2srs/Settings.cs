@@ -442,8 +442,8 @@ namespace subs2srs
     public string OutputDir { get; set; }
     public bool TimeShiftEnabled { get; set; }
     public bool SpanEnabled { get; set; }
-    public DateTime SpanStart { get; set; }
-    public DateTime SpanEnd { get; set; }
+    public TimeSpan SpanStart { get; set; }
+    public TimeSpan SpanEnd { get; set; }
 
     private string _deckName = "";
     public string DeckName
@@ -547,10 +547,10 @@ namespace subs2srs
     public bool SpanEnabled { get; set; }
 
     [JsonPropertyName("spanStart")]
-    public DateTime SpanStart { get; set; }
+    public TimeSpan SpanStart { get; set; }
 
     [JsonPropertyName("spanEnd")]
-    public DateTime SpanEnd { get; set; }
+    public TimeSpan SpanEnd { get; set; }
 
     [JsonPropertyName("deckName")]
     public string DeckName { get; set; }
@@ -653,8 +653,8 @@ namespace subs2srs
       OutputDir = "";
       TimeShiftEnabled = false;
       SpanEnabled = false;
-      SpanStart = new DateTime().AddMilliseconds(90_000);
-      SpanEnd = new DateTime().AddMilliseconds(1_350_000);
+      SpanStart = TimeSpan.FromMilliseconds(90_000);
+      SpanEnd = TimeSpan.FromMilliseconds(1_350_000);
       DeckName = "";
       EpisodeStartNumber = 1;
 

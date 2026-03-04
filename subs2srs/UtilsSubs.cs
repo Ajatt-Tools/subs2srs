@@ -36,12 +36,12 @@ namespace subs2srs
     /// This will be a number between 0 (no overlap) and 1 (perfect overlap). If no overlap exists, a negative number
     /// will be returned. The more negative it is, the more it didn't overlap.
     /// </summary>
-    public static double getOverlap(DateTime t1s, DateTime t1e, DateTime t2s, DateTime t2e)
+    public static double getOverlap(TimeSpan t1s, TimeSpan t1e, TimeSpan t2s, TimeSpan t2e)
     {
-      double t1s_ms = t1s.TimeOfDay.TotalMilliseconds;
-      double t1e_ms = t1e.TimeOfDay.TotalMilliseconds;
-      double t2s_ms = t2s.TimeOfDay.TotalMilliseconds;
-      double t2e_ms = t2e.TimeOfDay.TotalMilliseconds;
+      double t1s_ms = t1s.TotalMilliseconds;
+      double t1e_ms = t1e.TotalMilliseconds;
+      double t2s_ms = t2s.TotalMilliseconds;
+      double t2e_ms = t2e.TotalMilliseconds;
 
       double overlap = (Math.Min(t1e_ms, t2e_ms) - Math.Max(t1s_ms, t2s_ms)) / (t1e_ms - t1s_ms);
 
@@ -52,45 +52,39 @@ namespace subs2srs
     /// <summary>
     /// Get the midpoint of the two provided times.
     /// </summary>
-    public static DateTime getMidpointTime(DateTime startTime, DateTime endTime)
+    public static TimeSpan getMidpointTime(TimeSpan startTime, TimeSpan endTime)
     {
-      TimeSpan midTimeSpan = endTime.Subtract(startTime);
-      DateTime midTime = new DateTime();
+      TimeSpan duration = endTime - startTime;
 
-      midTime = midTime.AddMilliseconds(midTimeSpan.TotalMilliseconds * 0.5 + startTime.TimeOfDay.TotalMilliseconds);
-
-      return midTime;
+      return startTime + TimeSpan.FromMilliseconds(duration.TotalMilliseconds * 0.5);
     }
 
 
     /// <summary>
     /// Get the difference/duration between the two provided times.
     /// </summary>
-    public static DateTime getDurationTime(DateTime startTime, DateTime endTime)
+    public static TimeSpan getDurationTime(TimeSpan startTime, TimeSpan endTime)
     {
-      TimeSpan durationTimeSpan = endTime.Subtract(startTime);
-      DateTime durationTime = new DateTime();
+      TimeSpan duration = endTime - startTime;
 
-      durationTime = durationTime.AddMilliseconds(Math.Max(0, durationTimeSpan.TotalMilliseconds));
-
-      return durationTime;
+      return duration < TimeSpan.Zero ? TimeSpan.Zero : duration;
     }
 
 
     /// <summary>
     /// Apply padding (in milliseconds) to the given time.
     /// </summary>
-    public static DateTime applyTimePad(DateTime time, int pad)
+    public static TimeSpan applyTimePad(TimeSpan time, int pad)
     {
-      DateTime paddedTime = time;
+      TimeSpan paddedTime;
 
-      if (time.TimeOfDay.TotalMilliseconds + pad >= 0)
+      if (time.TotalMilliseconds + pad >= 0)
       {
-        paddedTime = time.AddMilliseconds(pad);
+        paddedTime = time + TimeSpan.FromMilliseconds(pad);
       }
       else
       {
-        paddedTime = new DateTime();
+        paddedTime = TimeSpan.Zero;
       }
 
       return paddedTime;
@@ -100,18 +94,18 @@ namespace subs2srs
     /// <summary>
     /// Apply a time shift to the given time.
     /// </summary>
-    public static DateTime shiftTiming(DateTime time, int shift)
+    public static TimeSpan shiftTiming(TimeSpan time, int shift)
     {
       return applyTimePad(time, shift);
     }
 
 
     /// <summary>
-    /// Create a DateTime object from the provided "h:mm:ss: formatted string.
+    /// Create a TimeSpan object from the provided "h:mm:ss" formatted string.
     /// </summary>
-    public static DateTime stringToTime(string timeStr)
+    public static TimeSpan stringToTime(string timeStr)
     {
-      DateTime time = new DateTime();
+      TimeSpan time = TimeSpan.Zero;
       Match timeMatch = Regex.Match(timeStr, @"^(?<Hours>\d):(?<Mins>[0-5]\d):(?<Secs>[0-5]\d)$");
 
       if (!timeMatch.Success)
@@ -121,7 +115,7 @@ namespace subs2srs
 
       try
       {
-        time = time.AddHours(Int32.Parse(timeMatch.Groups["Hours"].ToString().Trim()));
+        time = time + TimeSpan.FromHours(Int32.Parse(timeMatch.Groups["Hours"].ToString().Trim()));
       }
       catch
       {
@@ -130,7 +124,7 @@ namespace subs2srs
 
       try
       {
-        time = time.AddMinutes(Int32.Parse(timeMatch.Groups["Mins"].ToString().Trim()));
+        time = time + TimeSpan.FromMinutes(Int32.Parse(timeMatch.Groups["Mins"].ToString().Trim()));
       }
       catch
       {
@@ -139,7 +133,7 @@ namespace subs2srs
 
       try
       {
-        time = time.AddSeconds(Int32.Parse(timeMatch.Groups["Secs"].ToString().Trim()));
+        time = time + TimeSpan.FromSeconds(Int32.Parse(timeMatch.Groups["Secs"].ToString().Trim()));
       }
       catch
       {
@@ -151,12 +145,12 @@ namespace subs2srs
 
 
     /// <summary>
-    /// Create a string from a DateTime object in "h:mm:ss: format.
+    /// Create a string from a TimeSpan object in "h:mm:ss" format.
     /// </summary>
-    public static string timeToString(DateTime date)
+    public static string timeToString(TimeSpan time)
     {
-      return String.Format("{0:00.}", date.Hour) + ":" + String.Format("{0:00.}", 
-        date.Minute) + ":" + String.Format("{0:00.}", date.Second);
+      return String.Format("{0:00.}", time.Hours) + ":" + String.Format("{0:00.}", 
+        time.Minutes) + ":" + String.Format("{0:00.}", time.Seconds);
     }
 
 
@@ -348,13 +342,13 @@ namespace subs2srs
     /// <summary>
     /// Format a time in .ass subtitle format. Example: 0:00:36.16.
     /// </summary>
-    public static string formatAssTime(DateTime time)
+    public static string formatAssTime(TimeSpan time)
     {
       string timeAss = String.Format("{0}:{1:00.}:{2:00.}.{3:00.}",
-                      (int)time.TimeOfDay.TotalHours,
-                      (int)time.TimeOfDay.Minutes,
-                      (int)time.TimeOfDay.Seconds,
-                      (int)(time.TimeOfDay.Milliseconds / 10));
+                      (int)time.TotalHours,
+                      time.Minutes,
+                      time.Seconds,
+                      time.Milliseconds / 10);
 
       return timeAss;
     }
@@ -367,10 +361,10 @@ namespace subs2srs
     {
       List<string> images = new List<string>();
 
-      UtilsName name = new UtilsName(Settings.Instance.DeckName, 0, 0, new DateTime(),
+      UtilsName name = new UtilsName(Settings.Instance.DeckName, 0, 0, TimeSpan.Zero,
         Settings.Instance.VideoClips.Size.Width, Settings.Instance.VideoClips.Size.Height);
-      string prefixStr = name.createName(ConstantSettings.SrsVobsubFilenamePrefix, 0, 0, new DateTime(), new DateTime(), "", "");
-      string suffixStr = name.createName(ConstantSettings.SrsVobsubFilenameSuffix, 0, 0, new DateTime(), new DateTime(), "", "");
+      string prefixStr = name.createName(ConstantSettings.SrsVobsubFilenamePrefix, 0, 0, TimeSpan.Zero, TimeSpan.Zero, "", "");
+      string suffixStr = name.createName(ConstantSettings.SrsVobsubFilenameSuffix, 0, 0, TimeSpan.Zero, TimeSpan.Zero, "", "");
 
       try
       {
@@ -414,18 +408,17 @@ namespace subs2srs
     /// <summary>
     /// Get the last time stamp of all lines in all episodes.
     /// </summary>
-    public static DateTime getLastTime(List<List<InfoCombined>> combinedAll)
+    public static TimeSpan getLastTime(List<List<InfoCombined>> combinedAll)
     {
-      DateTime lastTime = new DateTime();
+      TimeSpan lastTime = TimeSpan.Zero;
 
       foreach (List<InfoCombined> combArray in combinedAll)
       {
         foreach (InfoCombined info in combArray)
         {
-          if (info.Subs1.EndTime.TimeOfDay.TotalMilliseconds > lastTime.TimeOfDay.TotalMilliseconds)
+          if (info.Subs1.EndTime > lastTime)
           {
-            lastTime = new DateTime();
-            lastTime = lastTime.AddMilliseconds(info.Subs1.EndTime.TimeOfDay.TotalMilliseconds);
+            lastTime = info.Subs1.EndTime;
           }
         }
       }

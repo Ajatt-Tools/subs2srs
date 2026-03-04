@@ -40,7 +40,7 @@ namespace subs2srs
       int episodeCount = 0;
       int totalEpisodes = workerVars.CombinedAll.Count;
       int totalLines = UtilsSubs.getTotalLineCount(workerVars.CombinedAll);
-      DateTime lastTime = UtilsSubs.getLastTime(workerVars.CombinedAll);
+      TimeSpan lastTime = UtilsSubs.getLastTime(workerVars.CombinedAll);
 
       UtilsName name = new UtilsName(Settings.Instance.DeckName, totalEpisodes,
         totalLines, lastTime, Settings.Instance.VideoClips.Size.Width, Settings.Instance.VideoClips.Size.Height);
@@ -72,9 +72,9 @@ namespace subs2srs
           if (dialogProgress.Cancel) { cancelled = true; state.Stop(); return; }
 
           InfoCombined comb = item.comb;
-          DateTime startTime = comb.Subs1.StartTime;
-          DateTime endTime = comb.Subs1.EndTime;
-          DateTime midTime = UtilsSubs.getMidpointTime(startTime, endTime);
+          TimeSpan startTime = comb.Subs1.StartTime;
+          TimeSpan endTime = comb.Subs1.EndTime;
+          TimeSpan midTime = UtilsSubs.getMidpointTime(startTime, endTime);
 
           string videoFileName = Settings.Instance.VideoClips.Files[epNum - 1];
 

@@ -23,7 +23,7 @@ namespace subs2srs
 {
     public class UtilsSnapshot
     {
-        public static void takeSnapshotFromVideo(string inFile, DateTime snapTime,
+        public static void takeSnapshotFromVideo(string inFile, TimeSpan snapTime,
             ImageSize size, ImageCrop crop, string outFile)
         {
             string startTimeArg = UtilsVideo.formatStartTimeArg(snapTime);

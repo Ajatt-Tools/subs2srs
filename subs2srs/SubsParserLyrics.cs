@@ -79,11 +79,11 @@ namespace subs2srs
           int startTimeSec = Int32.Parse(timestampMatch.Groups["Sec"].ToString().Trim());
           int startTimeHSec = Int32.Parse(timestampMatch.Groups["HSec"].ToString().Trim());
 
-          DateTime startTime = new DateTime();
-          startTime = startTime.AddMinutes(startTimeMin);
-          startTime = startTime.AddSeconds(startTimeSec);
-          startTime = startTime.AddMilliseconds(startTimeHSec * 10);
-          DateTime endTime = new DateTime();
+          TimeSpan startTime = TimeSpan.Zero
+            + TimeSpan.FromMinutes(startTimeMin)
+            + TimeSpan.FromSeconds(startTimeSec)
+            + TimeSpan.FromMilliseconds(startTimeHSec * 10);
+          TimeSpan endTime = TimeSpan.Zero;
 
           text = text.Replace("\t", " ").Trim();
 
@@ -105,7 +105,7 @@ namespace subs2srs
       }
 
       // Make the endtime of the final lyric an arbitrary 10 seconds long
-      lineInfos[lineInfos.Count - 1].EndTime = new DateTime().AddSeconds(lineInfos[lineInfos.Count - 1].StartTime.TimeOfDay.TotalSeconds + 10);
+      lineInfos[lineInfos.Count - 1].EndTime = lineInfos[lineInfos.Count - 1].StartTime + TimeSpan.FromSeconds(10);
 
       // Remove lines that don't contains lyrics
       for (int lineIdx = lineInfos.Count - 1; lineIdx >= 0; lineIdx--)
@@ -117,7 +117,7 @@ namespace subs2srs
         // Remove line with a colon because it is probably non-lyric meta information
         // remove lines with a website because it is probably just an advertisement
         if ((infoLineCur.Text.Trim().Length == 0)
-          || (infoLineCur.StartTime.TimeOfDay.TotalMilliseconds == infoLineCur.EndTime.TimeOfDay.TotalMilliseconds)
+          || (infoLineCur.StartTime.TotalMilliseconds == infoLineCur.EndTime.TotalMilliseconds)
           || (infoLineCur.Text.Contains(":"))
           || (infoLineCur.Text.Contains("："))
           || (infoLineCur.Text.Contains("www.")))

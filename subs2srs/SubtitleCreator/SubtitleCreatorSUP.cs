@@ -102,12 +102,12 @@ namespace SubtitleCreator
       // VobSub
       public string SUPlanguage; // This parameter is significant for VobSub subtitles only
 
-      public DateTime PackageStartTime;
-      public DateTime PackageEndTime;
+      public TimeSpan PackageStartTime;
+      public TimeSpan PackageEndTime;
 
       private Bitmap _SubtitlePicture;
-      private Rectangle _SubtitleBorders;		// denotes the area within the bitmap that contains text
-      public Rectangle BitmapPos;				// denotes the postion of the bitmap on the screen
+      private Rectangle _SubtitleBorders;       // denotes the area within the bitmap that contains text
+      public Rectangle BitmapPos;               // denotes the postion of the bitmap on the screen
 
       public SUPdata()
       {
@@ -117,8 +117,8 @@ namespace SubtitleCreator
         HDColorSet = new int[256];
         HDTransparency = new byte[256];
 
-        PackageStartTime = new DateTime(0);
-        PackageEndTime = new DateTime(0);
+        PackageStartTime = TimeSpan.Zero;
+        PackageEndTime = TimeSpan.Zero;
 
         _SubtitleBorders = new Rectangle(0, 0, 0, 0);
       }
@@ -205,7 +205,7 @@ namespace SubtitleCreator
             else
               Xmax++;
             //else
-            //	Xmin++;
+            //  Xmin++;
           }
         }
         _SubtitleBorders.Width = Xmax - Xmin + 1;
@@ -284,7 +284,7 @@ namespace SubtitleCreator
 
 
 
-    public DateTime GetStartTime(int Index)
+    public TimeSpan GetStartTime(int Index)
     {
       SUPdata mySUPdata = (SUPdata)SUPList[Index];
       return mySUPdata.PackageStartTime;
@@ -293,7 +293,7 @@ namespace SubtitleCreator
     public int GetStartTimeMsec(int Index)
     {
       SUPdata data = (SUPdata)SUPList[Index];
-      return ((data.PackageStartTime.Hour * 3600 + data.PackageStartTime.Minute * 60 + data.PackageStartTime.Second) * 1000 + data.PackageStartTime.Millisecond);
+      return ((data.PackageStartTime.Hours * 3600 + data.PackageStartTime.Minutes * 60 + data.PackageStartTime.Seconds) * 1000 + data.PackageStartTime.Milliseconds);
     }
 
     /// <summary>
@@ -356,17 +356,16 @@ namespace SubtitleCreator
     public int GetEndTimeMsec(int Index)
     {
       SUPdata data = (SUPdata)SUPList[Index];
-      return ((data.PackageEndTime.Hour * 3600 + data.PackageEndTime.Minute * 60 + data.PackageEndTime.Second) * 1000 + data.PackageEndTime.Millisecond);
+      return ((data.PackageEndTime.Hours * 3600 + data.PackageEndTime.Minutes * 60 + data.PackageEndTime.Seconds) * 1000 + data.PackageEndTime.Milliseconds);
     }
 
-    public void SetEndTime(int Index, DateTime dt)
+    public void SetEndTime(int Index, TimeSpan dt)
     {
       SUPdata data = (SUPdata)SUPList[Index];
       data.PackageEndTime = dt;
-      data.PackageEndTime.AddMilliseconds(-1);
     }
 
-    public DateTime GetEndTime(int Index)
+    public TimeSpan GetEndTime(int Index)
     {
       SUPdata mySUPdata = (SUPdata)SUPList[Index];
       return mySUPdata.PackageEndTime;
@@ -440,9 +439,9 @@ namespace SubtitleCreator
       double V = Math.Round((0.6066 * Red) - (0.4322 * Green) - (0.1744 * Blue) + 128);
       double U = Math.Round(-(0.0843 * Red) - (0.3422 * Green) + (0.4266 * Blue) + 128);
 
-      int Y_ = ((int)Y) - 16;					// Y
-      int Cr = ((int)V) - 128;					// Cr
-      int Cb = ((int)U) - 128;					// Cb
+      int Y_ = ((int)Y) - 16;                   // Y
+      int Cr = ((int)V) - 128;                  // Cr
+      int Cb = ((int)U) - 128;                  // Cb
 
       // Apply SubtitleCreator default formula
       int OutRed = (int)Math.Min(Math.Max(Math.Round(1.1644F * Y_ + 1.596F * Cr), 0), 255); // R
@@ -568,15 +567,15 @@ namespace SubtitleCreator
               }
             }
             /*
-            #	 delay: [sign]hh:mm:ss:ms
+            #    delay: [sign]hh:mm:ss:ms
             #
             # Where:
-            #	 [sign]: +, - (optional)
-            #	 hh: hours (0 <= hh)
-            #	 mm/ss: minutes/seconds (0 <= mm/ss <= 59)
-            #	 ms: milliseconds (0 <= ms <= 999)
+            #    [sign]: +, - (optional)
+            #    hh: hours (0 <= hh)
+            #    mm/ss: minutes/seconds (0 <= mm/ss <= 59)
+            #    ms: milliseconds (0 <= ms <= 999)
             #
-            #	 Note: You can't position a sub before the previous with a negative value.
+            #    Note: You can't position a sub before the previous with a negative value.
              */
             if ((!Line.StartsWith("#")) && (Line.Contains("delay")))
             {
@@ -785,7 +784,7 @@ namespace SubtitleCreator
 
         while (offset_in_sub_file < fs.Length)
         {
-          //					System.Windows.Forms.Application.DoEvents();
+          //                    System.Windows.Forms.Application.DoEvents();
           fs.Position = offset_in_sub_file;
 
           if (((i = fs.ReadByte()) == 0) && ((i = fs.ReadByte()) == 0) && ((i = fs.ReadByte()) == 1) && ((i = fs.ReadByte()) == 0xba))
@@ -968,7 +967,7 @@ namespace SubtitleCreator
         $06: Result.LineOff := ReadLinesOf; //SET_DSPXA - set display pixel area: 0x06xxxxyyyy, xxxx - start addr. of PXD Top Field, yyyy - start addr. of PXD Bottom Field
         $07: ReadChn_ColCon; //CHN_COLCON - change color/contrast, 0x07wwww ....... 0fffffff: where wwww is the length including wwww and termination code 0x0fffffff
         $FF: Break; //CMD_END - command sequence terminator, End of current Command Header
-		 */
+         */
 
 
     public struct StreamsData
@@ -1003,7 +1002,7 @@ namespace SubtitleCreator
       // Start scanning
       while (offset_in_sub_file < fs.Length)
       {
-        //				System.Windows.Forms.Application.DoEvents();
+        //              System.Windows.Forms.Application.DoEvents();
 
         fs.Position = offset_in_sub_file;
 
@@ -1138,14 +1137,14 @@ namespace SubtitleCreator
             Line = IdxTr.ReadLine();
             if ((!Line.StartsWith("#")) && (Line.Contains("id:")))
             {
-              if (TempString != "") TempString += "§";
+              if (TempString != "") TempString += "°";
               TempString += Line;
             }
 
           }
           IdxTr.Close();
 
-          LanguageTable = TempString.Split('§');
+          LanguageTable = TempString.Split('°');
           int Nb_lang = LanguageTable.GetLength(0);
           for (int n = 0; n < Nb_lang; n++)
           {
@@ -1185,9 +1184,9 @@ namespace SubtitleCreator
           for (int t = 0; t < x; t++)
           {
             if (TempString == "") TempString += "-- (Not detected)";
-            else TempString += "§-- (Not detected)";
+            else TempString += "°-- (Not detected)";
           }
-          LanguageTable = TempString.Split('§');
+          LanguageTable = TempString.Split('°');
         }
       }
       catch (Exception e)
@@ -1227,7 +1226,7 @@ namespace SubtitleCreator
      */
     public void ReadSUP(int stream, Color[] customColors, bool[] customTransparency)
     {
-      bool PackageEndTimeNotSpecified = true;		// Some SUPs don't specify the end display time (so use the new start time to set the previous end time)
+      bool PackageEndTimeNotSpecified = true;       // Some SUPs don't specify the end display time (so use the new start time to set the previous end time)
       FileStream fs;
 
       string TempFilename;
@@ -1323,7 +1322,7 @@ namespace SubtitleCreator
         byte[] b = new byte[4];
 
         // Keep track of time
-        DateTime CurrentTime = new DateTime(0);
+        TimeSpan CurrentTime = TimeSpan.Zero;
 
         // Start scanning
         while ((i = fs.ReadByte()) != -1)
@@ -1359,7 +1358,7 @@ namespace SubtitleCreator
             //Debug.WriteLine("PTS="+PTS);
 
             //data.PackageStartTime = data.PackageStartTime.AddMilliseconds(Math.Round(PTS/ticksPerMSec));
-            data.PackageStartTime = data.PackageStartTime.AddMilliseconds(Math.Round(PTS / 90.0F));
+            data.PackageStartTime = data.PackageStartTime + TimeSpan.FromMilliseconds(Math.Round(PTS / 90.0F));
 
             // Read four empty bytes
             fs.Read(b, 0, 4);
@@ -1402,16 +1401,16 @@ namespace SubtitleCreator
                     // Start displaying
                     //data.PackageStartTime = data.PackageStartTime.AddMilliseconds(TimeOfControl/90D);
                     if (TimeOfControl > 0)
-                      data.PackageStartTime = data.PackageStartTime.AddMilliseconds(((TimeOfControl << 10) + 1023) / ticksPerMSec);
+                      data.PackageStartTime = data.PackageStartTime + TimeSpan.FromMilliseconds(((TimeOfControl << 10) + 1023) / ticksPerMSec);
                     if (PackageEndTimeNotSpecified && GetNoOfSubtitles() > 0)
-                      this.SetEndTime(GetNoOfSubtitles() - 1, data.PackageStartTime.AddMilliseconds(-1));
+                      this.SetEndTime(GetNoOfSubtitles() - 1, data.PackageStartTime + TimeSpan.FromMilliseconds(-1));
                     PackageEndTimeNotSpecified = true;
                     break;
                   case 2:
                     PackageEndTimeNotSpecified = false;
                     // Stop displaying
-                    data.PackageEndTime = data.PackageEndTime.AddTicks(data.PackageStartTime.Ticks - data.PackageEndTime.Ticks);
-                    data.PackageEndTime = data.PackageEndTime.AddMilliseconds(((TimeOfControl << 10) + 1023) / ticksPerMSec);
+                    data.PackageEndTime = data.PackageEndTime + TimeSpan.FromTicks(data.PackageStartTime.Ticks - data.PackageEndTime.Ticks);
+                    data.PackageEndTime = data.PackageEndTime + TimeSpan.FromMilliseconds(((TimeOfControl << 10) + 1023) / ticksPerMSec);
                     break;
                   case 3:
                     // Color mapping
@@ -1425,10 +1424,10 @@ namespace SubtitleCreator
                   case 4:
                     // Transparency
                     fs.Read(b, 0, 2);
-                    if (b[0] == 0 && b[1] == 0) break;		// Added for some sups that seem to have some codes resetting all colors
-                    data.Transparency[3] = (byte)((b[0] & 0xF0) >> 4);	//(((int) b[0] & 0xF0) == 0);
+                    if (b[0] == 0 && b[1] == 0) break;      // Added for some sups that seem to have some codes resetting all colors
+                    data.Transparency[3] = (byte)((b[0] & 0xF0) >> 4);  //(((int) b[0] & 0xF0) == 0);
                     data.Transparency[2] = (byte)(b[0] & 0x0F); //(((int) b[0] & 0x0F) == 0);
-                    data.Transparency[1] = (byte)((b[1] & 0xF0) >> 4);	//(((int) b[1] & 0xF0) == 0);
+                    data.Transparency[1] = (byte)((b[1] & 0xF0) >> 4);  //(((int) b[1] & 0xF0) == 0);
                     data.Transparency[0] = (byte)(b[1] & 0x0F); //(((int) b[1] & 0x0F) == 0);
                     break;
                   case 5:
@@ -1496,13 +1495,13 @@ namespace SubtitleCreator
             {
               CurrentTime = data.PackageStartTime;
               if (data.PackageEndTime < data.PackageStartTime)
-                data.PackageEndTime = data.PackageStartTime.AddMilliseconds(100);
+                data.PackageEndTime = data.PackageStartTime + TimeSpan.FromMilliseconds(100);
               SUPList.Add(data);
             }
             else
               data.Dispose();
             //if (NoOfSUPs > 589)
-            //	NoOfSUPs+=0;
+            //  NoOfSUPs+=0;
           }
         }
       }
@@ -1520,7 +1519,7 @@ namespace SubtitleCreator
     {
       float ticksPerMSec = 90.000F;
       if (!IsPAL) ticksPerMSec = 90.090F;
-      bool PackageEndTimeNotSpecified = true;		// Some SUPs don't specify the end display time (so use the new start time to set the previous end time)
+      bool PackageEndTimeNotSpecified = true;       // Some SUPs don't specify the end display time (so use the new start time to set the previous end time)
 
       //bool SetPalette=true;
       bool SetPalette = false;
@@ -1535,12 +1534,12 @@ namespace SubtitleCreator
       byte[] b = new byte[4];
 
       // Keep track of time
-      DateTime CurrentTime = new DateTime(0);
+      TimeSpan CurrentTime = TimeSpan.Zero;
 
       // Start scanning
       while ((i = fs.ReadByte()) != -1)
       {
-        //				System.Windows.Forms.Application.DoEvents();
+        //              System.Windows.Forms.Application.DoEvents();
 
         // Check whether we need to abort
         //if (worker.CancellationPending) {
@@ -1565,7 +1564,7 @@ namespace SubtitleCreator
           int PTS = Swap4Bytes(b);
 
           //data.PackageStartTime = data.PackageStartTime.AddMilliseconds(Math.Round(PTS/ticksPerMSec));
-          data.PackageStartTime = data.PackageStartTime.AddMilliseconds(Math.Round(PTS / 90.0F));
+          data.PackageStartTime = data.PackageStartTime + TimeSpan.FromMilliseconds(Math.Round(PTS / 90.0F));
 
           // Read four empty bytes
           fs.Read(b, 0, 4);
@@ -1573,7 +1572,7 @@ namespace SubtitleCreator
           // Save SUP reference position
           long refPos = fs.Position;
           // Pointer to next package
-          fs.Read(b, 0, 2);	// As it is a HD-SUP they will be 0000
+          fs.Read(b, 0, 2); // As it is a HD-SUP they will be 0000
           // Now read 4 bytes (SPU_SZ)
           fs.Read(b, 0, 4);
           data.nextSUP = refPos + (long)((int)b[0] << 24 | (int)b[1] << 16 | (int)b[2] << 8 | (int)b[3]);
@@ -1594,7 +1593,7 @@ namespace SubtitleCreator
             int TimeOfControl = ((int)b[0] << 8 | (int)b[1]);
             // Read offset to next control sequence
             fs.Read(b, 0, 4);
-            long tmp = refPos + ((int)b[0] << 24 | (int)b[1] << 16 | (int)b[2] << 8 | (int)b[3]);						// Are we dealing with the last control seq (next control equals previous next control)
+            long tmp = refPos + ((int)b[0] << 24 | (int)b[1] << 16 | (int)b[2] << 8 | (int)b[3]);                       // Are we dealing with the last control seq (next control equals previous next control)
             if (NextControl != tmp && tmp > fs.Position)
               NextControl = tmp;
             else
@@ -1610,16 +1609,16 @@ namespace SubtitleCreator
                   // Start displaying
                   //data.PackageStartTime = data.PackageStartTime.AddMilliseconds(TimeOfControl/90D);
                   if (TimeOfControl > 0)
-                    data.PackageStartTime = data.PackageStartTime.AddMilliseconds(((TimeOfControl << 10) + 1023) / ticksPerMSec);
+                    data.PackageStartTime = data.PackageStartTime + TimeSpan.FromMilliseconds(((TimeOfControl << 10) + 1023) / ticksPerMSec);
                   if (PackageEndTimeNotSpecified && GetNoOfSubtitles() > 0)
-                    this.SetEndTime(GetNoOfSubtitles() - 1, data.PackageStartTime.AddMilliseconds(-1));
+                    this.SetEndTime(GetNoOfSubtitles() - 1, data.PackageStartTime + TimeSpan.FromMilliseconds(-1));
                   PackageEndTimeNotSpecified = true;
                   break;
                 case 2:
                   PackageEndTimeNotSpecified = false;
                   // Stop displaying
-                  data.PackageEndTime = data.PackageEndTime.AddTicks(data.PackageStartTime.Ticks - data.PackageEndTime.Ticks);
-                  data.PackageEndTime = data.PackageEndTime.AddMilliseconds(((TimeOfControl << 10) + 1023) / ticksPerMSec);
+                  data.PackageEndTime = data.PackageEndTime + TimeSpan.FromTicks(data.PackageStartTime.Ticks - data.PackageEndTime.Ticks);
+                  data.PackageEndTime = data.PackageEndTime + TimeSpan.FromMilliseconds(((TimeOfControl << 10) + 1023) / ticksPerMSec);
                   break;
                 case 3:
                   // Color mapping
@@ -1656,10 +1655,10 @@ namespace SubtitleCreator
                 case 4:
                   // Transparency
                   fs.Read(b, 0, 2);
-                  if (b[0] == 0 && b[1] == 0) break;		// Added for some sups that seem to have some codes resetting all colors
-                  data.Transparency[3] = (byte)((b[0] & 0xF0) >> 4);	//(((int) b[0] & 0xF0) == 0);
+                  if (b[0] == 0 && b[1] == 0) break;        // Added for some sups that seem to have some codes resetting all colors
+                  data.Transparency[3] = (byte)((b[0] & 0xF0) >> 4);    //(((int) b[0] & 0xF0) == 0);
                   data.Transparency[2] = (byte)(b[0] & 0x0F); //(((int) b[0] & 0x0F) == 0);
-                  data.Transparency[1] = (byte)((b[1] & 0xF0) >> 4);	//(((int) b[1] & 0xF0) == 0);
+                  data.Transparency[1] = (byte)((b[1] & 0xF0) >> 4);    //(((int) b[1] & 0xF0) == 0);
                   data.Transparency[0] = (byte)(b[1] & 0x0F); //(((int) b[1] & 0x0F) == 0);
                   break;
                 case 0x84:
@@ -1793,7 +1792,7 @@ namespace SubtitleCreator
 
           if (data.PackageStartTime >= CurrentTime) ConvertHDSUP2Bitmap(fs, data);
           // Save in PNG (Portable Networks Graphics) format -> more compressed than bitmap
-          //					string myFile = "C:\\temp\\SUPBitmap" + NoOfSUPs + ".png";
+          //                    string myFile = "C:\\temp\\SUPBitmap" + NoOfSUPs + ".png";
 
           // Fill the SD color table
           data.ColorSet[3] = 3;
@@ -1816,47 +1815,47 @@ namespace SubtitleCreator
           {
             CurrentTime = data.PackageStartTime;
             if (data.PackageEndTime < data.PackageStartTime)
-              data.PackageEndTime = data.PackageStartTime.AddMilliseconds(100);
+              data.PackageEndTime = data.PackageStartTime + TimeSpan.FromMilliseconds(100);
             SUPList.Add(data);
           }
           else
             data.Dispose();
           //if (NoOfSUPs > 589)
-          //	NoOfSUPs+=0;
+          //    NoOfSUPs+=0;
         }
 
         // To be fixed lated
-        //			SUPPreviewForm.SetIFOColours();				
+        //          SUPPreviewForm.SetIFOColours();             
       }
     }
 
     #region Example how to invert a bitmap
     /*
-			public static bool Invert(Bitmap b)
-			{
-				// GDI+ still lies to us - the return format is BGR, NOT RGB.
-				BitmapData bmData = b.LockBits(new Rectangle(0, 0, b.Width, b.Height),
-					ImageLockMode.ReadWrite, PixelFormat.Format24bppRgb);
-				int stride = bmData.Stride;
-				System.IntPtr Scan0 = bmData.Scan0;
-				unsafe
-				{
-					byte * p = (byte *)(void *)Scan0;
-					int nOffset = stride - b.Width*3;
-					int nWidth = b.Width * 3;
-					for(int y=0;y < b.Height;++y)
-					{
-						for(int x=0; x < nWidth; ++x )
-						{
-							p[0] = (byte)(255-p[0]);
-							++p;
-						}
-						p += nOffset;
-					}
-				}
-			}
-			b.UnlockBits(bmData);
-		 */
+            public static bool Invert(Bitmap b)
+            {
+                // GDI+ still lies to us - the return format is BGR, NOT RGB.
+                BitmapData bmData = b.LockBits(new Rectangle(0, 0, b.Width, b.Height),
+                    ImageLockMode.ReadWrite, PixelFormat.Format24bppRgb);
+                int stride = bmData.Stride;
+                System.IntPtr Scan0 = bmData.Scan0;
+                unsafe
+                {
+                    byte * p = (byte *)(void *)Scan0;
+                    int nOffset = stride - b.Width*3;
+                    int nWidth = b.Width * 3;
+                    for(int y=0;y < b.Height;++y)
+                    {
+                        for(int x=0; x < nWidth; ++x )
+                        {
+                            p[0] = (byte)(255-p[0]);
+                            ++p;
+                        }
+                        p += nOffset;
+                    }
+                }
+            }
+            b.UnlockBits(bmData);
+         */
     #endregion
 
     /// <summary>
@@ -1962,31 +1961,31 @@ namespace SubtitleCreator
             }
             x = RunLength = color = 0;
 
-            /*						HD-RLE decoding
+            /*                      HD-RLE decoding
                         (P=Color Index, R=RLE)
-						
+                        
                         1 pixel - 2 bits
                         00PP
-						
-                        2-9 pixels – 2 bits
+                        
+                        2-9 pixels - 2 bits
                         10PP0RRR
-						
-                        10-136 pixels – 2 bits
+                        
+                        10-136 pixels - 2 bits
                         10PP1RRRRRRR
-						
-                        Full Line – 2 bits
+                        
+                        Full Line - 2 bits
                         10PP10000000
-						
-                        1 pixel – 8 bits
+                        
+                        1 pixel - 8 bits
                         01PPPPPPPP
-						
-                        2-9 pixels – 8 bits
+                        
+                        2-9 pixels - 8 bits
                         11PPPPPPPP0RRR
-						
-                        10-136 pixels – 8 bits
+                        
+                        10-136 pixels - 8 bits
                         11PPPPPPPP1RRRRRRR
-						
-                        To end of line – 8 bits
+                        
+                        To end of line - 8 bits
                         11PPPPPPPP10000000
             */
 
@@ -2055,7 +2054,7 @@ namespace SubtitleCreator
                 if (Xmin > x)
                   Xmin = x;
                 if (Xmax < x + RunLength && x + RunLength <= data.BitmapPos.Width)
-                  Xmax = x + RunLength;			// -1 CHECK THIS!!!!
+                  Xmax = x + RunLength;         // -1 CHECK THIS!!!!
                 if (Ymin > y)
                   Ymin = y;
                 if (Ymax < y && y < data.BitmapPos.Height)
@@ -2088,10 +2087,10 @@ namespace SubtitleCreator
               if (EOL || x >= data.BitmapPos.Width)
               {
                 EOL = false;
-                x = 0;					// Reset
-                y += 2;					// Keep track of vertical pos. in bmp
-                p = p0 + y * stride;		// Go to next line
-                Read2Bits(true);		// Flush
+                x = 0;                  // Reset
+                y += 2;                 // Keep track of vertical pos. in bmp
+                p = p0 + y * stride;        // Go to next line
+                Read2Bits(true);        // Flush
               }
             }
           }
@@ -2101,7 +2100,7 @@ namespace SubtitleCreator
         Bitmap SDbmpSUP = new Bitmap(_bmpSUP.Width, _bmpSUP.Height, _HDbmpSUP.PixelFormat);
 
         // Resize according to set video mode (PAL or NTSC)
-        //				SDbmpSUP = (Bitmap) ImageResize(_HDbmpSUP,_bmpSUP.Width,_bmpSUP.Height,System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor);
+        //              SDbmpSUP = (Bitmap) ImageResize(_HDbmpSUP,_bmpSUP.Width,_bmpSUP.Height,System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor);
         SDbmpSUP = (Bitmap)ImageResize(_HDbmpSUP, VideoSizeX, Instance.VideoSizeY, System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor);
 
         // Second convert it to 4 bit/indexed
@@ -2172,9 +2171,9 @@ namespace SubtitleCreator
         _bmpSUP.UnlockBits(SD4data);
 
         // Resize data parameters according to resized SD subtitle
-        //				float Xfactor = (float) _bmpSUP.Width/ (float)_HDbmpSUP.Width;
+        //              float Xfactor = (float) _bmpSUP.Width/ (float)_HDbmpSUP.Width;
         float Xfactor = (float)VideoSizeX / (float)_HDbmpSUP.Width;
-        //				float Yfactor = (float) _bmpSUP.Height/ (float)_HDbmpSUP.Height;
+        //              float Yfactor = (float) _bmpSUP.Height/ (float)_HDbmpSUP.Height;
         float Yfactor = (float)VideoSizeY / (float)_HDbmpSUP.Height;
         data.BitmapPos.Width = (int)(data.BitmapPos.Width * Xfactor) + 1;
         data.BitmapPos.Height = (int)(data.BitmapPos.Height * Yfactor) + 1;
@@ -2185,7 +2184,7 @@ namespace SubtitleCreator
         {
           //if (Xmin < 10 && Xmax > data.BitmapPos.Width - 10 && Ymin < 10 && Ymax > data.BitmapPos.Height- 10)
           // Keep the original size if it is almost the same
-          //	data.SetSubtitleBorders(0,data.BitmapPos.Width-1,0,data.BitmapPos.Height-1);
+          //    data.SetSubtitleBorders(0,data.BitmapPos.Width-1,0,data.BitmapPos.Height-1);
           //else
           data.SetSubtitleBorders(Xmin,
                                   Math.Min(data.BitmapPos.Width - 1, Xmax - 1),
@@ -2279,15 +2278,15 @@ namespace SubtitleCreator
 
         #region Setting the color palette for indexed pictures
         /* http://www.charlespetzold.com/pwcs/PaletteChange.html
-				ColorPalette pal = img.Palette;
-				for (int i=0; i<4; i++)
-					pal.Entries[i] = clr;
-				img.Palette = pal; // The crucial statement
-				
-				// Make sure that in my case, the color palette only contains 4 entries, for each color index
-				// in the original bitmap. This allows me to use the same IFO color twice, for example when the
-				// original colors reference the same color, once transparent, and once opaque.
-				 */
+                ColorPalette pal = img.Palette;
+                for (int i=0; i<4; i++)
+                    pal.Entries[i] = clr;
+                img.Palette = pal; // The crucial statement
+                
+                // Make sure that in my case, the color palette only contains 4 entries, for each color index
+                // in the original bitmap. This allows me to use the same IFO color twice, for example when the
+                // original colors reference the same color, once transparent, and once opaque.
+                 */
         #endregion
         ColorPalette pal = _bmpSUP.Palette;
 
@@ -2386,7 +2385,7 @@ namespace SubtitleCreator
                 {
                   EOL = true;
                   color = RunLength;
-                  RunLength = data.BitmapPos.Width - x;	// - 1 REMOVED Fill to end of line with color
+                  RunLength = data.BitmapPos.Width - x; // - 1 REMOVED Fill to end of line with color
                 }
                 else
                 {
@@ -2404,7 +2403,7 @@ namespace SubtitleCreator
                 if (Xmin > x)
                   Xmin = x;
                 if (Xmax < x + RunLength && x + RunLength <= data.BitmapPos.Width)
-                  Xmax = x + RunLength;			// -1 CHECK THIS!!!!
+                  Xmax = x + RunLength;         // -1 CHECK THIS!!!!
                 if (Ymin > y)
                   Ymin = y;
                 if (Ymax < y && y < data.BitmapPos.Height)
@@ -2413,26 +2412,26 @@ namespace SubtitleCreator
 
               #region Example how to use Format4bppIndexed
               /* Source: http://www.bobpowell.net/lockingbits.htm
-							 * Accessing individual pixels in a 4 bit per pixel image is handled in a similar manner.
-							 * The upper and lower nibble of the byte must be dealt with separately and changing the
-							 * contents of the odd X pixels should not effect the even X pixels. The code below shows
-							 * how to perform this in C#.
-							BitmapData bmd=bm.LockBits(new Rectangle(0, 0, 10, 10),
-								System.Drawing.Imaging.ImageLockMode.ReadOnly, bm.PixelFormat);
-							int offset = (y * bmd.Stride) + (x >> 1);
-							byte currentByte = ((byte *)bmd.Scan0)[offset];
-							if((x&1) == 1)
-							{
-								currentByte &= 0xF0;
-								currentByte |= (byte)(colorIndex & 0x0F);
-							}
-							else
-							{
-								currentByte &= 0x0F;
-								currentByte |= (byte)(colorIndex << 4);
-							}
-							((byte *)bmd.Scan0)[offset]=currentByte;
-							 */
+                             * Accessing individual pixels in a 4 bit per pixel image is handled in a similar manner.
+                             * The upper and lower nibble of the byte must be dealt with separately and changing the
+                             * contents of the odd X pixels should not effect the even X pixels. The code below shows
+                             * how to perform this in C#.
+                            BitmapData bmd=bm.LockBits(new Rectangle(0, 0, 10, 10),
+                                System.Drawing.Imaging.ImageLockMode.ReadOnly, bm.PixelFormat);
+                            int offset = (y * bmd.Stride) + (x >> 1);
+                            byte currentByte = ((byte *)bmd.Scan0)[offset];
+                            if((x&1) == 1)
+                            {
+                                currentByte &= 0xF0;
+                                currentByte |= (byte)(colorIndex & 0x0F);
+                            }
+                            else
+                            {
+                                currentByte &= 0x0F;
+                                currentByte |= (byte)(colorIndex << 4);
+                            }
+                            ((byte *)bmd.Scan0)[offset]=currentByte;
+                             */
               #endregion
 
               // Convert color using color mapping: As the PixelFormat is 4bpp indexed,
@@ -2447,7 +2446,7 @@ namespace SubtitleCreator
                   // although this should not happen, I include it because I don't
                   // know the exact sup format, and it happened sometimes.
                   // Write in BGR!!
-                  if ((x & 1) == 0)		// Even
+                  if ((x & 1) == 0)     // Even
                     p[0] = (byte)(color << 4);
                   //p[0]  = (byte) (data.ColorSet[color]<<4);
                   else
@@ -2468,10 +2467,10 @@ namespace SubtitleCreator
               if (EOL || x >= data.BitmapPos.Width)
               {
                 EOL = false;
-                x = 0;					// Reset
-                y += 2;					// Keep track of vertical pos. in bmp
-                p = p0 + y * stride;		// Go to next line
-                Read2Bits(true);		// Flush
+                x = 0;                  // Reset
+                y += 2;                 // Keep track of vertical pos. in bmp
+                p = p0 + y * stride;        // Go to next line
+                Read2Bits(true);        // Flush
               }
             }
           }
@@ -2486,12 +2485,12 @@ namespace SubtitleCreator
 
         // Copy the relevant part to data, but first check its validity
         //if (Xmin >= 0 && Xmin < _bmpSUP.Width-1 && Xmax > 1 && Xmax < _bmpSUP.Width &&
-        //	Ymin >= 0 && Ymin < _bmpSUP.Height-1&& Ymax > 1 && Ymax < _bmpSUP.Height)
+        //  Ymin >= 0 && Ymin < _bmpSUP.Height-1&& Ymax > 1 && Ymax < _bmpSUP.Height)
         if (Xmin >= 0 && Xmax > 1 && Ymin >= 0 && Ymax > 1)
         {
           //if (Xmin < 10 && Xmax > data.BitmapPos.Width - 10 && Ymin < 10 && Ymax > data.BitmapPos.Height- 10)
           // Keep the original size if it is almost the same
-          //	data.SetSubtitleBorders(0,data.BitmapPos.Width-1,0,data.BitmapPos.Height-1);
+          //    data.SetSubtitleBorders(0,data.BitmapPos.Width-1,0,data.BitmapPos.Height-1);
           //else
           data.SetSubtitleBorders(Xmin,
                                   Math.Min(data.BitmapPos.Width - 1, Xmax - 1),
@@ -2526,23 +2525,23 @@ namespace SubtitleCreator
 
       #region mpucoder's example
       /*
-				MPUCoder's DVD contains the following regional information:
-				07 00 01 10 00 96 11 dd 00 00 62 42 ff f0 0f ff ff ff ff
+                MPUCoder's DVD contains the following regional information:
+                07 00 01 10 00 96 11 dd 00 00 62 42 ff f0 0f ff ff ff ff
 
-				Decode:
-				07         			Start CHG_COLCON
-				00 10               2 byte value: total value of the parameter area, including the size word
-				00 96 11 dd         4 byte value: 0s ss nt tt -->
-            	          			sss (starting top line)= 0x096 = 150
-                	      			n number of PX_CTLI to follow  =   1
-                    	  			ttt (end line)         = 0x1dd = 477
-				00 00 62 42 ff f0   6 bytes, starting column and new color and contrast values
-    	                  			starting column  = 00 00
-        	              			new color values = 62 42
-            	          			contrast values  = ff f0
-				0f ff ff ff         2 byte: end of parameter area
-				ff					End of subpicture (does not belong to the 0x07 code)
-			 */
+                Decode:
+                07                  Start CHG_COLCON
+                00 10               2 byte value: total value of the parameter area, including the size word
+                00 96 11 dd         4 byte value: 0s ss nt tt -->
+                                    sss (starting top line)= 0x096 = 150
+                                    n number of PX_CTLI to follow  =   1
+                                    ttt (end line)         = 0x1dd = 477
+                00 00 62 42 ff f0   6 bytes, starting column and new color and contrast values
+                                    starting column  = 00 00
+                                    new color values = 62 42
+                                    contrast values  = ff f0
+                0f ff ff ff         2 byte: end of parameter area
+                ff                  End of subpicture (does not belong to the 0x07 code)
+             */
       #endregion
 
       ColorPalette pal = _bmpSUP.Palette;

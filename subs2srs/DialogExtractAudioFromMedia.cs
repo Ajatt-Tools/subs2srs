@@ -76,10 +76,10 @@ namespace subs2srs
         private string outputDir;
         private int episodeStartNumber;
         private bool isSingleFile;
-        private DateTime clipLength;
+        private TimeSpan clipLength;
         private int bitrate;
         private bool useSpan;
-        private DateTime spanStart, spanEnd;
+        private TimeSpan spanStart, spanEnd;
         private InfoStream audioStream;
 
         public string MediaFilePattern { set => _txtMediaFile.Text = value; }
@@ -586,8 +586,8 @@ namespace subs2srs
                 episode++;
                 if (_cancelRequested) return false;
 
-                DateTime mediaStartTime = new DateTime();
-                DateTime mediaEndTime;
+                TimeSpan mediaStartTime = TimeSpan.Zero;
+                TimeSpan mediaEndTime;
 
                 try { mediaEndTime = UtilsVideo.getVideoLength(file); }
                 catch (Exception ex)
@@ -603,7 +603,7 @@ namespace subs2srs
                 }
 
                 UtilsName name = new UtilsName(deckName, mediaFiles.Length, 1, mediaEndTime, 0, 0);
-                DateTime mediaDuration = UtilsSubs.getDurationTime(mediaStartTime, mediaEndTime);
+                TimeSpan mediaDuration = UtilsSubs.getDurationTime(mediaStartTime, mediaEndTime);
 
                 UpdateProgress(episode, mediaFiles.Length, "Processing audio...");
 
@@ -616,7 +616,7 @@ namespace subs2srs
 
                 int numClips = 1;
                 if (!isSingleFile)
-                    numClips = (int)Math.Ceiling(mediaDuration.TimeOfDay.TotalMilliseconds / (clipLength.TimeOfDay.TotalSeconds * 1000.0));
+                    numClips = (int)Math.Ceiling(mediaDuration.TotalMilliseconds / (clipLength.TotalSeconds * 1000.0));
 
                 for (int clipIdx = 0; clipIdx < numClips; clipIdx++)
                 {
@@ -625,8 +625,8 @@ namespace subs2srs
                     UpdateProgress(episode, mediaFiles.Length,
                         $"Splitting {clipIdx + 1}/{numClips} from file {episode}/{mediaFiles.Length}");
 
-                    DateTime startTime = new DateTime();
-                    DateTime endTime = new DateTime();
+                    TimeSpan startTime = TimeSpan.Zero;
+                    TimeSpan endTime = TimeSpan.Zero;
 
                     if (isSingleFile)
                     {
@@ -634,14 +634,14 @@ namespace subs2srs
                     }
                     else
                     {
-                        startTime = startTime.AddSeconds(clipLength.TimeOfDay.TotalSeconds * clipIdx);
-                        endTime = endTime.AddSeconds(clipLength.TimeOfDay.TotalSeconds * (clipIdx + 1));
-                        if (endTime.TimeOfDay.TotalMilliseconds >= mediaDuration.TimeOfDay.TotalMilliseconds)
+                        startTime = startTime + TimeSpan.FromSeconds(clipLength.TotalSeconds * clipIdx);
+                        endTime = endTime + TimeSpan.FromSeconds(clipLength.TotalSeconds * (clipIdx + 1));
+                        if (endTime.TotalMilliseconds >= mediaDuration.TotalMilliseconds)
                             endTime = mediaDuration;
                     }
 
-                    DateTime startTimeName = startTime.AddMilliseconds(mediaStartTime.TimeOfDay.TotalMilliseconds);
-                    DateTime endTimeName = endTime.AddMilliseconds(mediaStartTime.TimeOfDay.TotalMilliseconds);
+                    TimeSpan startTimeName = startTime + mediaStartTime;
+                    TimeSpan endTimeName = endTime + mediaStartTime;
 
                     name.TotalNumLines = numClips;
 
@@ -664,8 +664,8 @@ namespace subs2srs
                         int curLyricsNum = 1;
                         foreach (InfoCombined comb in combinedAll[episode - 1])
                         {
-                            if (comb.Subs1.StartTime.TimeOfDay.TotalMilliseconds >= startTimeName.TimeOfDay.TotalMilliseconds
-                                && comb.Subs1.StartTime.TimeOfDay.TotalMilliseconds <= endTimeName.TimeOfDay.TotalMilliseconds)
+                            if (comb.Subs1.StartTime.TotalMilliseconds >= startTimeName.TotalMilliseconds
+                                && comb.Subs1.StartTime.TotalMilliseconds <= endTimeName.TotalMilliseconds)
                             {
                                 tagLyrics += FormatLyricsPair(comb, name, startTimeName, 
                                     episode + episodeStartNumber - 1, curLyricsNum, subs2Pattern) + "\n";
@@ -682,13 +682,12 @@ namespace subs2srs
         }
 
         private string FormatLyricsPair(InfoCombined comb, UtilsName name, 
-            DateTime clipStartTime, int episode, int sequenceNum, string subs2Pattern)
+            TimeSpan clipStartTime, int episode, int sequenceNum, string subs2Pattern)
         {
             string subs1Text = comb.Subs1.Text;
             string subs2Text = comb.Subs2.Text;
 
-            DateTime lyricTime = new DateTime();
-            lyricTime = lyricTime.AddMilliseconds(comb.Subs1.StartTime.TimeOfDay.TotalMilliseconds - clipStartTime.TimeOfDay.TotalMilliseconds);
+            TimeSpan lyricTime = TimeSpan.FromMilliseconds(comb.Subs1.StartTime.TotalMilliseconds - clipStartTime.TotalMilliseconds);
 
             string pair = name.createName(ConstantSettings.ExtractMediaLyricsSubs1Format,
                 episode, sequenceNum, lyricTime, lyricTime, subs1Text, subs2Text);

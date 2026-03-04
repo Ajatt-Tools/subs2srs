@@ -67,19 +67,19 @@ namespace subs2srs
         sup.ReadSUP(this.Stream, null, null);
       }
 
-      UtilsName name = new UtilsName(Settings.Instance.DeckName, 0, 0, new DateTime(),
+      UtilsName name = new UtilsName(Settings.Instance.DeckName, 0, 0, TimeSpan.Zero,
         Settings.Instance.VideoClips.Size.Width, Settings.Instance.VideoClips.Size.Height);
 
       for (int i = 0; i < sup.GetNoOfSubtitles(); i++)
       {
-        DateTime startTime = sup.GetStartTime(i);
-        DateTime endTime = sup.GetEndTime(i);
+        TimeSpan startTime = sup.GetStartTime(i);
+        TimeSpan endTime = sup.GetEndTime(i);
 
         // Used for the filename and the desision to save the image file.
         // Not used to set the time of the InfoLine because the shift is
         // also applied in WorkerSubs
-        DateTime shiftedStartTime = sup.GetStartTime(i);
-        DateTime shiftedEndTime = sup.GetEndTime(i);
+        TimeSpan shiftedStartTime = sup.GetStartTime(i);
+        TimeSpan shiftedEndTime = sup.GetEndTime(i);
 
         if (Settings.Instance.TimeShiftEnabled)
         {
@@ -92,15 +92,15 @@ namespace subs2srs
                                       this.Episode,
                                       this.Stream,
                                       this.SubsNum,
-                                      (int)shiftedStartTime.TimeOfDay.TotalMinutes,
-                                      (int)shiftedStartTime.TimeOfDay.Seconds,
-                                      (int)(shiftedStartTime.TimeOfDay.Milliseconds * 0.1),
-                                      (int)shiftedEndTime.TimeOfDay.TotalMinutes,
-                                      (int)shiftedEndTime.TimeOfDay.Seconds,
-                                      (int)(shiftedEndTime.TimeOfDay.Milliseconds * 0.1));
+                                      (int)shiftedStartTime.TotalMinutes,
+                                      (int)shiftedStartTime.Seconds,
+                                      (int)(shiftedStartTime.Milliseconds * 0.1),
+                                      (int)shiftedEndTime.TotalMinutes,
+                                      (int)shiftedEndTime.Seconds,
+                                      (int)(shiftedEndTime.Milliseconds * 0.1));
 
-        DateTime spanStart = Settings.Instance.SpanStart;
-        DateTime spanEnd = Settings.Instance.SpanEnd;
+        TimeSpan spanStart = Settings.Instance.SpanStart;
+        TimeSpan spanEnd = Settings.Instance.SpanEnd;
 
         // Create a image file for each line of dialog 
         if ((this.WorkerVars.ProcessingType == WorkerVars.SubsProcessingType.Preview) // Always save the image when previewing
@@ -111,8 +111,8 @@ namespace subs2srs
           sup.GetBitmap(i).Save(imageSavePath, System.Drawing.Imaging.ImageFormat.Png);
         }
 
-        string prefixStr = name.createName(ConstantSettings.SrsVobsubFilenamePrefix, 0, 0, new DateTime(), new DateTime(), "", "");
-        string suffixStr = name.createName(ConstantSettings.SrsVobsubFilenameSuffix, 0, 0, new DateTime(), new DateTime(), "", "");
+        string prefixStr = name.createName(ConstantSettings.SrsVobsubFilenamePrefix, 0, 0, TimeSpan.Zero, TimeSpan.Zero, "", "");
+        string suffixStr = name.createName(ConstantSettings.SrsVobsubFilenameSuffix, 0, 0, TimeSpan.Zero, TimeSpan.Zero, "", "");
 
         // Set the line of dialog to the bitmap file
         string text = String.Format("{0}{1}{2}",

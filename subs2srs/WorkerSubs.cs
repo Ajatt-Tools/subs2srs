@@ -529,7 +529,7 @@ namespace subs2srs
 
       foreach (InfoLine infoLine in infoLines)
       {
-        if (infoLine.StartTime.TimeOfDay.TotalMilliseconds < infoLine.EndTime.TimeOfDay.TotalMilliseconds)
+        if (infoLine.StartTime.TotalMilliseconds < infoLine.EndTime.TotalMilliseconds)
         {
           infoLinesGood.Add(infoLine);
         }
@@ -644,7 +644,7 @@ namespace subs2srs
 
       foreach (InfoCombined comb in combs)
       {
-        if (comb.Subs1.StartTime.TimeOfDay.TotalMilliseconds < comb.Subs1.EndTime.TimeOfDay.TotalMilliseconds)
+        if (comb.Subs1.StartTime.TotalMilliseconds < comb.Subs1.EndTime.TotalMilliseconds)
         {
           goodCombs.Add(comb);
         }
@@ -696,8 +696,8 @@ namespace subs2srs
           // Remove lines not in the span
           if (Settings.Instance.SpanEnabled && !isExcluded)
           {
-            DateTime spanStart = Settings.Instance.SpanStart;
-            DateTime spanEnd = Settings.Instance.SpanEnd;
+            TimeSpan spanStart = Settings.Instance.SpanStart;
+            TimeSpan spanEnd = Settings.Instance.SpanEnd;
 
             if ((comb.Subs1.StartTime < spanStart) || (comb.Subs1.StartTime > spanEnd))
             {
@@ -711,12 +711,12 @@ namespace subs2srs
           // Make sure that line is at least the min amount of milliseconds as specified by user
           if (Settings.Instance.Subs[0].ExcludeShorterThanTimeEnabled && Settings.Instance.Subs[0].TimingsEnabled)
           {
-            passedIgnoreShorterThanTime = (Math.Abs((int)comb.Subs1.EndTime.TimeOfDay.TotalMilliseconds - (int)comb.Subs1.StartTime.TimeOfDay.TotalMilliseconds) >= Settings.Instance.Subs[0].ExcludeShorterThanTime);
+            passedIgnoreShorterThanTime = (Math.Abs((int)comb.Subs1.EndTime.TotalMilliseconds - (int)comb.Subs1.StartTime.TotalMilliseconds) >= Settings.Instance.Subs[0].ExcludeShorterThanTime);
           }
           else if (Settings.Instance.Subs[1].ExcludeShorterThanTimeEnabled && Settings.Instance.Subs[1].TimingsEnabled)
           {
             // Note: using Subs1 here is not a mistake because Subs2 timings will be placed into Subs1 in combineSubs().
-            passedIgnoreShorterThanTime = (Math.Abs((int)comb.Subs1.EndTime.TimeOfDay.TotalMilliseconds - (int)comb.Subs1.StartTime.TimeOfDay.TotalMilliseconds) >= Settings.Instance.Subs[1].ExcludeShorterThanTime);
+            passedIgnoreShorterThanTime = (Math.Abs((int)comb.Subs1.EndTime.TotalMilliseconds - (int)comb.Subs1.StartTime.TotalMilliseconds) >= Settings.Instance.Subs[1].ExcludeShorterThanTime);
           }
 
           if (!passedIgnoreShorterThanTime && !isExcluded)
@@ -730,12 +730,12 @@ namespace subs2srs
           // Make sure that line is at least the min amount of milliseconds as specified by user
           if (Settings.Instance.Subs[0].ExcludeLongerThanTimeEnabled && Settings.Instance.Subs[0].TimingsEnabled)
           {
-            passedIgnoreLongerThanTime = (Math.Abs((int)comb.Subs1.EndTime.TimeOfDay.TotalMilliseconds - (int)comb.Subs1.StartTime.TimeOfDay.TotalMilliseconds) <= Settings.Instance.Subs[0].ExcludeLongerThanTime);
+            passedIgnoreLongerThanTime = (Math.Abs((int)comb.Subs1.EndTime.TotalMilliseconds - (int)comb.Subs1.StartTime.TotalMilliseconds) <= Settings.Instance.Subs[0].ExcludeLongerThanTime);
           }
           else if (Settings.Instance.Subs[1].ExcludeLongerThanTimeEnabled && Settings.Instance.Subs[1].TimingsEnabled)
           {
             // Note: using Subs1 here is not a mistake because Subs2 timings will be placed into Subs1 in combineSubs().
-            passedIgnoreLongerThanTime = (Math.Abs((int)comb.Subs1.EndTime.TimeOfDay.TotalMilliseconds - (int)comb.Subs1.StartTime.TimeOfDay.TotalMilliseconds) <= Settings.Instance.Subs[1].ExcludeLongerThanTime);
+            passedIgnoreLongerThanTime = (Math.Abs((int)comb.Subs1.EndTime.TotalMilliseconds - (int)comb.Subs1.StartTime.TotalMilliseconds) <= Settings.Instance.Subs[1].ExcludeLongerThanTime);
           }
 
           if (!passedIgnoreLongerThanTime && !isExcluded)

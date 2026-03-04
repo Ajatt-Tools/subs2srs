@@ -163,7 +163,7 @@ namespace subs2srs
             Add(mainVBox);
         }
 
-	//── TOOLS TAB ─────────────────────────────────────────────────────────
+    //── TOOLS TAB ─────────────────────────────────────────────────────────
         private Widget BuildToolsTab()
         {
             var vbox = new Box(Orientation.Vertical, 12) { BorderWidth = 10 };
@@ -834,7 +834,7 @@ namespace subs2srs
             }
 
             public void EnableDetail(bool enable) { }
-            public void SetDuration(DateTime duration) { }
+            public void SetDuration(TimeSpan duration) { }
             public void OnFFmpegOutput(object sender, System.Diagnostics.DataReceivedEventArgs e) { }
         }
     }

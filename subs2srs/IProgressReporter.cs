@@ -29,7 +29,7 @@ namespace subs2srs
         void UpdateProgress(int percent, string text);
         void UpdateProgress(string text);
         void EnableDetail(bool enable);
-        void SetDuration(DateTime duration);
+        void SetDuration(TimeSpan duration);
         void OnFFmpegOutput(object sender, DataReceivedEventArgs e);
     }
 }

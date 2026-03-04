@@ -40,7 +40,7 @@ namespace subs2srs
       int episodeCount = 0;
       int totalEpisodes = workerVars.CombinedAll.Count;
       int totalLines = UtilsSubs.getTotalLineCount(workerVars.CombinedAll);
-      DateTime lastTime = UtilsSubs.getLastTime(workerVars.CombinedAll);
+      TimeSpan lastTime = UtilsSubs.getLastTime(workerVars.CombinedAll);
 
       UtilsName name = new UtilsName(Settings.Instance.DeckName, totalEpisodes,
         totalLines, lastTime, Settings.Instance.VideoClips.Size.Width, Settings.Instance.VideoClips.Size.Height);
@@ -67,8 +67,8 @@ namespace subs2srs
         bool inputFileIsMp3 = (Settings.Instance.AudioClips.Files.Length > 0)
           && (Path.GetExtension(Settings.Instance.AudioClips.Files[episodeCount - 1]).ToLower() == ".mp3");
 
-        DateTime entireClipStartTime = combArray[0].Subs1.StartTime;
-        DateTime entireClipEndTime = combArray[combArray.Count - 1].Subs1.EndTime;
+        TimeSpan entireClipStartTime = combArray[0].Subs1.StartTime;
+        TimeSpan entireClipEndTime = combArray[combArray.Count - 1].Subs1.EndTime;
         string tempMp3Filename = Path.GetTempPath() + ConstantSettings.TempAudioFilename;
 
         // Apply pad to entire clip timings (if requested)
@@ -156,15 +156,15 @@ namespace subs2srs
         {
           if (dialogProgress.Cancel) { cancelled = true; state.Stop(); return; }
 
-          DateTime startTime = item.comb.Subs1.StartTime;
-          DateTime endTime = item.comb.Subs1.EndTime;
-          DateTime filenameStartTime = item.comb.Subs1.StartTime;
-          DateTime filenameEndTime = item.comb.Subs1.EndTime;
+          TimeSpan startTime = item.comb.Subs1.StartTime;
+          TimeSpan endTime = item.comb.Subs1.EndTime;
+          TimeSpan filenameStartTime = item.comb.Subs1.StartTime;
+          TimeSpan filenameEndTime = item.comb.Subs1.EndTime;
 
           if (needsShift)
           {
-            startTime = UtilsSubs.shiftTiming(startTime, -((int)entireClipStartTime.TimeOfDay.TotalMilliseconds));
-            endTime = UtilsSubs.shiftTiming(endTime, -((int)entireClipStartTime.TimeOfDay.TotalMilliseconds));
+            startTime = UtilsSubs.shiftTiming(startTime, -((int)entireClipStartTime.TotalMilliseconds));
+            endTime = UtilsSubs.shiftTiming(endTime, -((int)entireClipStartTime.TotalMilliseconds));
           }
 
           // Apply pad (if requested)
@@ -240,8 +240,8 @@ namespace subs2srs
       {
         tempCount++;
 
-        DateTime filenameStartTime = comb.Subs1.StartTime;
-        DateTime filenameEndTime = comb.Subs1.EndTime;
+        TimeSpan filenameStartTime = comb.Subs1.StartTime;
+        TimeSpan filenameEndTime = comb.Subs1.EndTime;
 
         if (Settings.Instance.AudioClips.PadEnabled)
         {
@@ -275,7 +275,7 @@ namespace subs2srs
     /// Apply tag to audio file.
     /// </summary>
     private void tagAudio(UtilsName name, string outName, int episodeCount, int curEpisodeCount, int progressCount, int totalTracks,
-      DateTime filenameStartTime, DateTime filenameEndTime, string lyricSubs1, string lyricSubs2)
+      TimeSpan filenameStartTime, TimeSpan filenameEndTime, string lyricSubs1, string lyricSubs2)
     {
       int episodeNum = episodeCount + Settings.Instance.EpisodeStartNumber - 1;
 
@@ -309,9 +309,9 @@ namespace subs2srs
     /// Convert audio or video to mp3 and display progress dialog.
     /// </summary>
     private bool convertToMp3(string file, string stream, string progressText, IProgressReporter dialogProgress,
-      DateTime entireClipStartTime, DateTime entireClipEndTime, string tempMp3Filename)
+      TimeSpan entireClipStartTime, TimeSpan entireClipEndTime, string tempMp3Filename)
     {
-      DateTime entireClipDuration = UtilsSubs.getDurationTime(entireClipStartTime, entireClipEndTime);
+      TimeSpan entireClipDuration = UtilsSubs.getDurationTime(entireClipStartTime, entireClipEndTime);
 
       dialogProgress.UpdateProgress(progressText);
       dialogProgress.EnableDetail(true);

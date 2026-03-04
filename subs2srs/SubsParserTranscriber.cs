@@ -49,10 +49,10 @@ namespace subs2srs
       XmlTextReader xmlReader = new XmlTextReader(subFile);
       xmlReader.XmlResolver = null; // Ignore dtd
 
-      DateTime startTime = new DateTime();
-      DateTime endTime = new DateTime();
-      DateTime curTime = new DateTime();
-      DateTime turnEndTime = new DateTime();
+      TimeSpan startTime = TimeSpan.Zero;
+      TimeSpan endTime = TimeSpan.Zero;
+      TimeSpan curTime = TimeSpan.Zero;
+      TimeSpan turnEndTime = TimeSpan.Zero;
       string dialogText = "";
       int syncCount = 0;
 
@@ -69,8 +69,7 @@ namespace subs2srs
 
             try
             {
-              curTime = new DateTime();
-              curTime = curTime.AddSeconds(UtilsLang.toDouble(timeStr));
+              curTime = TimeSpan.FromSeconds(UtilsLang.toDouble(timeStr));
             }
             catch (Exception e1)
             {
@@ -104,8 +103,7 @@ namespace subs2srs
 
             string timeStr = xmlReader.GetAttribute("endTime");
 
-            turnEndTime = new DateTime();
-            turnEndTime = curTime.AddSeconds(UtilsLang.toDouble(timeStr));
+            turnEndTime = curTime + TimeSpan.FromSeconds(UtilsLang.toDouble(timeStr));
           }
         }
         else if(xmlReader.NodeType == XmlNodeType.Text)
@@ -126,12 +124,11 @@ namespace subs2srs
             // Calculate the difference between the startTime and turnEndTime and make sure that
             // it is a reasonable length. We do this because the turn end time isn't necessarily
             // the end of the line. If it is not a reasonable length, set it to MAX_FINAL_LINE_DURATION.
-            double diffTime = endTime.TimeOfDay.TotalSeconds - startTime.TimeOfDay.TotalSeconds;
+            double diffTime = endTime.TotalSeconds - startTime.TotalSeconds;
 
             if (diffTime > MAX_FINAL_LINE_DURATION)
             {
-              endTime = startTime;
-              endTime = endTime.AddSeconds(MAX_FINAL_LINE_DURATION);
+              endTime = startTime + TimeSpan.FromSeconds(MAX_FINAL_LINE_DURATION);
             }
 
             if ((syncCount >= 1) && (dialogText.Length != 0))
@@ -161,7 +158,7 @@ namespace subs2srs
     /// <summary>
     /// Create a line info object based on the given parameters.
     /// </summary>
-    private InfoLine createLineInfo(string lineText, DateTime startTime, DateTime endTime)
+    private InfoLine createLineInfo(string lineText, TimeSpan startTime, TimeSpan endTime)
     {
       lineText = lineText.Replace("\r\n", " ");
       lineText = lineText.Replace("\r", " ");

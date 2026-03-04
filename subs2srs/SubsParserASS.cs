@@ -100,8 +100,8 @@ namespace subs2srs
           continue;
         }
 
-        DateTime startTime = parseTime(rawStartTime);
-        DateTime endTime = parseTime(rawEndTime);
+        TimeSpan startTime = parseTime(rawStartTime);
+        TimeSpan endTime = parseTime(rawEndTime);
         InfoLine info = new InfoLine(startTime, endTime, text, actor);
         lineInfos.Add(info);
       }
@@ -116,9 +116,9 @@ namespace subs2srs
     /// <summary>
     /// Parse a .ass style timestamp.
     /// </summary>
-    private DateTime parseTime(string rawTime)
+    private TimeSpan parseTime(string rawTime)
     {
-      DateTime time = new DateTime();
+      TimeSpan time = TimeSpan.Zero;
 
       // Format: 
       // "hour:min:sec.hsec" (0:00:00.00)
@@ -134,10 +134,10 @@ namespace subs2srs
 
       try
       {
-        time = time.AddHours(Int32.Parse(match.Groups["Hours"].ToString().Trim()));
-        time = time.AddMinutes(Int32.Parse(match.Groups["Mins"].ToString().Trim()));
-        time = time.AddSeconds(Int32.Parse(match.Groups["Secs"].ToString().Trim()));
-        time = time.AddMilliseconds(Int32.Parse(match.Groups["HSecs"].ToString().Trim()) * 10);
+        time = time + TimeSpan.FromHours(Int32.Parse(match.Groups["Hours"].ToString().Trim()));
+        time = time + TimeSpan.FromMinutes(Int32.Parse(match.Groups["Mins"].ToString().Trim()));
+        time = time + TimeSpan.FromSeconds(Int32.Parse(match.Groups["Secs"].ToString().Trim()));
+        time = time + TimeSpan.FromMilliseconds(Int32.Parse(match.Groups["HSecs"].ToString().Trim()) * 10);
       }
       catch
       {

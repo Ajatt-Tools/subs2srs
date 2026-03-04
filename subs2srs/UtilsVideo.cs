@@ -263,14 +263,14 @@ namespace subs2srs
     /// <summary>
     /// Format a start time for ffmpeg.
     /// </summary>
-    public static string formatStartTimeArg(DateTime startTime)
+    public static string formatStartTimeArg(TimeSpan startTime)
     {
       // Example: -ss 00:00:07.920
       string startTimeArg = String.Format("-ss {0:00.}:{1:00.}:{2:00.}.{3:000.}",
-                                  (int)startTime.TimeOfDay.TotalHours,      // {0}
-                                  (int)startTime.TimeOfDay.Minutes,         // {1}
-                                  (int)startTime.TimeOfDay.Seconds,         // {2}
-                                  (int)startTime.TimeOfDay.Milliseconds);   // {3}
+                                  (int)startTime.TotalHours,       // {0}
+                                  (int)startTime.Minutes,          // {1}
+                                  (int)startTime.Seconds,          // {2}
+                                  (int)startTime.Milliseconds);    // {3}
 
       return startTimeArg;
     }
@@ -279,16 +279,16 @@ namespace subs2srs
     /// <summary>
     /// Format a duration argument for ffmpeg.
     /// </summary>
-    public static string formatDurationArg(DateTime startTime, DateTime endTime)
+    public static string formatDurationArg(TimeSpan startTime, TimeSpan endTime)
     {
-      DateTime diffTime = UtilsSubs.getDurationTime(startTime, endTime);
+      TimeSpan diffTime = UtilsSubs.getDurationTime(startTime, endTime);
 
       // Example: -ss 00:00:07.920 -t 00:24:35.120
       string durationArg = String.Format("-t {0:00.}:{1:00.}:{2:00.}.{3:000.}",
-                                 (int)diffTime.TimeOfDay.TotalHours,       // {0}
-                                 (int)diffTime.TimeOfDay.Minutes,          // {1}
-                                 (int)diffTime.TimeOfDay.Seconds,          // {2}
-                                 (int)diffTime.TimeOfDay.Milliseconds);    // {3}
+                                 (int)diffTime.TotalHours,        // {0}
+                                 (int)diffTime.Minutes,           // {1}
+                                 (int)diffTime.Seconds,           // {2}
+                                 (int)diffTime.Milliseconds);     // {3}
 
       return durationArg;
 
@@ -298,12 +298,12 @@ namespace subs2srs
     /// <summary>
     /// Format a start time and duration argument for ffmpeg.
     /// </summary>
-    public static string formatStartTimeAndDurationArg(DateTime startTime, DateTime endTime)
+    public static string formatStartTimeAndDurationArg(TimeSpan startTime, TimeSpan endTime)
     {
       string startTimeArg = UtilsVideo.formatStartTimeArg(startTime);
       string durationArg = UtilsVideo.formatDurationArg(startTime, endTime);
 
-      DateTime diffTime = UtilsSubs.getDurationTime(startTime, endTime);
+      TimeSpan diffTime = UtilsSubs.getDurationTime(startTime, endTime);
 
       // Example: -ss 00:00:07.920 -t 00:24:35.120
       string timeArg = String.Format("{0} {1}",
@@ -389,7 +389,7 @@ namespace subs2srs
     /// 
     /// (Is this still true?)
     /// </summary>
-    public static void convertVideo(string inFile, string audioStream, DateTime startTime, DateTime endTime,
+    public static void convertVideo(string inFile, string audioStream, TimeSpan startTime, TimeSpan endTime,
       ImageSize size, ImageCrop crop, int bitrateVideo, int bitrateAudio, VideoCodec videoCodec, AudioCodec audioCodec,
       Profilex264 profile, Presetx264 preset, string outFile, IProgressReporter dialogProgress)
     {
@@ -473,7 +473,7 @@ namespace subs2srs
     /// <summary>
     /// Extract a video clip from a longer video clip without re-encoding.
     /// </summary>
-    public static void cutVideo(string inFile, DateTime startTime, DateTime endTime, string outFile)
+    public static void cutVideo(string inFile, TimeSpan startTime, TimeSpan endTime, string outFile)
     {
       string startTimeArg = UtilsVideo.formatStartTimeArg(startTime);
       string durationArg = UtilsVideo.formatDurationArg(startTime, endTime);
@@ -579,9 +579,9 @@ namespace subs2srs
     /// <summary>
     /// Extract the video length from the ffmpeg information string.
     /// </summary>
-    public static DateTime getVideoLength(string file)
+    public static TimeSpan getVideoLength(string file)
     {
-      DateTime videoLength = new DateTime();
+      TimeSpan videoLength = TimeSpan.Zero;
       string videoInfo = "";
 
       videoInfo = getVideoInfoStr(file);
@@ -624,10 +624,11 @@ namespace subs2srs
 
       try
       {
-        videoLength = videoLength.AddHours(Int32.Parse(lineMatchVideoLength.Groups["VideoHr"].ToString().Trim()));
-        videoLength = videoLength.AddMinutes(Int32.Parse(lineMatchVideoLength.Groups["VideoMin"].ToString().Trim()));
-        videoLength = videoLength.AddSeconds(Int32.Parse(lineMatchVideoLength.Groups["VideoSec"].ToString().Trim()));
-        videoLength = videoLength.AddMilliseconds(Int32.Parse(lineMatchVideoLength.Groups["VideoHsec"].ToString().Trim()) * 10);
+        int hours = Int32.Parse(lineMatchVideoLength.Groups["VideoHr"].ToString().Trim());
+        int minutes = Int32.Parse(lineMatchVideoLength.Groups["VideoMin"].ToString().Trim());
+        int seconds = Int32.Parse(lineMatchVideoLength.Groups["VideoSec"].ToString().Trim());
+        int centiseconds = Int32.Parse(lineMatchVideoLength.Groups["VideoHsec"].ToString().Trim());
+        videoLength = new TimeSpan(0, hours, minutes, seconds, centiseconds * 10);
       }
       catch (Exception e1)
       {

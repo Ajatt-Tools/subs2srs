@@ -40,7 +40,7 @@ namespace subs2srs
       Trailing
     }
 
-    private DateTime lastTime = new DateTime();
+    private TimeSpan lastTime = TimeSpan.Zero;
     private UtilsName name = null;
     private int progressCount = 0;
     private InfoCombined mainComb;
@@ -67,7 +67,7 @@ namespace subs2srs
         for (int i = baseLineIndex; i > curContextIdx; i--)
         {
           int durationMs = (int)UtilsSubs.getDurationTime(combArray[i - 1].Subs1.EndTime, 
-            combArray[i].Subs1.StartTime).TimeOfDay.TotalMilliseconds;
+            combArray[i].Subs1.StartTime).TotalMilliseconds;
 
           if (durationMs > (Settings.Instance.ContextLeadingRange * 1000))
           {
@@ -87,7 +87,7 @@ namespace subs2srs
         for (int i = baseLineIndex; i < curContextIdx; i++)
         {
           int durationMs = (int)UtilsSubs.getDurationTime(combArray[i].Subs1.EndTime,
-            combArray[i + 1].Subs1.StartTime).TimeOfDay.TotalMilliseconds;
+            combArray[i + 1].Subs1.StartTime).TotalMilliseconds;
 
           if (durationMs > (Settings.Instance.ContextTrailingRange * 1000))
           {
@@ -117,7 +117,7 @@ namespace subs2srs
         totalLines, lastTime, Settings.Instance.VideoClips.Size.Width, Settings.Instance.VideoClips.Size.Height);
 
       string nameStr = name.createName(ConstantSettings.SrsFilenameFormat, 0,
-        0, new DateTime(), new DateTime(), "", "");
+        0, TimeSpan.Zero, TimeSpan.Zero, "", "");
       
       // Create filename
       // Example: <outdir>\Toki_wo_Kakeru_Shoujo.tsv
@@ -353,8 +353,8 @@ namespace subs2srs
     /// </summary>
     private string formatTag(InfoCombined comb, int episodeIndex)
     {
-      DateTime startTime = comb.Subs1.StartTime;
-      DateTime endTime = comb.Subs1.EndTime;
+      TimeSpan startTime = comb.Subs1.StartTime;
+      TimeSpan endTime = comb.Subs1.EndTime;
 
       return name.createName(ConstantSettings.SrsTagFormat, episodeIndex + Settings.Instance.EpisodeStartNumber,
          progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
@@ -366,8 +366,8 @@ namespace subs2srs
     /// </summary>
     private string formatSequenceMarker(InfoCombined comb, int episodeIndex)
     {
-      DateTime startTime = comb.Subs1.StartTime;
-      DateTime endTime = comb.Subs1.EndTime;
+      TimeSpan startTime = comb.Subs1.StartTime;
+      TimeSpan endTime = comb.Subs1.EndTime;
 
       return name.createName(ConstantSettings.SrsSequenceMarkerFormat, episodeIndex + Settings.Instance.EpisodeStartNumber,
         progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
@@ -379,8 +379,8 @@ namespace subs2srs
     /// </summary>
     private string formatAudioClip(InfoCombined comb, int episodeIndex)
     {
-      DateTime startTime;
-      DateTime endTime;
+      TimeSpan startTime;
+      TimeSpan endTime;
 
       // Apply pad (if requested)
       if (Settings.Instance.AudioClips.PadEnabled)
@@ -412,9 +412,9 @@ namespace subs2srs
     /// </summary>
     private string formatSnapshot(InfoCombined comb, int episodeIndex)
     {
-      DateTime startTime = comb.Subs1.StartTime;
-      DateTime endTime = comb.Subs1.EndTime;
-      DateTime midTime = UtilsSubs.getMidpointTime(comb.Subs1.StartTime, comb.Subs1.EndTime);
+      TimeSpan startTime = comb.Subs1.StartTime;
+      TimeSpan endTime = comb.Subs1.EndTime;
+      TimeSpan midTime = UtilsSubs.getMidpointTime(comb.Subs1.StartTime, comb.Subs1.EndTime);
 
       string prefixStr = name.createName(ConstantSettings.SrsSnapshotFilenamePrefix, episodeIndex + Settings.Instance.EpisodeStartNumber,
         progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
@@ -434,8 +434,8 @@ namespace subs2srs
     /// </summary>
     private string formatVideoClip(InfoCombined comb, int episodeIndex)
     {
-      DateTime startTime;
-      DateTime endTime;
+      TimeSpan startTime;
+      TimeSpan endTime;
 
       // Apply pad (if requested)
       if (Settings.Instance.VideoClips.PadEnabled)
@@ -474,8 +474,8 @@ namespace subs2srs
     /// </summary>
     private string formatSubs1(InfoCombined comb, int episodeIndex)
     {
-      DateTime startTime = comb.Subs1.StartTime;
-      DateTime endTime = comb.Subs1.EndTime;
+      TimeSpan startTime = comb.Subs1.StartTime;
+      TimeSpan endTime = comb.Subs1.EndTime;
 
       return name.createName(ConstantSettings.SrsSubs1Format, episodeIndex + Settings.Instance.EpisodeStartNumber,
         progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
@@ -487,8 +487,8 @@ namespace subs2srs
     /// </summary>
     private string formatSubs2(InfoCombined comb, int episodeIndex)
     {
-      DateTime startTime = comb.Subs1.StartTime;
-      DateTime endTime = comb.Subs1.EndTime;
+      TimeSpan startTime = comb.Subs1.StartTime;
+      TimeSpan endTime = comb.Subs1.EndTime;
 
       return name.createName(ConstantSettings.SrsSubs2Format, episodeIndex + Settings.Instance.EpisodeStartNumber,
         progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);

@@ -28,14 +28,14 @@ namespace subs2srs
   public class InfoLine : IComparable<InfoLine>
   {
     /// <summary>
-    /// The start time of the line.
+    /// The start time of the line (offset from beginning of media).
     /// </summary>
-    public DateTime StartTime { get; set; }
+    public TimeSpan StartTime { get; set; }
 
     /// <summary>
-    /// The end time of the line.
+    /// The end time of the line (offset from beginning of media).
     /// </summary>
-    public DateTime EndTime { get; set; }
+    public TimeSpan EndTime { get; set; }
 
     /// <summary>
     /// The actual subtitle text. For Vobsubs, it's the file name of the extracted image file for this line.
@@ -49,13 +49,13 @@ namespace subs2srs
 
     public InfoLine()
     {
-      StartTime = new DateTime();
-      EndTime = new DateTime();
+      StartTime = TimeSpan.Zero;
+      EndTime = TimeSpan.Zero;
       Text = "";
       Actor = "";
     }
 
-    public InfoLine(DateTime startTime, DateTime endTime, string text)
+    public InfoLine(TimeSpan startTime, TimeSpan endTime, string text)
     {
       StartTime = startTime;
       EndTime = endTime;
@@ -63,7 +63,7 @@ namespace subs2srs
       Actor = "";
     }
 
-    public InfoLine(DateTime startTime, DateTime endTime, string text, string actor)
+    public InfoLine(TimeSpan startTime, TimeSpan endTime, string text, string actor)
     {
       StartTime = startTime;
       EndTime = endTime;

@@ -529,7 +529,7 @@ namespace subs2srs
         {
             int totalLines = 0, progressCount = 0;
             int totalEpisodes = workerVars.CombinedAll.Count;
-            DateTime lastTime = UtilsSubs.getLastTime(workerVars.CombinedAll);
+            TimeSpan lastTime = UtilsSubs.getLastTime(workerVars.CombinedAll);
 
             foreach (var ep in workerVars.CombinedAll)
                 totalLines += ep.Count;
@@ -540,7 +540,7 @@ namespace subs2srs
             {
                 var combArray = workerVars.CombinedAll[epIdx];
                 string nameStr = name.createName(ConstantSettings.DuelingSubtitleFilenameFormat,
-                    Settings.Instance.EpisodeStartNumber + epIdx, 0, new DateTime(), new DateTime(), "", "");
+                    Settings.Instance.EpisodeStartNumber + epIdx, 0, TimeSpan.Zero, TimeSpan.Zero, "", "");
 
                 string path = IOPath.Combine(Settings.Instance.OutputDir, nameStr);
                 using var writer = new StreamWriter(path, false, Encoding.UTF8);
@@ -568,7 +568,7 @@ namespace subs2srs
         {
             int totalLines = 0, progressCount = 0;
             int totalEpisodes = workerVars.CombinedAll.Count;
-            DateTime lastTime = UtilsSubs.getLastTime(workerVars.CombinedAll);
+            TimeSpan lastTime = UtilsSubs.getLastTime(workerVars.CombinedAll);
 
             foreach (var ep in workerVars.CombinedAll)
                 totalLines += ep.Count;
@@ -579,7 +579,7 @@ namespace subs2srs
             {
                 var combArray = workerVars.CombinedAll[epIdx];
                 string nameStr = name.createName(ConstantSettings.DuelingQuickRefFilenameFormat,
-                    Settings.Instance.EpisodeStartNumber + epIdx, 0, new DateTime(), new DateTime(), "", "");
+                    Settings.Instance.EpisodeStartNumber + epIdx, 0, TimeSpan.Zero, TimeSpan.Zero, "", "");
 
                 string path = IOPath.Combine(Settings.Instance.OutputDir, nameStr);
                 using var writer = new StreamWriter(path, false, Encoding.UTF8);
@@ -723,7 +723,7 @@ namespace subs2srs
 
             public void NextStep(int step, string description) => UpdateProgress(0, $"[{step}/{StepsTotal}] {description}");
             public void EnableDetail(bool enable) { }
-            public void SetDuration(DateTime duration) { }
+            public void SetDuration(TimeSpan duration) { }
             public void OnFFmpegOutput(object sender, System.Diagnostics.DataReceivedEventArgs e) { }
         }
     }

@@ -40,7 +40,7 @@ namespace subs2srs
       int episodeCount = 0;
       int totalEpisodes = workerVars.CombinedAll.Count;
       int totalLines = UtilsSubs.getTotalLineCount(workerVars.CombinedAll);
-      DateTime lastTime = UtilsSubs.getLastTime(workerVars.CombinedAll);
+      TimeSpan lastTime = UtilsSubs.getLastTime(workerVars.CombinedAll);
 
       UtilsName name = new UtilsName(Settings.Instance.DeckName, totalEpisodes,
         totalLines, lastTime, Settings.Instance.VideoClips.Size.Width, Settings.Instance.VideoClips.Size.Height);
@@ -64,8 +64,8 @@ namespace subs2srs
           continue;
         }
 
-        DateTime entireClipStartTime = combArray[0].Subs1.StartTime;
-        DateTime entireClipEndTime = combArray[combArray.Count - 1].Subs1.EndTime;
+        TimeSpan entireClipStartTime = combArray[0].Subs1.StartTime;
+        TimeSpan entireClipEndTime = combArray[combArray.Count - 1].Subs1.EndTime;
 
         // Apply pad to entire clip timings (if requested)
         if (Settings.Instance.VideoClips.PadEnabled)
@@ -86,7 +86,7 @@ namespace subs2srs
 
         dialogProgress.EnableDetail(true);
 
-        DateTime entireClipDuration = UtilsSubs.getDurationTime(entireClipStartTime, entireClipEndTime);
+        TimeSpan entireClipDuration = UtilsSubs.getDurationTime(entireClipStartTime, entireClipEndTime);
         dialogProgress.SetDuration(entireClipDuration);
 
         string tempVideoFilename = Path.GetTempPath() + ConstantSettings.TempVideoFilename + videoExtension;
@@ -133,11 +133,11 @@ namespace subs2srs
         {
           if (dialogProgress.Cancel) { cancelled = true; state.Stop(); return; }
 
-          DateTime startTime = UtilsSubs.shiftTiming(item.comb.Subs1.StartTime, -((int)entireClipStartTime.TimeOfDay.TotalMilliseconds));
-          DateTime endTime = UtilsSubs.shiftTiming(item.comb.Subs1.EndTime, -((int)entireClipStartTime.TimeOfDay.TotalMilliseconds));
+          TimeSpan startTime = UtilsSubs.shiftTiming(item.comb.Subs1.StartTime, -((int)entireClipStartTime.TotalMilliseconds));
+          TimeSpan endTime = UtilsSubs.shiftTiming(item.comb.Subs1.EndTime, -((int)entireClipStartTime.TotalMilliseconds));
 
-          DateTime filenameStartTime = item.comb.Subs1.StartTime;
-          DateTime filenameEndTime = item.comb.Subs1.EndTime;
+          TimeSpan filenameStartTime = item.comb.Subs1.StartTime;
+          TimeSpan filenameEndTime = item.comb.Subs1.EndTime;
 
           if (Settings.Instance.VideoClips.PadEnabled)
           {
@@ -193,8 +193,8 @@ namespace subs2srs
       {
         tempCount++;
 
-        DateTime filenameStartTime = comb.Subs1.StartTime;
-        DateTime filenameEndTime = comb.Subs1.EndTime;
+        TimeSpan filenameStartTime = comb.Subs1.StartTime;
+        TimeSpan filenameEndTime = comb.Subs1.EndTime;
 
         if (Settings.Instance.VideoClips.PadEnabled)
         {

@@ -35,8 +35,8 @@ namespace subs2srs
     /// <summary>
     /// Rip (and re-encode) a portion of the audio from a video file.
     /// </summary>
-    public static void ripAudioFromVideo(string inFile, string stream, DateTime startTime, 
-      DateTime endTime, int bitrate, string outFile, IProgressReporter dialogProgress)
+    public static void ripAudioFromVideo(string inFile, string stream, TimeSpan startTime, 
+      TimeSpan endTime, int bitrate, string outFile, IProgressReporter dialogProgress)
     {
       string audioBitrateArg = UtilsVideo.formatAudioBitrateArg(bitrate);
       string audioMapArg = UtilsVideo.formatAudioMapArg(stream);
@@ -96,7 +96,7 @@ namespace subs2srs
     /// <summary>
     /// Extract an audio clip from a longer audio clip without re-encoding.
     /// </summary>
-    public static void cutAudio(string fileToCut, DateTime startTime, DateTime endTime, string outFile)
+    public static void cutAudio(string fileToCut, TimeSpan startTime, TimeSpan endTime, string outFile)
     {
       string timeArg = UtilsVideo.formatStartTimeAndDurationArg(startTime, endTime);
       string audioCodecArg = UtilsVideo.formatAudioCodecArg(UtilsVideo.AudioCodec.COPY);
