@@ -116,7 +116,7 @@ namespace subs2srs
         sb.AppendLine($"enable_logging = {PrefDefaults.EnableLogging}");
         sb.AppendLine($"audio_normalize_args = {Tok(PrefDefaults.AudioNormalizeArgs)}");
         sb.AppendLine($"long_clip_warning_seconds = {PrefDefaults.LongClipWarningSeconds}");
-	sb.AppendLine($"max_parallel_tasks = {PrefDefaults.MaxParallelTasks}");
+    sb.AppendLine($"max_parallel_tasks = {PrefDefaults.MaxParallelTasks}");
         sb.AppendLine();
 
         sb.AppendLine($"default_audio_clip_bitrate = {PrefDefaults.DefaultAudioClipBitrate}");
@@ -236,103 +236,6 @@ namespace subs2srs
 
 
     /// <summary>
-    /// Read a string setting.
-    /// </summary>
-    [Obsolete("Use PrefIO.read() which reads the file once. This method re-reads the file on every call.")]
-    public static string getString(string key, string def)
-    {
-      string value = "";
-
-      try
-      {
-        using var settingsFile = new StreamReader(ConstantSettings.SettingsFilename, Encoding.UTF8);
-        string fileLine;
-
-        // Read each line of the settings file, try to find the key and its value
-        while ((fileLine = settingsFile.ReadLine()) != null)
-        {
-          Match lineMatch = Regex.Match(fileLine,
-            @"^(?<Key>" + key + @")\s*=\s*(?<Value>.*)",
-            RegexOptions.IgnoreCase);
-
-          if (lineMatch.Success)
-          {
-            string settingsKey = lineMatch.Groups["Key"].ToString().Trim();
-
-            // Does this line contain the search key?
-            if (settingsKey.ToLower() == key.ToLower())
-            {
-              // Extract the value from the line
-              value = convertFromTokens(lineMatch.Groups["Value"].ToString().Trim());
-              break;
-            }
-          }
-        }
-
-        // If the value is set to "none", blank it
-        if (value.ToLower() == "none")
-        {
-          value = "";
-        }
-        else if (value == "") // else if the key is not found, use the default
-        {
-          value = def;
-        }
-      }
-      catch
-      {
-        value = def;
-      }
-
-      return value;
-    }
-
-
-    /// <summary>
-    /// Read a boolean setting.
-    /// </summary>
-    [Obsolete("Use PrefIO.read() which reads the file once. This method re-reads the file on every call.")]
-    public static bool getBool(string key, bool def)
-    {
-      string defString = def.ToString();
-      string valString = PrefIO.getString(key, defString);
-
-      return valString.Equals("true", StringComparison.OrdinalIgnoreCase);
-    }
-
-
-    /// <summary>
-    /// Read an integer setting.
-    /// </summary>
-    [Obsolete("Use PrefIO.read() which reads the file once. This method re-reads the file on every call.")]
-    public static int getInt(string key, int def)
-    {
-      string valString = PrefIO.getString(key, def.ToString());
-
-      return int.TryParse(valString, out int result) ? result : def;
-    }
-
-
-    /// <summary>
-    /// Read a float setting.
-    /// </summary>
-    [Obsolete("Use PrefIO.read() which reads the file once. This method re-reads the file on every call.")]
-    public static float getFloat(string key, float def)
-    {
-      string valString = PrefIO.getString(key, def.ToString());
-
-      try
-      {
-        return (float)UtilsLang.toDouble(valString);
-      }
-      catch
-      {
-        return def;
-      }
-    }
-
-
-    /// <summary>
     /// Replace tabs and newline tokens with their with real tabs and newlines.
     /// </summary>
     public static string convertFromTokens(string format)
@@ -430,7 +333,7 @@ namespace subs2srs
       ConstantSettings.DefaultContextTrailingRange = getI("default_context_trailing_range", PrefDefaults.DefaultContextTrailingRange);
 
       ConstantSettings.DefaultRemoveStyledLinesSubs1 = getBl("default_remove_styled_lines_subs1", PrefDefaults.DefaultRemoveStyledLinesSubs1);
-      ConstantSettings.DefaultRemoveStyledLinesSubs2 = getBl("default_remove_styled_lines_subs2", PrefDefaults.DefaultRemoveStyledLinesSubs2); // FIX: was Subs1
+      ConstantSettings.DefaultRemoveStyledLinesSubs2 = getBl("default_remove_styled_lines_subs2", PrefDefaults.DefaultRemoveStyledLinesSubs2);
 
       ConstantSettings.DefaultRemoveNoCounterpartSubs1 = getBl("default_remove_no_counterpart_subs1", PrefDefaults.DefaultRemoveNoCounterpartSubs1);
       ConstantSettings.DefaultRemoveNoCounterpartSubs2 = getBl("default_remove_no_counterpart_subs2", PrefDefaults.DefaultRemoveNoCounterpartSubs2);
@@ -503,7 +406,7 @@ namespace subs2srs
       ConstantSettings.DuelingQuickRefSubs2Format = getStr("dueling_quick_ref_subs2_format", PrefDefaults.DuelingQuickRefSubs2Format);
 
       ConstantSettings.SrsVobsubFilenamePrefix = getStr("srs_vobsub_filename_prefix", PrefDefaults.SrsVobsubFilenamePrefix);
-      ConstantSettings.VobsubFilenameFormat = getStr("vobsub_filename_format", PrefDefaults.VobsubFilenameFormat); // FIX: was VideoFilenameFormat
+      ConstantSettings.VobsubFilenameFormat = getStr("vobsub_filename_format", PrefDefaults.VobsubFilenameFormat);
       ConstantSettings.SrsVobsubFilenameSuffix = getStr("srs_vobsub_filename_suffix", PrefDefaults.SrsVobsubFilenameSuffix);
     }
   }
