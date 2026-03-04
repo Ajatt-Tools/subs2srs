@@ -62,7 +62,13 @@ namespace subs2srs
 
             Application.Init();
 
+            SynchronizationContext.SetSynchronizationContext(new GtkSynchronizationContext());
+
+            // Suppress GtkSharp toggle_ref warnings at the GLib writer level
+            GLibLogFilter.Install();
+
             var win = new MainWindow();
+
             win.ShowAll();
 
             Application.Run();
