@@ -55,10 +55,17 @@ is carried over from the original with minimal changes.
 - Audio stream combo not populated when video path uses a glob pattern (`*.mkv`)
 - `File.Move` in workers without `overwrite: true` — atomic rename could throw on interrupted retry
 - `UtilsCommon.getExePaths` — substring `Contains` check could false-match partial path segments; now uses exact `HashSet` match
+- `UtilsVideo.formatStartTimeArg/formatDurationArg` — trailing dots in format specifiers (`{0:00.}`) produced malformed ffmpeg `-ss`/`-t` arguments
+- `WorkerAudio` — shared temp file path across episodes caused collisions on retry; error dialogs shown after user cancellation; source file deletion race during `Parallel.ForEach` cancellation
 
 **Architecture:**
 - `ConstantSettings` → `Settings.Instance` synchronization moved from `MainWindow.LoadSettings()` into `SaveSettings` constructor — adding a new preference no longer requires manual sync in 6 places
 - Legacy per-key `PrefIO.getString/getBool/getInt/getFloat` methods removed (were `[Obsolete]`, unused)
+- `GtkSynchronizationContext` — routes `async/await` continuations to the GTK main loop; without it, code after `await Task.Run(...)` ran on thread-pool threads, causing GTK threading violations
+- `GLibLogFilter` — writer-level GLib log filter (`g_log_set_writer_func`) suppresses harmless `toggle_ref` warnings from GtkSharp GC finalizer
+- Preview dialog Go button delegates to `MainWindow.OnGoClicked` via event — single processing path for both main window and preview
+- Preview window reused (hide/show) instead of destroyed on close — avoids widget recreation and pixbuf leaks
+- `IProgressReporter` implementations use poll-based `GLib.Timeout` instead of `Application.Invoke` — thread-safe, no cross-thread GTK calls
 
 **Performance:**
 - `PrefIO.read()` — read preferences file ~70 times → single pass into dictionary
