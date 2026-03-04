@@ -89,9 +89,8 @@ namespace subs2srs
         lock (_logLock)
         {
           File.AppendAllText(logFile, builder.ToString() + Environment.NewLine, Encoding.UTF8);
+          builder = new StringBuilder(1000);
         }
-
-        builder = new StringBuilder(1000);
       }
       catch
       {
@@ -105,8 +104,11 @@ namespace subs2srs
     /// </summary>
     public void append(string text)
     {
-      builder.Append(createTimestamp());
-      builder.AppendLine(text);
+      lock (_logLock)
+      {
+        builder.Append(createTimestamp());
+        builder.AppendLine(text);
+      }
     }
 
     /// <summary>
