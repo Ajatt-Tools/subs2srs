@@ -43,14 +43,17 @@ is carried over from the original with minimal changes.
 - `SaveSettings.gatherData()` — `ContextLeadingIncludeSnapshots` was copied from `AudioClips` instead of `Snapshots`
 - `WorkerSrs.genSrs()` — `TextWriter` without `using`, file descriptor leak on exception
 - `SubsProcessor.DoWork()` — empty `catch {}` silently swallowed VobSub copy errors
-- `Logger.flush()` — mutex never released if write throws (deadlock)
+- `Logger.flush()` — `StringBuilder` reset outside `lock`, race condition with `append()` under `Parallel.ForEach`
+- `Logger.append()` — no synchronization, concurrent calls could corrupt `StringBuilder`
 - `Logger` constructor / `writeFileToLog()` — `StreamWriter`/`StreamReader` without `using`
+- `MainWindow.LoadSettings()` — called after Preferences dialog, resetting current session widget state to defaults
 - `PrefIO.read()` — `DefaultRemoveStyledLinesSubs2` default was `Subs1`; `VobsubFilenameFormat` default was `VideoFilenameFormat`
 - `PrefIO.writeString()` — regex replacement broke on keys containing regex metacharacters
 - `UtilsName.createName()` — `${width}` and `${height}` tokens replaced with `subs2Text` instead of actual dimensions
 - Audio stream number stored as combo box index instead of ffmpeg stream identifier — multi-stream MKV files produced empty audio clips
 - Episode change in Preview dialog triggered infinite re-entrant loop (missing guard), causing 100% CPU
 - Audio stream combo not populated when video path uses a glob pattern (`*.mkv`)
+- `File.Move` in workers without `overwrite: true` — atomic rename could throw on interrupted retry
 
 **Performance:**
 - `PrefIO.read()` — read preferences file ~70 times → single pass into dictionary
@@ -63,7 +66,12 @@ is carried over from the original with minimal changes.
 - `UtilsMsg` — errors and info messages always echo to `stderr` for terminal visibility
 - Unhandled exceptions and unobserved task exceptions logged to both `stderr` and log file
 
+**UX:**
+- `OnVideoChanged` — ffprobe runs off UI thread, no longer freezes interface on large files or network paths
+
 **Refactoring:**
+- `DialogProgress` static wrapper class removed — `IProgressReporter` used directly
+- `AudioClips.filePattern` renamed to `FilePattern` with `[JsonPropertyName]` for `.s2s` compatibility
 - `PrefIO` — `StreamReader`/`StreamWriter` → `File.ReadAllText`/`WriteAllText`; create `preferences.txt` on first launch
 - `Settings.cs` — all model classes (`SubSettings`, `AudioClips`, `VideoClips`, `Snapshots`, `SaveSettings`, etc.) converted to auto-properties
 - `ConstantSettings` — 130 backing field + property pairs → auto-properties (~400 lines removed)
