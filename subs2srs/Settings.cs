@@ -113,14 +113,14 @@ namespace subs2srs
 
 
   // Procedure for creating a new Constant Settings that can be set in the Preferences dialog.
-  // 1) Create a new entry in preferences.txt
+  // 1) Create a new entry in PrefIO.writeDefaultPreferences.
   // 2) Create a default for the setting in PrefDefaults (above).
-  // 3) Create the setting in ConstantSettings (var and property).
+  // 3) Create the setting in ConstantSettings (property with PrefDefaults default).
   // 4) Add setting to PrefIO.read.
-  // 5) Add setting to DialogPref constructor.
-  // 6) Add setting to DialogPref buttonOK_Click.
+  // 5) Add setting to DialogPref.BuildPropTable.
+  // 6) Add setting to DialogPref.SavePreferences.
   // 7) Add setting to Logger.writeSettingsToLog.
-  // 8) For GUI settings, add to FormMain.readPreferencesFile.
+  // 8) For GUI settings (ones that map to Settings.Instance), add to SaveSettings constructor.
 
   public static class ConstantSettings
   {
@@ -599,9 +599,55 @@ namespace subs2srs
       Subs[0].ActorsEnabled = true;
       Subs[0].TimingsEnabled = true;
 
-      VideoClips = new VideoClips();
+      // Sync preference defaults → SubSettings
+      Subs[0].Encoding = ConstantSettings.DefaultEncodingSubs1;
+      Subs[1].Encoding = ConstantSettings.DefaultEncodingSubs2;
+      Subs[0].RemoveStyledLines = ConstantSettings.DefaultRemoveStyledLinesSubs1;
+      Subs[1].RemoveStyledLines = ConstantSettings.DefaultRemoveStyledLinesSubs2;
+      Subs[0].RemoveNoCounterpart = ConstantSettings.DefaultRemoveNoCounterpartSubs1;
+      Subs[1].RemoveNoCounterpart = ConstantSettings.DefaultRemoveNoCounterpartSubs2;
+      Subs[0].IncludedWords = UtilsCommon.removeExtraSpaces(
+        ConstantSettings.DefaultIncludeTextSubs1.Split(';', StringSplitOptions.RemoveEmptyEntries));
+      Subs[1].IncludedWords = UtilsCommon.removeExtraSpaces(
+        ConstantSettings.DefaultIncludeTextSubs2.Split(';', StringSplitOptions.RemoveEmptyEntries));
+      Subs[0].ExcludedWords = UtilsCommon.removeExtraSpaces(
+        ConstantSettings.DefaultExcludeTextSubs1.Split(';', StringSplitOptions.RemoveEmptyEntries));
+      Subs[1].ExcludedWords = UtilsCommon.removeExtraSpaces(
+        ConstantSettings.DefaultExcludeTextSubs2.Split(';', StringSplitOptions.RemoveEmptyEntries));
+      Subs[0].ExcludeDuplicateLinesEnabled = ConstantSettings.DefaultExcludeDuplicateLinesSubs1;
+      Subs[1].ExcludeDuplicateLinesEnabled = ConstantSettings.DefaultExcludeDuplicateLinesSubs2;
+      Subs[0].ExcludeFewerEnabled = ConstantSettings.DefaultExcludeLinesFewerThanCharsSubs1;
+      Subs[1].ExcludeFewerEnabled = ConstantSettings.DefaultExcludeLinesFewerThanCharsSubs2;
+      Subs[0].ExcludeFewerCount = ConstantSettings.DefaultExcludeLinesFewerThanCharsNumSubs1;
+      Subs[1].ExcludeFewerCount = ConstantSettings.DefaultExcludeLinesFewerThanCharsNumSubs2;
+      Subs[0].ExcludeShorterThanTimeEnabled = ConstantSettings.DefaultExcludeLinesShorterThanMsSubs1;
+      Subs[1].ExcludeShorterThanTimeEnabled = ConstantSettings.DefaultExcludeLinesShorterThanMsSubs2;
+      Subs[0].ExcludeShorterThanTime = ConstantSettings.DefaultExcludeLinesShorterThanMsNumSubs1;
+      Subs[1].ExcludeShorterThanTime = ConstantSettings.DefaultExcludeLinesShorterThanMsNumSubs2;
+      Subs[0].ExcludeLongerThanTimeEnabled = ConstantSettings.DefaultExcludeLinesLongerThanMsSubs1;
+      Subs[1].ExcludeLongerThanTimeEnabled = ConstantSettings.DefaultExcludeLinesLongerThanMsSubs2;
+      Subs[0].ExcludeLongerThanTime = ConstantSettings.DefaultExcludeLinesLongerThanMsNumSubs1;
+      Subs[1].ExcludeLongerThanTime = ConstantSettings.DefaultExcludeLinesLongerThanMsNumSubs2;
+      Subs[0].JoinSentencesEnabled = ConstantSettings.DefaultJoinSentencesSubs1;
+      Subs[1].JoinSentencesEnabled = ConstantSettings.DefaultJoinSentencesSubs2;
+      Subs[0].JoinSentencesCharList = ConstantSettings.DefaultJoinSentencesCharListSubs1;
+      Subs[1].JoinSentencesCharList = ConstantSettings.DefaultJoinSentencesCharListSubs2;
+
+      // Sync preference defaults → media settings
       AudioClips = new AudioClips();
+      AudioClips.Enabled = ConstantSettings.DefaultEnableAudioClipGeneration;
+      AudioClips.Bitrate = ConstantSettings.DefaultAudioClipBitrate;
+      AudioClips.Normalize = ConstantSettings.DefaultAudioNormalize;
+
       Snapshots = new Snapshots();
+      Snapshots.Enabled = ConstantSettings.DefaultEnableSnapshotsGeneration;
+
+      VideoClips = new VideoClips();
+      VideoClips.Enabled = ConstantSettings.DefaultEnableVideoClipsGeneration;
+      VideoClips.BitrateVideo = ConstantSettings.DefaultVideoClipVideoBitrate;
+      VideoClips.BitrateAudio = ConstantSettings.DefaultVideoClipAudioBitrate;
+      VideoClips.IPodSupport = ConstantSettings.DefaultIphoneSupport;
+
       VobSubColors = new VobSubColors();
       LanguageSpecific = new LanguageSpecific();
       OutputDir = "";
@@ -614,17 +660,17 @@ namespace subs2srs
 
       ActorList = new List<string>();
 
-      ContextLeadingCount = 0;
+      ContextLeadingCount = ConstantSettings.DefaultContextNumLeading;
       ContextLeadingIncludeSnapshots = false;
       ContextLeadingIncludeAudioClips = false;
       ContextLeadingIncludeVideoClips = false;
-      ContextLeadingRange = 15;
+      ContextLeadingRange = ConstantSettings.DefaultContextLeadingRange;
 
-      ContextTrailingCount = 0;
+      ContextTrailingCount = ConstantSettings.DefaultContextNumTrailing;
       ContextTrailingIncludeSnapshots = false;
       ContextTrailingIncludeAudioClips = false;
       ContextTrailingIncludeVideoClips = false;
-      ContextTrailingRange = 15;
+      ContextTrailingRange = ConstantSettings.DefaultContextTrailingRange;
     }
 
     public void gatherData()

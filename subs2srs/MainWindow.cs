@@ -534,79 +534,32 @@ namespace subs2srs
         private void LoadSettings()
         {
             PrefIO.read();
-        
-            Settings.Instance.AudioClips.Enabled = ConstantSettings.DefaultEnableAudioClipGeneration;
-            Settings.Instance.Snapshots.Enabled = ConstantSettings.DefaultEnableSnapshotsGeneration;
-            Settings.Instance.VideoClips.Enabled = ConstantSettings.DefaultEnableVideoClipsGeneration;
-            Settings.Instance.AudioClips.Bitrate = ConstantSettings.DefaultAudioClipBitrate;
-            Settings.Instance.AudioClips.Normalize = ConstantSettings.DefaultAudioNormalize;
-            Settings.Instance.VideoClips.BitrateVideo = ConstantSettings.DefaultVideoClipVideoBitrate;
-            Settings.Instance.VideoClips.BitrateAudio = ConstantSettings.DefaultVideoClipAudioBitrate;
-            Settings.Instance.VideoClips.IPodSupport = ConstantSettings.DefaultIphoneSupport;
-            Settings.Instance.Subs[0].Encoding = ConstantSettings.DefaultEncodingSubs1;
-            Settings.Instance.Subs[1].Encoding = ConstantSettings.DefaultEncodingSubs2;
-            Settings.Instance.ContextLeadingCount = ConstantSettings.DefaultContextNumLeading;
-            Settings.Instance.ContextTrailingCount = ConstantSettings.DefaultContextNumTrailing;
-            Settings.Instance.ContextLeadingRange = ConstantSettings.DefaultContextLeadingRange;
-            Settings.Instance.ContextTrailingRange = ConstantSettings.DefaultContextTrailingRange;
-        
-            Settings.Instance.Subs[0].RemoveNoCounterpart = ConstantSettings.DefaultRemoveNoCounterpartSubs1;
-            Settings.Instance.Subs[1].RemoveNoCounterpart = ConstantSettings.DefaultRemoveNoCounterpartSubs2;
-            Settings.Instance.Subs[0].RemoveStyledLines = ConstantSettings.DefaultRemoveStyledLinesSubs1;
-            Settings.Instance.Subs[1].RemoveStyledLines = ConstantSettings.DefaultRemoveStyledLinesSubs2;
-        
-            Settings.Instance.Subs[0].IncludedWords = UtilsCommon.removeExtraSpaces(
-                ConstantSettings.DefaultIncludeTextSubs1.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries));
-            Settings.Instance.Subs[1].IncludedWords = UtilsCommon.removeExtraSpaces(
-                ConstantSettings.DefaultIncludeTextSubs2.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries));
-            Settings.Instance.Subs[0].ExcludedWords = UtilsCommon.removeExtraSpaces(
-                ConstantSettings.DefaultExcludeTextSubs1.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries));
-            Settings.Instance.Subs[1].ExcludedWords = UtilsCommon.removeExtraSpaces(
-                ConstantSettings.DefaultExcludeTextSubs2.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries));
-        
-            Settings.Instance.Subs[0].ExcludeDuplicateLinesEnabled = ConstantSettings.DefaultExcludeDuplicateLinesSubs1;
-            Settings.Instance.Subs[1].ExcludeDuplicateLinesEnabled = ConstantSettings.DefaultExcludeDuplicateLinesSubs2;
-            Settings.Instance.Subs[0].ExcludeFewerEnabled = ConstantSettings.DefaultExcludeLinesFewerThanCharsSubs1;
-            Settings.Instance.Subs[1].ExcludeFewerEnabled = ConstantSettings.DefaultExcludeLinesFewerThanCharsSubs2;
-            Settings.Instance.Subs[0].ExcludeFewerCount = ConstantSettings.DefaultExcludeLinesFewerThanCharsNumSubs1;
-            Settings.Instance.Subs[1].ExcludeFewerCount = ConstantSettings.DefaultExcludeLinesFewerThanCharsNumSubs2;
-            Settings.Instance.Subs[0].ExcludeShorterThanTimeEnabled = ConstantSettings.DefaultExcludeLinesShorterThanMsSubs1;
-            Settings.Instance.Subs[1].ExcludeShorterThanTimeEnabled = ConstantSettings.DefaultExcludeLinesShorterThanMsSubs2;
-            Settings.Instance.Subs[0].ExcludeShorterThanTime = ConstantSettings.DefaultExcludeLinesShorterThanMsNumSubs1;
-            Settings.Instance.Subs[1].ExcludeShorterThanTime = ConstantSettings.DefaultExcludeLinesShorterThanMsNumSubs2;
-            Settings.Instance.Subs[0].ExcludeLongerThanTimeEnabled = ConstantSettings.DefaultExcludeLinesLongerThanMsSubs1;
-            Settings.Instance.Subs[1].ExcludeLongerThanTimeEnabled = ConstantSettings.DefaultExcludeLinesLongerThanMsSubs2;
-            Settings.Instance.Subs[0].ExcludeLongerThanTime = ConstantSettings.DefaultExcludeLinesLongerThanMsNumSubs1;
-            Settings.Instance.Subs[1].ExcludeLongerThanTime = ConstantSettings.DefaultExcludeLinesLongerThanMsNumSubs2;
-            Settings.Instance.Subs[0].JoinSentencesEnabled = ConstantSettings.DefaultJoinSentencesSubs1;
-            Settings.Instance.Subs[1].JoinSentencesEnabled = ConstantSettings.DefaultJoinSentencesSubs2;
-            Settings.Instance.Subs[0].JoinSentencesCharList = ConstantSettings.DefaultJoinSentencesCharListSubs1;
-            Settings.Instance.Subs[1].JoinSentencesCharList = ConstantSettings.DefaultJoinSentencesCharListSubs2;
-        
+            Settings.Instance.reset();
+
             _txtDeckName.Text = Settings.Instance.DeckName != "" ? Settings.Instance.DeckName : "MyDeck";
             _txtOutputDir.Text = Settings.Instance.OutputDir != ""
                 ? Settings.Instance.OutputDir
                 : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             _spinEpisodeStart.Value = Settings.Instance.EpisodeStartNumber;
-        
+
             _chkGenerateAudio.Active = Settings.Instance.AudioClips.Enabled;
             _chkGenerateSnapshots.Active = Settings.Instance.Snapshots.Enabled;
             _chkGenerateVideo.Active = Settings.Instance.VideoClips.Enabled;
-        
+
             _spinSnapshotWidth.Value = Settings.Instance.Snapshots.Size.Width > 0 ? Settings.Instance.Snapshots.Size.Width : 240;
             _spinSnapshotHeight.Value = Settings.Instance.Snapshots.Size.Height > 0 ? Settings.Instance.Snapshots.Size.Height : 160;
             _spinSnapshotCropBottom.Value = Settings.Instance.Snapshots.Crop.Bottom;
-        
+
             _spinVideoWidth.Value = Settings.Instance.VideoClips.Size.Width > 0 ? Settings.Instance.VideoClips.Size.Width : 240;
             _spinVideoHeight.Value = Settings.Instance.VideoClips.Size.Height > 0 ? Settings.Instance.VideoClips.Size.Height : 160;
             _spinVideoCropBottom.Value = Settings.Instance.VideoClips.Crop.Bottom;
             _spinVideoBitrateVideo.Value = Settings.Instance.VideoClips.BitrateVideo > 0 ? Settings.Instance.VideoClips.BitrateVideo : 800;
-        
+
             SetEncodingCombo(_comboEncodingSubs1, Settings.Instance.Subs[0].Encoding);
             SetEncodingCombo(_comboEncodingSubs2, Settings.Instance.Subs[1].Encoding);
-        
+
             _radioTimingSubs1.Active = true;
-        
+
             SetDefaultSize(ConstantSettings.MainWindowWidth, ConstantSettings.MainWindowHeight);
         }
 
