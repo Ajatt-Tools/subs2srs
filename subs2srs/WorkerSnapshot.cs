@@ -90,7 +90,7 @@ namespace subs2srs
             string tmpFile = Path.ChangeExtension(outFile, ".tmp" + ext);
             UtilsSnapshot.takeSnapshotFromVideo(videoFileName, midTime, Settings.Instance.Snapshots.Size,
               Settings.Instance.Snapshots.Crop, tmpFile);
-            File.Move(tmpFile, outFile);
+            File.Move(tmpFile, outFile, overwrite: true);
           }
 
           int done = Interlocked.Increment(ref completed);

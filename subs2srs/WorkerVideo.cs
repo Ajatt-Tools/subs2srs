@@ -158,7 +158,7 @@ namespace subs2srs
             string ext = Path.GetExtension(outFile);
             string tmpFile = Path.ChangeExtension(outFile, ".tmp" + ext);
             UtilsVideo.cutVideo(tempVideoFilename, startTime, endTime, tmpFile);
-            File.Move(tmpFile, outFile);
+            File.Move(tmpFile, outFile, overwrite: true);
           }
 
           int done = Interlocked.Increment(ref completed);

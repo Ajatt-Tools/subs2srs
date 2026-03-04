@@ -142,7 +142,8 @@ namespace subs2srs
                 var dlg = new DialogPref(this);
                 dlg.Run();
                 dlg.Destroy();
-                LoadSettings();
+                PrefIO.read();
+                SetDefaultSize(ConstantSettings.MainWindowWidth, ConstantSettings.MainWindowHeight);
             };
             bottomHBox.PackStart(btnPref, false, false, 0);
         
@@ -669,9 +670,9 @@ namespace subs2srs
                 Settings.Instance.AudioClips.PadEnd = (int)_spinAudioPadEnd.Value;
                 Settings.Instance.AudioClips.Normalize = _chkNormalize.Active;
         
-                Settings.Instance.AudioClips.filePattern = _txtAudioFile.Text.Trim();
+                Settings.Instance.AudioClips.FilePattern = _txtAudioFile.Text.Trim();
                 Settings.Instance.AudioClips.Files = UtilsCommon.getNonHiddenFiles(
-                    Settings.Instance.AudioClips.filePattern);
+                    Settings.Instance.AudioClips.FilePattern);
         
                 // Snapshots
                 Settings.Instance.Snapshots.Enabled = _chkGenerateSnapshots.Active;
@@ -733,27 +734,33 @@ namespace subs2srs
         {
         }
 
-        private void OnVideoChanged(object? sender, EventArgs e)
+        private async void OnVideoChanged(object? sender, EventArgs e)
         {
             string pattern = _txtVideo.Text.Trim();
             if (string.IsNullOrEmpty(pattern)) return;
 
-            // Find first actual file: either the pattern itself or first match
-            string file = null;
-            if (System.IO.File.Exists(pattern))
+            // Run file lookup and ffprobe off the UI thread
+            var (streams, fallback) = await Task.Run(() =>
             {
-                file = pattern;
-            }
-            else
-            {
-                var files = UtilsCommon.getNonHiddenFiles(pattern);
-                if (files.Length > 0)
-                    file = files[0];
-            }
+                string file = null;
+                if (System.IO.File.Exists(pattern))
+                    file = pattern;
+                else
+                {
+                    var files = UtilsCommon.getNonHiddenFiles(pattern);
+                    if (files.Length > 0) file = files[0];
+                }
 
-            if (file == null) return;
+                if (file == null)
+                    return (new List<InfoStream>(), true);
 
-            _audioStreams = UtilsVideo.getAvailableAudioStreams(file);
+                var s = UtilsVideo.getAvailableAudioStreams(file);
+                return (s, false);
+            });
+
+            if (fallback) return;
+
+            _audioStreams = streams;
             _comboAudioStream.RemoveAll();
 
             if (_audioStreams.Count > 0)

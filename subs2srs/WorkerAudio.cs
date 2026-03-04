@@ -195,7 +195,7 @@ namespace subs2srs
             string ext = Path.GetExtension(outName);
             string tmpName = Path.ChangeExtension(outName, ".tmp" + ext);
             UtilsAudio.cutAudio(fileToCut, startTime, endTime, tmpName);
-            File.Move(tmpName, outName);
+            File.Move(tmpName, outName, overwrite: true);
 
             this.tagAudio(name, outName, epNum, item.epLineNum, item.seqNum, combArray.Count,
               filenameStartTime, filenameEndTime, item.comb.Subs1.Text, lyricSubs2);
