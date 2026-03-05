@@ -57,6 +57,7 @@ is carried over from the original with minimal changes.
 - `UtilsCommon.getExePaths` — substring `Contains` check could false-match partial path segments; now uses exact `HashSet` match
 - `UtilsVideo.formatStartTimeArg/formatDurationArg` — trailing dots in format specifiers (`{0:00.}`) produced malformed ffmpeg `-ss`/`-t` arguments
 - `WorkerAudio` — shared temp file path across episodes caused collisions on retry; error dialogs shown after user cancellation; source file deletion race during `Parallel.ForEach` cancellation
+- `UtilsSubs.timeToString/formatAssTime` — same trailing-dot format specifier bug (`{0:00.}`) produced `"00.:01.:30."` / `"0:00.:36..16."` instead of `"0:01:30"` / `"0:00:36.16"`
 
 **Architecture:**
 - `ConstantSettings` → `Settings.Instance` synchronization moved from `MainWindow.LoadSettings()` into `SaveSettings` constructor — adding a new preference no longer requires manual sync in 6 places
@@ -123,6 +124,11 @@ is carried over from the original with minimal changes.
 
 ```sh
 make build
+```
+
+## Test
+```sh
+make test
 ```
 
 ## Install
