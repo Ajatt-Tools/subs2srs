@@ -1,5 +1,5 @@
-subs2srs/bin/
-subs2srs/obj/
+subs2srs*/bin/
+subs2srs*/obj/
 build/
 *.user
 *.suo
