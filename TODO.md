@@ -6,10 +6,8 @@
   Zero tests currently. Start with `UtilsName.createName()`, `PrefIO.read()`,
   `UtilsSubs.applyTimePad()`.
 
-- [ ] **`UtilsCommon` — deduplicate process launching**
-  `startFFmpegProgress()` and `getFFmpegText()` repeat the same
-  "try rel → try abs → try PATH" pattern three times each (~160 lines of
-  copy-paste). Extract into a single `tryRunProcess()` with a callback.
+- [x] **`UtilsCommon` — deduplicate process launching**
+  Done. `getExePaths()` centralizes "try rel → try abs → try PATH".
 
 - [ ] **`PrefIO` — migrate to JSON**
   Current regex-based replacement is fragile. Read both formats, write JSON.
