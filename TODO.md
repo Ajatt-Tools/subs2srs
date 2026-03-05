@@ -20,9 +20,8 @@
   fields. `SaveSettings.gatherData()` and `Settings.loadSettings()` become
   unnecessary. Requires analysis of all `.s2s` consumers.
 
-- [ ] **`Process` → async with `CancellationToken`**
-  Replace `Thread.Sleep(100)` polling in `startFFmpegProgress()` with
-  `process.WaitForExitAsync(token)`. Needs .NET 5+ (already satisfied).
+- [x] **`Process` → async with `CancellationToken`**
+  Done. `runProcessWithProgress()` uses `WaitForExitAsync(token)`.
 
 - [ ] **GTK4 migration**
   GtkSharp for GTK4 is not yet stable. Revisit when upstream is ready.
