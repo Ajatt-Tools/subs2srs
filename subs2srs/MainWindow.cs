@@ -19,6 +19,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Gtk;
 using Action = System.Action;
@@ -822,7 +823,8 @@ namespace subs2srs
         private class GtkProgressReporter : IProgressReporter
         {
             private readonly ProgressBar _bar;
-            public bool Cancel { get; set; }
+            private readonly CancellationTokenSource _cts = new();
+            private bool _cancel;
             public int StepsTotal { get; set; }
 
             private string _text;
@@ -830,6 +832,14 @@ namespace subs2srs
             private bool _dirty;
             private readonly object _sync = new object();
             private bool _active = true;
+
+            public bool Cancel
+            {
+                get => _cancel;
+                set { _cancel = value; if (value) _cts.Cancel(); }
+            }
+
+            public CancellationToken Token => _cts.Token;
 
             public GtkProgressReporter(ProgressBar bar)
             {

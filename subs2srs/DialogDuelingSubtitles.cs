@@ -20,6 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Gtk;
 using IOPath = System.IO.Path;
@@ -702,7 +703,17 @@ namespace subs2srs
         private class InlineProgressReporter : IProgressReporter
         {
             private readonly ProgressBar _bar;
-            public bool Cancel { get; set; }
+            private readonly CancellationTokenSource _cts = new();
+
+            public CancellationToken Token => _cts.Token;
+
+            private bool _cancel;
+            public bool Cancel
+            {
+                get => _cancel;
+                set { _cancel = value; if (value) _cts.Cancel(); }
+            }
+
             public int StepsTotal { get; set; }
 
             public InlineProgressReporter(ProgressBar bar) { _bar = bar; }

@@ -18,6 +18,7 @@
 //////////////////////////////////////////////////////////////////////////////
 using System;
 using System.Diagnostics;
+using System.Threading;
 
 namespace subs2srs
 {
@@ -31,5 +32,6 @@ namespace subs2srs
         void EnableDetail(bool enable);
         void SetDuration(TimeSpan duration);
         void OnFFmpegOutput(object sender, DataReceivedEventArgs e);
+        CancellationToken Token => CancellationToken.None;
     }
 }

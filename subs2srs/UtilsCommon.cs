@@ -23,7 +23,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading;
 
 namespace subs2srs
 {
@@ -254,7 +253,8 @@ namespace subs2srs
 
     /// <summary>
     /// Run a process with progress monitoring and cancel support.
-    /// Returns true if process completed (not cancelled).
+    /// Uses WaitForExitAsync with CancellationToken instead of polling.
+    /// Returns true if process started successfully (even if cancelled).
     /// </summary>
     private static bool runProcessWithProgress(string exe, string args, IProgressReporter dialogProgress)
     {
@@ -270,17 +270,19 @@ namespace subs2srs
         process.Start();
         process.BeginErrorReadLine();
 
-        while (!process.HasExited)
+        try
         {
-          Thread.Sleep(100);
-
-          if (dialogProgress.Cancel)
-          {
-            try { process.Kill(); } catch { }
-            return true; // started OK, just cancelled
-          }
+          process.WaitForExitAsync(dialogProgress.Token).GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException)
+        {
+          try { process.Kill(entireProcessTree: true); } catch { }
         }
 
+        return true;
+      }
+      catch (OperationCanceledException)
+      {
         return true;
       }
       catch

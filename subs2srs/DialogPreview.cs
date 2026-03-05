@@ -19,6 +19,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using Gtk;
 using System.IO;
@@ -703,7 +704,8 @@ namespace subs2srs
         {
             private readonly ProgressBar _b;
             private readonly Func<bool> _isDestroyed;
-            public bool Cancel { get; set; }
+            private readonly CancellationTokenSource _cts = new();
+            private bool _cancel;
             public int StepsTotal { get; set; }
 
             private string _text;
@@ -711,6 +713,14 @@ namespace subs2srs
             private bool _dirty;
             private readonly object _sync = new object();
             private bool _active = true;
+
+            public bool Cancel
+            {
+                get => _cancel;
+                set { _cancel = value; if (value) _cts.Cancel(); }
+            }
+
+            public CancellationToken Token => _cts.Token;
 
             public PProgress(ProgressBar b, Func<bool> isDestroyed)
             {
