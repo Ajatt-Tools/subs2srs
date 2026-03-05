@@ -149,8 +149,7 @@ namespace subs2srs
     /// </summary>
     public static string timeToString(TimeSpan time)
     {
-      return String.Format("{0:00.}", time.Hours) + ":" + String.Format("{0:00.}", 
-        time.Minutes) + ":" + String.Format("{0:00.}", time.Seconds);
+      return $"{(int)time.TotalHours}:{time.Minutes:00}:{time.Seconds:00}";
     }
 
 
@@ -344,13 +343,7 @@ namespace subs2srs
     /// </summary>
     public static string formatAssTime(TimeSpan time)
     {
-      string timeAss = String.Format("{0}:{1:00.}:{2:00.}.{3:00.}",
-                      (int)time.TotalHours,
-                      time.Minutes,
-                      time.Seconds,
-                      time.Milliseconds / 10);
-
-      return timeAss;
+      return $"{(int)time.TotalHours}:{time.Minutes:00}:{time.Seconds:00}.{time.Milliseconds / 10:00}";
     }
 
 
