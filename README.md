@@ -66,12 +66,14 @@ is carried over from the original with minimal changes.
 - Preview dialog Go button delegates to `MainWindow.OnGoClicked` via event — single processing path for both main window and preview
 - Preview window reused (hide/show) instead of destroyed on close — avoids widget recreation and pixbuf leaks
 - `IProgressReporter` implementations use poll-based `GLib.Timeout` instead of `Application.Invoke` — thread-safe, no cross-thread GTK calls
+- `IProgressReporter.Token` — exposes `CancellationToken` for cooperative cancellation; `Cancel` setter triggers `CancellationTokenSource`
 
 **Performance:**
 - `PrefIO.read()` — read preferences file ~70 times → single pass into dictionary
 - Workers skip existing output files — interrupted runs resume without re-extracting
 - `WorkerVideo` — skip expensive video conversion when all clips for an episode already exist
 - Audio/snapshot/video clip generation parallelised with `Parallel.ForEach` (configurable via `max_parallel_tasks`)
+- `runProcessWithProgress()` — `Thread.Sleep(100)` polling loop replaced with `WaitForExitAsync(token)` for proper async cancellation
 
 **Reliability:**
 - Workers write to `.tmp` file then rename — incomplete files from crashes cannot be mistaken for finished output
