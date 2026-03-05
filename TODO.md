@@ -2,9 +2,9 @@
 
 ## Medium priority
 
-- [ ] **Unit tests**
-  Zero tests currently. Start with `UtilsName.createName()`, `PrefIO.read()`,
-  `UtilsSubs.applyTimePad()`.
+- [x] **Unit tests**
+  Added xUnit project with tests for `UtilsSubs` (time formatting, padding,
+  overlap, roundtrip), `UtilsName.createName()`, `PrefIO.convertFromTokens()`.
 
 - [x] **`UtilsCommon` — deduplicate process launching**
   Done. `getExePaths()` centralizes "try rel → try abs → try PATH".
