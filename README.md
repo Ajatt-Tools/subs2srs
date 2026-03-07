@@ -133,10 +133,15 @@ make test
 
 ## Install
 
-### Arch Linux (AUR)
+### AUR
 
 ```sh
 yay -S subs2srs-gtk3-git
+```
+
+### gitpkg
+```sh
+gitpkg install subs2srs-gtk3
 ```
 
 ### Manual
