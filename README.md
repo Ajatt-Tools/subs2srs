@@ -1,5 +1,7 @@
 # subs2srs (GTK3 port)
 
+![screenshot](assets/screenshot.png)
+
 A tool that creates [Anki](https://apps.ankiweb.net/) flashcards from movies
 and TV shows with subtitles, for language learning.
 
