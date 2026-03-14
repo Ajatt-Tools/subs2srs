@@ -1,0 +1,14 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev
+      - run: dotnet build subs2srs/subs2srs.csproj -c Release
+      - run: dotnet test subs2srs.Tests/subs2srs.Tests.csproj -c Release
