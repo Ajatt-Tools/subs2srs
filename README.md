@@ -1,5 +1,7 @@
 # subs2srs (GTK3 port)
 
+[![CI](https://github.com/rpPH4kQocMjkm2Ve/subs2srs-gtk3/actions/workflows/ci.yml/badge.svg)](https://github.com/rpPH4kQocMjkm2Ve/subs2srs-gtk3/actions/workflows/ci.yml)
+
 ![screenshot](assets/screenshot.png)
 
 A tool that creates [Anki](https://apps.ankiweb.net/) flashcards from movies
