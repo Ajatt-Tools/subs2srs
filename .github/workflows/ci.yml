@@ -1,5 +1,20 @@
 name: CI
-on: [push, pull_request]
+
+on:
+  push:
+    paths:
+      - 'subs2srs/**/*.cs'
+      - 'subs2srs/subs2srs.csproj'
+      - 'subs2srs.Tests/**/*.cs'
+      - 'subs2srs.Tests/subs2srs.Tests.csproj'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    paths:
+      - 'subs2srs/**/*.cs'
+      - 'subs2srs/subs2srs.csproj'
+      - 'subs2srs.Tests/**/*.cs'
+      - 'subs2srs.Tests/subs2srs.Tests.csproj'
+      - '.github/workflows/ci.yml'
 
 jobs:
   build-and-test:
