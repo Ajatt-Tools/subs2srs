@@ -790,6 +790,28 @@ namespace subs2srs
 
             SaveSettings();
 
+            // Validate audio stream consistency across episodes
+            bool needsAudioFromVideo =
+              (Settings.Instance.AudioClips.Enabled && Settings.Instance.AudioClips.UseAudioFromVideo)
+              || Settings.Instance.VideoClips.Enabled;
+
+            if (needsAudioFromVideo
+                && Settings.Instance.VideoClips.Files?.Length > 1)
+            {
+                int streamIdx = _comboAudioStream.Active >= 0 ? _comboAudioStream.Active : 0;
+                var files = Settings.Instance.VideoClips.Files;
+
+                // Probe off the UI thread to avoid blocking
+                string warning = await Task.Run(() =>
+                    UtilsVideo.validateAudioStreamConsistency(files, streamIdx));
+
+                if (warning != null)
+                {
+                    if (!UtilsMsg.showConfirm(warning))
+                        return;
+                }
+            }
+
             _btnGo.Sensitive = false;
             _btnCancel.Sensitive = true;
 

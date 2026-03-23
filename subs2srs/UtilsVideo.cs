@@ -745,6 +745,89 @@ namespace subs2srs
       return streamInfos;
     }
 
+    /// <summary>
+    /// Validate that the selected audio stream has consistent language/title
+    /// across all video files. Returns a warning message if mismatch is found,
+    /// null if everything is consistent.
+    /// Probes all files via ffprobe (fast: ~100ms per file).
+    /// </summary>
+    public static string validateAudioStreamConsistency(string[] videoFiles, int audioStreamIndex)
+    {
+      if (videoFiles == null || videoFiles.Length <= 1)
+        return null;
+
+      // Probe each episode, collect stream info at the selected index
+      string refLang = null, refTitle = null;
+      int refEpisode = -1;
+      var mismatches = new List<string>();
+      var missing = new List<int>();
+
+      for (int i = 0; i < videoFiles.Length; i++)
+      {
+        int epNum = i + 1;
+        List<InfoStream> streams;
+        try { streams = getAvailableAudioStreams(videoFiles[i]); }
+        catch { continue; }
+
+        if (audioStreamIndex >= streams.Count)
+        {
+          missing.Add(epNum);
+          continue;
+        }
+
+        var s = streams[audioStreamIndex];
+        string lang = s.Lang ?? "";
+        string title = s.Title ?? "";
+
+        // First valid episode becomes the reference
+        if (refEpisode < 0)
+        {
+          refLang = lang;
+          refTitle = title;
+          refEpisode = epNum;
+          continue;
+        }
+
+        if (lang != refLang || title != refTitle)
+        {
+          string desc = string.IsNullOrEmpty(title)
+            ? $"  Episode {epNum}: {(string.IsNullOrEmpty(lang) ? "???" : lang)}"
+            : $"  Episode {epNum}: {(string.IsNullOrEmpty(lang) ? "???" : lang)} — \"{title}\"";
+          mismatches.Add(desc);
+        }
+      }
+
+      if (mismatches.Count == 0 && missing.Count == 0)
+        return null;
+
+      var sb = new StringBuilder();
+      sb.AppendLine($"Audio stream #{audioStreamIndex} differs across episodes:");
+      sb.AppendLine();
+
+      string refDesc = string.IsNullOrEmpty(refTitle)
+        ? $"{(string.IsNullOrEmpty(refLang) ? "???" : refLang)}"
+        : $"{(string.IsNullOrEmpty(refLang) ? "???" : refLang)} — \"{refTitle}\"";
+      sb.AppendLine($"  Reference (episode {refEpisode}): {refDesc}");
+      sb.AppendLine();
+
+      if (mismatches.Count > 0)
+      {
+        sb.AppendLine("Different content detected:");
+        foreach (var m in mismatches)
+          sb.AppendLine(m);
+        sb.AppendLine();
+      }
+
+      if (missing.Count > 0)
+      {
+        sb.AppendLine($"Stream not found in episodes: {string.Join(", ", missing)}");
+        sb.AppendLine();
+      }
+
+      sb.Append("This may indicate a commentary track. Continue anyway?");
+      return sb.ToString();
+    }
+
 
 
 
