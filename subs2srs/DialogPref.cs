@@ -130,6 +130,15 @@ namespace subs2srs
                 PrefDefaults.DefaultIphoneSupport));
             propTable["iPhone Support"] = ConstantSettings.DefaultIphoneSupport;
 
+            // default_snapshot_jpeg_quality
+            propTable.Properties.Add(new PropertySpec("Snapshot JPEG Quality", typeof(int),
+                "User Interface Defaults",
+                "The default JPEG quality for snapshots (ffmpeg -q:v).\n\n"
+                + "1 = best quality (largest file), 31 = worst quality (smallest file).\n"
+                + "Recommended: 2-5 for Anki cards.\n\nRange: 1-31.",
+                PrefDefaults.DefaultSnapshotJpegQuality));
+            propTable["Snapshot JPEG Quality"] = ConstantSettings.DefaultSnapshotJpegQuality;
+
             string encodingList =
                 "You may use these values:\n"
                 + "ASMO-708, big5, cp1025, cp866, cp875, csISO2022JP, DOS-720, DOS-862, "
@@ -907,6 +916,8 @@ namespace subs2srs
                 new List<int>(new[] { 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256, 320 }),
                 PrefDefaults.DefaultVideoClipAudioBitrate).ToString()));
             pairList.Add(new PrefIO.SettingsPair("default_ipod_support", propTable["iPhone Support"].ToString()));
+            pairList.Add(new PrefIO.SettingsPair("default_snapshot_jpeg_quality",
+                UtilsCommon.checkRange((int)propTable["Snapshot JPEG Quality"], 1, 31, PrefDefaults.DefaultSnapshotJpegQuality).ToString()));
             pairList.Add(new PrefIO.SettingsPair("default_encoding_subs1",
                 checkValidEncoding((string)propTable["Encoding Subs1"], PrefDefaults.DefaultEncodingSubs1)));
             pairList.Add(new PrefIO.SettingsPair("default_encoding_subs2",

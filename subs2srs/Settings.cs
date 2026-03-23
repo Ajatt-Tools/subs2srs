@@ -44,6 +44,7 @@ namespace subs2srs
     public const bool DefaultAudioNormalize = false;
     public const int DefaultVideoClipVideoBitrate = 800;
     public const int DefaultVideoClipAudioBitrate = 128;
+    public const int DefaultSnapshotJpegQuality = 3;
     public const bool DefaultIphoneSupport = false;
     public const string DefaultEncodingSubs1 = "utf-8";
     public const string DefaultEncodingSubs2 = "utf-8";
@@ -204,6 +205,7 @@ namespace subs2srs
 
     public static int DefaultVideoClipVideoBitrate { get; set; } = PrefDefaults.DefaultVideoClipVideoBitrate;
     public static int DefaultVideoClipAudioBitrate { get; set; } = PrefDefaults.DefaultVideoClipAudioBitrate;
+    public static int DefaultSnapshotJpegQuality { get; set; } = PrefDefaults.DefaultSnapshotJpegQuality;
     public static bool DefaultIphoneSupport { get; set; } = PrefDefaults.DefaultIphoneSupport;
 
     public static string DefaultEncodingSubs1 { get; set; } = PrefDefaults.DefaultEncodingSubs1;
@@ -647,6 +649,7 @@ namespace subs2srs
 
       Snapshots = new Snapshots();
       Snapshots.Enabled = ConstantSettings.DefaultEnableSnapshotsGeneration;
+      Snapshots.Quality = ConstantSettings.DefaultSnapshotJpegQuality;
 
       VideoClips = new VideoClips();
       VideoClips.Enabled = ConstantSettings.DefaultEnableVideoClipsGeneration;
