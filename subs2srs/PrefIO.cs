@@ -125,6 +125,7 @@ namespace subs2srs
 
         sb.AppendLine($"default_video_clip_video_bitrate = {PrefDefaults.DefaultVideoClipVideoBitrate}");
         sb.AppendLine($"default_video_clip_audio_bitrate = {PrefDefaults.DefaultVideoClipAudioBitrate}");
+        sb.AppendLine($"default_snapshot_jpeg_quality = {PrefDefaults.DefaultSnapshotJpegQuality}");
         sb.AppendLine($"default_ipod_support = {PrefDefaults.DefaultIphoneSupport}");
         sb.AppendLine();
 
@@ -245,7 +246,7 @@ namespace subs2srs
       newFormat = newFormat.Replace("${tab}", "\t");
       newFormat = newFormat.Replace("${cr}", "\r");
       newFormat = newFormat.Replace("${lf}", "\n");
-    
+
       return newFormat;
     }
 
@@ -321,6 +322,7 @@ namespace subs2srs
 
       ConstantSettings.DefaultVideoClipVideoBitrate = getI("default_video_clip_video_bitrate", PrefDefaults.DefaultVideoClipVideoBitrate);
       ConstantSettings.DefaultVideoClipAudioBitrate = getI("default_video_clip_audio_bitrate", PrefDefaults.DefaultVideoClipAudioBitrate);
+      ConstantSettings.DefaultSnapshotJpegQuality = getI("default_snapshot_jpeg_quality", PrefDefaults.DefaultSnapshotJpegQuality);
       ConstantSettings.DefaultIphoneSupport = getBl("default_ipod_support", PrefDefaults.DefaultIphoneSupport);
 
       ConstantSettings.DefaultEncodingSubs1 = getStr("default_encoding_subs1", PrefDefaults.DefaultEncodingSubs1);
