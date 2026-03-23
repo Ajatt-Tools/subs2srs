@@ -24,15 +24,22 @@ namespace subs2srs
     public class UtilsSnapshot
     {
         public static void takeSnapshotFromVideo(string inFile, TimeSpan snapTime,
-            ImageSize size, ImageCrop crop, string outFile)
+            ImageSize size, ImageCrop crop, int jpegQuality, string outFile)
         {
             string startTimeArg = UtilsVideo.formatStartTimeArg(snapTime);
             string videoSizeArg = UtilsVideo.formatVideoSizeArg(inFile, size, crop, 2, 2);
             string cropArg = UtilsVideo.formatCropArg(inFile, size, crop);
 
+            // -q:v N applies to JPEG output only (mjpeg encoder); PNG ignores it.
+            // Only emit when output is JPEG to avoid confusing ffmpeg warnings.
+            string ext = Path.GetExtension(outFile).ToLowerInvariant();
+            string qualityArg = (ext == ".jpg" || ext == ".jpeg")
+                ? $"-q:v {jpegQuality}"
+                : "";
+
             string ffmpegSnapshotProgArgs = String.Format(
-                "-y -an {0} -i \"{1}\" -f image2 -vf \"{2}, {3}\" -vframes 1 \"{4}\"",
-                startTimeArg, inFile, videoSizeArg, cropArg, outFile);
+                "-y -an -sn -dn -noaccurate_seek {0} -i \"{1}\" -f image2 -vf \"{2}, {3}\" -vframes 1 {4} -threads 1 \"{5}\"",
+                startTimeArg, inFile, videoSizeArg, cropArg, qualityArg, outFile);
 
             UtilsCommon.startFFmpeg(ffmpegSnapshotProgArgs, false, true);
         }

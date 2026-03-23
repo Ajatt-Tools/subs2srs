@@ -420,7 +420,10 @@ namespace subs2srs
             Task.Run(() =>
             {
                 UtilsSnapshot.takeSnapshotFromVideo(video, mid,
-                    Settings.Instance.Snapshots.Size, Settings.Instance.Snapshots.Crop, outFile);
+                    Settings.Instance.Snapshots.Size,
+                    Settings.Instance.Snapshots.Crop,
+                    Settings.Instance.Snapshots.Quality,
+                    outFile);
             }).ContinueWith(_ =>
             {
                 if (_destroyed) return;

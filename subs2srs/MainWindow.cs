@@ -63,6 +63,7 @@ namespace subs2srs
         private SpinButton _spinSnapshotWidth;
         private SpinButton _spinSnapshotHeight;
         private SpinButton _spinSnapshotCropBottom;
+        private SpinButton _spinSnapshotQuality;
 
         // Video tab
         private CheckButton _chkGenerateVideo;
@@ -475,6 +476,11 @@ namespace subs2srs
             grid.Attach(_spinSnapshotCropBottom, 1, 2, 1, 1);
             grid.Attach(new Label("px"), 2, 2, 1, 1);
 
+            grid.Attach(new Label("JPEG Quality:") { Halign = Align.End }, 0, 3, 1, 1);
+            _spinSnapshotQuality = new SpinButton(1, 31, 1) { Value = 3 };
+            grid.Attach(_spinSnapshotQuality, 1, 3, 1, 1);
+            grid.Attach(new Label("(1 = best, 5 = good, 15 = low)") { Halign = Align.Start }, 2, 3, 1, 1);
+
             vbox.PackStart(grid, false, false, 0);
             return vbox;
         }
@@ -565,6 +571,8 @@ namespace subs2srs
             _spinSnapshotWidth.Value = Settings.Instance.Snapshots.Size.Width > 0 ? Settings.Instance.Snapshots.Size.Width : 240;
             _spinSnapshotHeight.Value = Settings.Instance.Snapshots.Size.Height > 0 ? Settings.Instance.Snapshots.Size.Height : 160;
             _spinSnapshotCropBottom.Value = Settings.Instance.Snapshots.Crop.Bottom;
+            _spinSnapshotQuality.Value = Settings.Instance.Snapshots.Quality > 0
+                ? Settings.Instance.Snapshots.Quality : 3;
 
             _spinVideoWidth.Value = Settings.Instance.VideoClips.Size.Width > 0 ? Settings.Instance.VideoClips.Size.Width : 240;
             _spinVideoHeight.Value = Settings.Instance.VideoClips.Size.Height > 0 ? Settings.Instance.VideoClips.Size.Height : 160;
@@ -648,6 +656,7 @@ namespace subs2srs
                 Settings.Instance.Snapshots.Size.Width = (int)_spinSnapshotWidth.Value;
                 Settings.Instance.Snapshots.Size.Height = (int)_spinSnapshotHeight.Value;
                 Settings.Instance.Snapshots.Crop.Bottom = (int)_spinSnapshotCropBottom.Value;
+                Settings.Instance.Snapshots.Quality = (int)_spinSnapshotQuality.Value;
 
                 // Video clips
                 Settings.Instance.VideoClips.Enabled = _chkGenerateVideo.Active;
