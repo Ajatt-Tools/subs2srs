@@ -42,6 +42,8 @@ namespace subs2srs
         private RadioButton _radioTimingSubs2;
         private CheckButton _chkTimeShift;
         private SpinButton _spinTimeShiftSubs1;
+        private TreeView _tvShiftRules;
+        private ListStore _shiftRulesStore;
         private SpinButton _spinTimeShiftSubs2;
         private CheckButton _chkSpan;
         private Entry _txtSpanStart;
@@ -348,14 +350,96 @@ namespace subs2srs
 
             // Time shift
             _chkTimeShift = new CheckButton("Time Shift");
-            var timeShiftBox = new Box(Orientation.Horizontal, 6);
-            timeShiftBox.PackStart(_chkTimeShift, false, false, 0);
-            timeShiftBox.PackStart(new Label("Subs1 (ms):"), false, false, 0);
+            var timeShiftBox = new Box(Orientation.Vertical, 6);
+
+            var globalShiftRow = new Box(Orientation.Horizontal, 6);
+            globalShiftRow.PackStart(_chkTimeShift, false, false, 0);
+            globalShiftRow.PackStart(new Label("Subs1 (ms):"), false, false, 0);
             _spinTimeShiftSubs1 = new SpinButton(-99999, 99999, 1) { Value = 0 };
-            timeShiftBox.PackStart(_spinTimeShiftSubs1, false, false, 0);
-            timeShiftBox.PackStart(new Label("Subs2 (ms):"), false, false, 0);
+            globalShiftRow.PackStart(_spinTimeShiftSubs1, false, false, 0);
+            globalShiftRow.PackStart(new Label("Subs2 (ms):"), false, false, 0);
             _spinTimeShiftSubs2 = new SpinButton(-99999, 99999, 1) { Value = 0 };
-            timeShiftBox.PackStart(_spinTimeShiftSubs2, false, false, 0);
+            globalShiftRow.PackStart(_spinTimeShiftSubs2, false, false, 0);
+            timeShiftBox.PackStart(globalShiftRow, false, false, 0);
+
+            // Per-episode cascading shift rules
+            var rulesFrame = new Frame("Per-Episode Shift Rules (cascading)");
+            var rulesVBox = new Box(Orientation.Vertical, 4) { BorderWidth = 4 };
+
+            // Store columns: FromEpisode (int), Subs1Shift (int), Subs2Shift (int)
+            _shiftRulesStore = new ListStore(typeof(int), typeof(int), typeof(int));
+            _tvShiftRules = new TreeView(_shiftRulesStore) { HeadersVisible = true };
+
+            // Column 0: From Episode
+            var epRenderer = new CellRendererText { Editable = true };
+            epRenderer.Edited += OnShiftRuleCellEdited;
+            var epCol = new TreeViewColumn("From Episode", epRenderer);
+            epCol.SetCellDataFunc(epRenderer, (TreeViewColumn col, CellRenderer cell, ITreeModel model, TreeIter iter) =>
+            {
+                ((CellRendererText)cell).Text = ((int)model.GetValue(iter, 0)).ToString();
+            });
+            epCol.MinWidth = 120;
+            epCol.Expand = true;
+            _tvShiftRules.AppendColumn(epCol);
+
+            // Column 1: Subs1 Shift (ms)
+            var s1Renderer = new CellRendererText { Editable = true };
+            s1Renderer.Edited += OnShiftRuleCellEdited;
+            var s1Col = new TreeViewColumn("Subs1 Shift (ms)", s1Renderer);
+            s1Col.SetCellDataFunc(s1Renderer, (TreeViewColumn col, CellRenderer cell, ITreeModel model, TreeIter iter) =>
+            {
+                ((CellRendererText)cell).Text = ((int)model.GetValue(iter, 1)).ToString();
+            });
+            s1Col.MinWidth = 140;
+            s1Col.Expand = true;
+            _tvShiftRules.AppendColumn(s1Col);
+
+            // Column 2: Subs2 Shift (ms)
+            var s2Renderer = new CellRendererText { Editable = true };
+            s2Renderer.Edited += OnShiftRuleCellEdited;
+            var s2Col = new TreeViewColumn("Subs2 Shift (ms)", s2Renderer);
+            s2Col.SetCellDataFunc(s2Renderer, (TreeViewColumn col, CellRenderer cell, ITreeModel model, TreeIter iter) =>
+            {
+                ((CellRendererText)cell).Text = ((int)model.GetValue(iter, 2)).ToString();
+            });
+            s2Col.MinWidth = 140;
+            s2Col.Expand = true;
+            _tvShiftRules.AppendColumn(s2Col);
+
+            var rulesSw = new ScrolledWindow { ShadowType = ShadowType.In, HeightRequest = 120 };
+            rulesSw.Add(_tvShiftRules);
+            rulesVBox.PackStart(rulesSw, true, true, 0);
+
+            var rulesBtnBox = new Box(Orientation.Horizontal, 4);
+            var btnAddRule = new Button("Add Rule");
+            btnAddRule.Clicked += (s, e) =>
+            {
+                int nextEp = 1;
+                if (_shiftRulesStore.IterNChildren() > 0)
+                {
+                    _shiftRulesStore.GetIter(out var last,
+                        new TreePath(new[] { _shiftRulesStore.IterNChildren() - 1 }));
+                    nextEp = (int)_shiftRulesStore.GetValue(last, 0) + 1;
+                }
+                var newIter = _shiftRulesStore.AppendValues(nextEp, 0, 0);
+                // Select and scroll to the new row
+                _tvShiftRules.Selection.SelectIter(newIter);
+                _tvShiftRules.ScrollToCell(
+                    _shiftRulesStore.GetPath(newIter), null, false, 0, 0);
+            };
+            rulesBtnBox.PackStart(btnAddRule, false, false, 0);
+
+            var btnRemoveRule = new Button("Remove Selected");
+            btnRemoveRule.Clicked += (s, e) =>
+            {
+                if (_tvShiftRules.Selection.GetSelected(out var iter))
+                    _shiftRulesStore.Remove(ref iter);
+            };
+            rulesBtnBox.PackStart(btnRemoveRule, false, false, 0);
+            rulesVBox.PackStart(rulesBtnBox, false, false, 0);
+
+            rulesFrame.Add(rulesVBox);
+            timeShiftBox.PackStart(rulesFrame, false, false, 0);
             vbox.PackStart(timeShiftBox, false, false, 0);
 
             // Span
@@ -587,6 +671,20 @@ namespace subs2srs
 
             _radioTimingSubs1.Active = true;
 
+            // Load per-episode shift rules
+            _shiftRulesStore.Clear();
+            if (Settings.Instance.Subs[0].TimeShiftRules?.Count > 0)
+            {
+                for (int i = 0; i < Settings.Instance.Subs[0].TimeShiftRules.Count; i++)
+                {
+                    int fromEp = Settings.Instance.Subs[0].TimeShiftRules[i].FromEpisode;
+                    int s1 = Settings.Instance.Subs[0].TimeShiftRules[i].ShiftMs;
+                    int s2 = (Settings.Instance.Subs[1].TimeShiftRules?.Count > i)
+                        ? Settings.Instance.Subs[1].TimeShiftRules[i].ShiftMs : 0;
+                    _shiftRulesStore.AppendValues(fromEp, s1, s2);
+                }
+            }
+
             SetDefaultSize(ConstantSettings.MainWindowWidth, ConstantSettings.MainWindowHeight);
         }
 
@@ -617,6 +715,25 @@ namespace subs2srs
                     Settings.Instance.Subs[1].Files = Array.Empty<string>();
 
                 Settings.Instance.TimeShiftEnabled = _chkTimeShift.Active;
+
+                // Per-episode shift rules
+                Settings.Instance.Subs[0].TimeShiftRules.Clear();
+                Settings.Instance.Subs[1].TimeShiftRules.Clear();
+                if (_shiftRulesStore.GetIterFirst(out var ruleIter))
+                {
+                    do
+                    {
+                        int fromEp = (int)_shiftRulesStore.GetValue(ruleIter, 0);
+                        int s1Shift = (int)_shiftRulesStore.GetValue(ruleIter, 1);
+                        int s2Shift = (int)_shiftRulesStore.GetValue(ruleIter, 2);
+                        Settings.Instance.Subs[0].TimeShiftRules.Add(new TimeShiftRule(fromEp, s1Shift));
+                        Settings.Instance.Subs[1].TimeShiftRules.Add(new TimeShiftRule(fromEp, s2Shift));
+                    } while (_shiftRulesStore.IterNext(ref ruleIter));
+
+                    // Ensure sorted by FromEpisode
+                    Settings.Instance.Subs[0].TimeShiftRules.Sort((a, b) => a.FromEpisode.CompareTo(b.FromEpisode));
+                    Settings.Instance.Subs[1].TimeShiftRules.Sort((a, b) => a.FromEpisode.CompareTo(b.FromEpisode));
+                }
 
                 Settings.Instance.SpanEnabled = _chkSpan.Active;
                 if (_chkSpan.Active)
@@ -837,6 +954,29 @@ namespace subs2srs
                 _progressBar.Text = _reporter.Cancel ? "Cancelled" : "Finished!";
                 _progressBar.Fraction = _reporter.Cancel ? 0.0 : 1.0;
             }
+        }
+
+        private void OnShiftRuleCellEdited(object sender, EditedArgs args)
+        {
+            if (!_shiftRulesStore.GetIter(out var iter, new TreePath(args.Path)))
+                return;
+            if (!int.TryParse(args.NewText.Trim(), out int val))
+                return;
+
+            // Find which column this renderer belongs to
+            int col = -1;
+            for (int c = 0; c < _tvShiftRules.Columns.Length; c++)
+            {
+                if (_tvShiftRules.Columns[c].Cells[0] == sender)
+                { col = c; break; }
+            }
+
+            if (col < 0) return;
+
+            // Episode number must be >= 1
+            if (col == 0 && val < 1) val = 1;
+
+            _shiftRulesStore.SetValue(iter, col, val);
         }
 
         // ── FILE DIALOGS ─────────────────────────────────────────────────────

@@ -38,14 +38,14 @@ namespace subs2srs
   {
     /// <summary>
     /// Pair lines from Subs1 to Subs2.
-    /// 
-    /// Subs2srs takes a two-pass approach when it combines Subs1 and Subs2. The first pass matches a line from 
+    ///
+    /// Subs2srs takes a two-pass approach when it combines Subs1 and Subs2. The first pass matches a line from
     /// Subs1 to the closest line in Subs2. Closest here meaning the difference in start times. This will work fine
     /// assuming that both Subs1 and Subs2 have the exact same number of lines and that lines are similarly timed.
     /// Naturally, this is almost never the case. The result being that some lines will be skipped and others repeated.
-    /// The second pass adds back in any lines that were skipped by combining them with others lines and doesn't allow 
-    /// the same line to be repeated. 
-    /// 
+    /// The second pass adds back in any lines that were skipped by combining them with others lines and doesn't allow
+    /// the same line to be repeated.
+    ///
     /// This is used by the Main Dialog, Preview, Dueling Subtitles tools, and Extract Audio from Media Tool.
     /// </summary>
     public List<List<InfoCombined>> combineAllSubs(WorkerVars workerVars, IProgressReporter dialogProgress)
@@ -80,7 +80,7 @@ namespace subs2srs
         int streamSubs1 = 0;
         int streamSubs2 = 0;
 
-        // In the subtitles are in Vobsub format, get the stream to use 
+        // In the subtitles are in Vobsub format, get the stream to use
         if (subs1ContainsVobsubs)
         {
           streamSubs1 = Convert.ToInt32(Settings.Instance.Subs[0].VobsubStream.Num);
@@ -92,7 +92,7 @@ namespace subs2srs
         }
 
         // Parse Subs1
-        subs1Parser = UtilsSubs.getSubtitleParserType(workerVars, curSub1File, streamSubs1, 
+        subs1Parser = UtilsSubs.getSubtitleParserType(workerVars, curSub1File, streamSubs1,
           epIdx + Settings.Instance.EpisodeStartNumber, 1, Encoding.GetEncoding(Settings.Instance.Subs[0].Encoding));
 
         Logger.Instance.writeFileToLog(curSub1File, Encoding.GetEncoding(Settings.Instance.Subs[0].Encoding));
@@ -111,13 +111,15 @@ namespace subs2srs
           subs1LineInfos = combinePartialLinesIntoSentence(subs1LineInfos, Settings.Instance.Subs[0].JoinSentencesCharList);
         }
 
-        // Apply Subs1 time shift
+        // Apply Subs1 time shift (per-episode cascading rules or global)
         if (Settings.Instance.TimeShiftEnabled)
         {
+          int episodeNumber = epIdx + Settings.Instance.EpisodeStartNumber;
+          int shift = Settings.Instance.Subs[0].GetEffectiveTimeShift(episodeNumber);
           foreach (InfoLine line in subs1LineInfos)
           {
-            line.StartTime = UtilsSubs.shiftTiming(line.StartTime, Settings.Instance.Subs[0].TimeShift);
-            line.EndTime = UtilsSubs.shiftTiming(line.EndTime, Settings.Instance.Subs[0].TimeShift);
+            line.StartTime = UtilsSubs.shiftTiming(line.StartTime, shift);
+            line.EndTime = UtilsSubs.shiftTiming(line.EndTime, shift);
           }
         }
 
@@ -125,7 +127,7 @@ namespace subs2srs
         if (Settings.Instance.Subs[1].Files.Length != 0)
         {
           curSub2File = Settings.Instance.Subs[1].Files[epIdx];
-          subs2Parser = UtilsSubs.getSubtitleParserType(workerVars, curSub2File, streamSubs2, 
+          subs2Parser = UtilsSubs.getSubtitleParserType(workerVars, curSub2File, streamSubs2,
             epIdx + Settings.Instance.EpisodeStartNumber, 2, Encoding.GetEncoding(Settings.Instance.Subs[1].Encoding));
 
           Logger.Instance.writeFileToLog(curSub2File, Encoding.GetEncoding(Settings.Instance.Subs[1].Encoding));
@@ -144,13 +146,15 @@ namespace subs2srs
             subs2LineInfos = combinePartialLinesIntoSentence(subs2LineInfos, Settings.Instance.Subs[1].JoinSentencesCharList);
           }
 
-          // Apply Subs2 time shift
+          // Apply Subs2 time shift (per-episode cascading rules or global)
           if (Settings.Instance.TimeShiftEnabled)
           {
+            int episodeNumber = epIdx + Settings.Instance.EpisodeStartNumber;
+            int shift = Settings.Instance.Subs[1].GetEffectiveTimeShift(episodeNumber);
             foreach (InfoLine line in subs2LineInfos)
             {
-              line.StartTime = UtilsSubs.shiftTiming(line.StartTime, Settings.Instance.Subs[1].TimeShift);
-              line.EndTime = UtilsSubs.shiftTiming(line.EndTime, Settings.Instance.Subs[1].TimeShift);
+              line.StartTime = UtilsSubs.shiftTiming(line.StartTime, shift);
+              line.EndTime = UtilsSubs.shiftTiming(line.EndTime, shift);
             }
           }
         }
@@ -203,7 +207,6 @@ namespace subs2srs
 
       return combinedAll;
     }
-
 
     /// <summary>
     /// Given a line from Subs1, get the closest matching line from a list of Subs2 lines based on timestamp.
@@ -323,24 +326,24 @@ namespace subs2srs
 
 
     /// <summary>
-    /// When Subs1 and Subs2 have a different number of lines or the timings are mismatched, 
+    /// When Subs1 and Subs2 have a different number of lines or the timings are mismatched,
     /// then pairs can contain repeated Subs2 text. This routine will combine the repeats into
     /// a single line.
-    /// 
+    ///
     /// Example:
-    /// 
+    ///
     /// Subs1_A --> Subs2_A    \
     /// Subs1_B --> Subs2_A     | These 3 lines are repeated.
     /// Subs1_C --> Subs2_A    /
     /// Subs1_D --> Subs2_B
     /// Subs1_E --> Subs2_C
-    /// 
+    ///
     /// Transform the above into:
-    /// 
+    ///
     /// Subs1_A Subs1_B Subs1_C --> Subs2_A   ; Combined into a single line
     /// Subs1_D                 --> Subs2_B
     /// Subs1_E                 --> Subs2_C
-    /// 
+    ///
     /// </summary>
     private List<InfoCombined> combineConsecutiveRepeats(List<InfoCombined> combList)
     {
@@ -353,7 +356,7 @@ namespace subs2srs
 
         foreach (InfoCombined comb in combList)
         {
-          if (comb.Subs2.StartTime == repeat.Subs2.StartTime && 
+          if (comb.Subs2.StartTime == repeat.Subs2.StartTime &&
             comb.Subs2.Text == repeat.Subs2.Text)
           {
             // Add the repeat's Subs1 text to the original Subs1 (Subs1_A in the example)
@@ -380,7 +383,7 @@ namespace subs2srs
       //TextWriter writer = new StreamWriter(@"skipped.txt", false, Encoding.UTF8); // For debug
       //InfoCombined foundComb = new InfoCombined(new InfoLine(), new InfoLine()); // For debug
 
-      foreach (InfoLine line in subs2LineList) 
+      foreach (InfoLine line in subs2LineList)
       {
         bool found = false;
 
@@ -413,31 +416,31 @@ namespace subs2srs
 
 
     /// <summary>
-    /// When Subs1 and Subs2 have different number of lines or the timings are mismatched, 
-    /// then lines from Subs2 can be skipped. This routine will combine the skipped lines with 
+    /// When Subs1 and Subs2 have different number of lines or the timings are mismatched,
+    /// then lines from Subs2 can be skipped. This routine will combine the skipped lines with
     /// their closest match based on timestamp.
-    /// 
+    ///
     /// Example:
-    /// 
+    ///
     /// Subs1_A --> Subs2_A
     /// Subs1_B --> Subs2_C   ; Subs2_B was skipped!
     /// Subs1_C --> Subs2_D
     /// Subs1_D --> Subs2_E
-    /// 
+    ///
     /// Transform the above into:
-    /// 
+    ///
     /// Subs1_A --> Subs2_A Subs2_B
     /// Subs1_B --> Subs2_C
     /// Subs1_C --> Subs2_D
     /// Subs1_D --> Subs2_E
-    /// 
+    ///
     /// or:
-    /// 
-    /// Subs1_A --> Subs2_A 
-    /// Subs1_B --> Subs2_B Subs2_C 
+    ///
+    /// Subs1_A --> Subs2_A
+    /// Subs1_B --> Subs2_B Subs2_C
     /// Subs1_C --> Subs2_D
     /// Subs1_D --> Subs2_E
-    /// 
+    ///
     /// </summary>
     private List<InfoCombined> combineSkipped(List<InfoLine> subs2LineList, List<InfoCombined> combList)
     {
@@ -471,7 +474,7 @@ namespace subs2srs
         }
         else
         {
-          // Because multiple skipped lines can match the same line from Sub1, 
+          // Because multiple skipped lines can match the same line from Sub1,
           // add to dictionary so that they can be sorted lateer
           if (skipDic.ContainsKey(bestMatch))
           {
@@ -509,7 +512,7 @@ namespace subs2srs
         }
 
         comb.Subs2.Text = subs2Text.Trim();
-       
+
         comb.Subs2.StartTime = skipDic[comb][0].StartTime;
 
         int numInfoElements = skipDic[comb].Count - 1;
@@ -542,17 +545,17 @@ namespace subs2srs
     /// <summary>
     /// Combine lines if the last character of the line indicates that it should be joined with the next line.
     /// Example:
-    /// 
+    ///
     ///   LineA,
     ///   LineB.
-    ///   
+    ///
     ///   If comma is the character that indicates a partial line, then the above lines would be combined as:
-    ///   
+    ///
     ///   LineA, LineB.
-    ///   
+    ///
     ///  continuationChars is a string containing all of the characters that can indicate a partial line.
     ///  Example: ",、 →"
-    /// 
+    ///
     /// </summary>
     private List<InfoLine> combinePartialLinesIntoSentence(List<InfoLine> infoLines, string continuationChars)
     {
@@ -565,7 +568,7 @@ namespace subs2srs
 
       for (int lineIdx = 0; lineIdx < infoLines.Count; lineIdx++)
       {
-        InfoLine curLine = infoLines[lineIdx];  
+        InfoLine curLine = infoLines[lineIdx];
 
         if(curLine.Text.Length == 0)
         {
@@ -593,11 +596,11 @@ namespace subs2srs
 
 
     /// <summary>
-    /// Given the index of the first line of a partial sentence, 
+    /// Given the index of the first line of a partial sentence,
     ///   1) Find the index of the last line of the partial sentence.
     ///   2) Combine all lines between the first and last lines.
     /// </summary>
-    private int findEndLineOfCurrentSentence(List<InfoLine> infoLines, int startLineIdx, 
+    private int findEndLineOfCurrentSentence(List<InfoLine> infoLines, int startLineIdx,
       string continuationChars, out InfoLine combinedLines)
     {
       combinedLines = infoLines[startLineIdx];
@@ -608,11 +611,11 @@ namespace subs2srs
       {
         return startLineIdx;
       }
-      
+
       // Find the end line
       for (; lineIdx < infoLines.Count; lineIdx++)
       {
-        InfoLine curLine = infoLines[lineIdx];  
+        InfoLine curLine = infoLines[lineIdx];
 
         if (curLine.Text.Length == 0)
         {
@@ -634,7 +637,7 @@ namespace subs2srs
       return lineIdx;
     }
 
-    
+
     /// <summary>
     /// In the provided list of combined lines, remove any lines where Subs1 Start Time >= Subs1 End Time.
     /// </summary>
@@ -743,15 +746,15 @@ namespace subs2srs
             isExcluded = true;
           }
 
-          
+
           // Make sure that line is at least the min character length as specified by user
-          bool passedIgnoreFewerTestSubs1 = 
-            (isSubs1Vobsub || 
-            (!Settings.Instance.Subs[0].ExcludeFewerEnabled) || 
+          bool passedIgnoreFewerTestSubs1 =
+            (isSubs1Vobsub ||
+            (!Settings.Instance.Subs[0].ExcludeFewerEnabled) ||
             (Settings.Instance.Subs[0].ExcludeFewerEnabled && comb.Subs1.Text.Length >= Settings.Instance.Subs[0].ExcludeFewerCount));
 
-          bool passedIgnoreFewerTestSubs2 = (isSubs2Vobsub || 
-            (!Settings.Instance.Subs[1].ExcludeFewerEnabled) || 
+          bool passedIgnoreFewerTestSubs2 = (isSubs2Vobsub ||
+            (!Settings.Instance.Subs[1].ExcludeFewerEnabled) ||
             (Settings.Instance.Subs[1].ExcludeFewerEnabled && comb.Subs2.Text.Length >= Settings.Instance.Subs[1].ExcludeFewerCount));
 
           if ((!passedIgnoreFewerTestSubs1 || !passedIgnoreFewerTestSubs2) && !isExcluded)
@@ -765,7 +768,7 @@ namespace subs2srs
           {
             bool actorFound = false;
             foreach (string actor in Settings.Instance.ActorList)
-            {   
+            {
               if (Settings.Instance.Subs[0].ActorsEnabled)
               {
                 if(comb.Subs1.Actor.Trim().ToLower() == actor.Trim().ToLower())
@@ -1150,7 +1153,7 @@ namespace subs2srs
             {
               // Don't care
             }
-          }   
+          }
 
           string progressText = String.Format("Copying vobsubs to .media directory: {0}%",
                                               Convert.ToInt32(progessCount * (100.0 / totalLines)));
@@ -1169,6 +1172,6 @@ namespace subs2srs
       return true;
     }
 
-   
+
   }
 }

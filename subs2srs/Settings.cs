@@ -288,6 +288,20 @@ namespace subs2srs
     public static string DuelingQuickRefSubs2Format { get; set; } = PrefDefaults.DuelingQuickRefSubs2Format;
   }
 
+  /// <summary>
+  /// Cascading time shift rule: from a given episode number onward,
+  /// apply the specified shift in milliseconds.
+  /// Rules are sorted by FromEpisode; lookup finds the last rule where FromEpisode ≤ episode.
+  /// </summary>
+  public class TimeShiftRule
+  {
+    public int FromEpisode { get; set; }
+    public int ShiftMs { get; set; }
+
+    public TimeShiftRule() { }
+    public TimeShiftRule(int from, int shift) { FromEpisode = from; ShiftMs = shift; }
+  }
+
   public class SubSettings
   {
     public string FilePattern { get; set; } = "";
@@ -313,6 +327,33 @@ namespace subs2srs
     public string JoinSentencesCharList { get; set; } = ",、→";
     public bool ActorsEnabled { get; set; }
     public string Encoding { get; set; } = "utf-8";
+    /// <summary>
+    /// Per-episode time shift overrides (cascading rules).
+    /// When non-empty, overrides the global TimeShift for matched episodes.
+    /// Sorted by FromEpisode ascending.
+    /// </summary>
+    public List<TimeShiftRule> TimeShiftRules { get; set; } = new();
+
+    /// <summary>
+    /// Get the effective time shift for a given episode number.
+    /// Cascading: last rule where FromEpisode ≤ episode wins.
+    /// Falls back to global TimeShift when no rules are defined.
+    /// </summary>
+    public int GetEffectiveTimeShift(int episodeNumber)
+    {
+      if (TimeShiftRules == null || TimeShiftRules.Count == 0)
+        return TimeShift;
+
+      int shift = TimeShift;
+      foreach (var rule in TimeShiftRules)
+      {
+        if (rule.FromEpisode <= episodeNumber)
+          shift = rule.ShiftMs;
+        else
+          break;
+      }
+      return shift;
+    }
   }
 
 
