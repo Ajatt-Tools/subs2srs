@@ -565,6 +565,9 @@ namespace subs2srs
             _spinEpisodeStart.Value = Settings.Instance.EpisodeStartNumber;
 
             _chkGenerateAudio.Active = Settings.Instance.AudioClips.Enabled;
+            // Sync audio bitrate combo with loaded settings
+            SetBitrateCombo(_comboAudioBitrate, Settings.Instance.AudioClips.Bitrate);
+            SetBitrateCombo(_comboVideoBitrateAudio, Settings.Instance.VideoClips.BitrateAudio);
             _chkGenerateSnapshots.Active = Settings.Instance.Snapshots.Enabled;
             _chkGenerateVideo.Active = Settings.Instance.VideoClips.Enabled;
 
@@ -704,6 +707,17 @@ namespace subs2srs
         {
             if (int.TryParse(combo.ActiveText, out int val)) return val;
             return defaultVal;
+        }
+
+        private void SetBitrateCombo(ComboBoxText combo, int bitrate)
+        {
+            string target = bitrate.ToString();
+            for (int i = 0; i < 8; i++) // 8 items in combo
+            {
+                combo.Active = i;
+                if (combo.ActiveText == target) return;
+            }
+            combo.Active = 3; // fallback: 128
         }
 
         // ── EVENT HANDLERS ───────────────────────────────────────────────────
