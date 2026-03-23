@@ -34,17 +34,17 @@ namespace subs2srs
     private string displayNum;
     private string lang;
     private string type;
+    private string title;
 
     /// <summary>
     /// The index of the stream.
     /// For audio, this is the actual stream number according to FFmpeg.
     /// </summary>
-    public string Num 
+    public string Num
     {
       get { return num; }
-      set { num = value; } 
+      set { num = value; }
     }
-
 
     /// <summary>
     /// The stream number to actual display.
@@ -52,9 +52,8 @@ namespace subs2srs
     public string DisplayNum
     {
       get { return displayNum; }
-      set { displayNum = value; } 
+      set { displayNum = value; }
     }
-
 
     /// <summary>
     /// The language of the stream.
@@ -62,9 +61,8 @@ namespace subs2srs
     public string Lang
     {
       get { return lang; }
-      set { lang = value; } 
+      set { lang = value; }
     }
-
 
     /// <summary>
     /// Type of stream. Put anything here. Not used.
@@ -76,6 +74,15 @@ namespace subs2srs
       set { type = value; }
     }
 
+    /// <summary>
+    /// Track title from container metadata (e.g. "Original Soundtrack", "Commentary").
+    /// Empty when metadata is absent or unavailable (ffprobe fallback).
+    /// </summary>
+    public string Title
+    {
+      get { return title; }
+      set { title = value; }
+    }
 
     public InfoStream()
     {
@@ -83,6 +90,7 @@ namespace subs2srs
       this.displayNum = "-";
       this.lang = "-";
       this.type = "-";
+      this.title = "";
     }
 
     public InfoStream(string num, string displayNum, string lang, string type)
@@ -91,33 +99,22 @@ namespace subs2srs
       this.displayNum = displayNum;
       this.lang = lang;
       this.type = type;
+      this.title = "";
     }
-
 
     public override string ToString()
     {
-      string ret = "(Default)";
-      string displayLang = lang;
+      if (num == "-")
+        return "(Default)";
 
-      if (num != "-")
-      {
-        if (lang.Trim() == "")
-        {
-          displayLang = "???";
-        }
+      string displayLang = string.IsNullOrWhiteSpace(lang) ? "???" : lang;
 
-        ret = displayNum + " - (" + displayLang + ")";
-      }
+      // Show title when available to distinguish tracks like
+      // "Japanese" vs "Japanese (Commentary)"
+      if (!string.IsNullOrWhiteSpace(title))
+        return $"{displayNum} — {displayLang} — \"{title}\"";
 
-      return ret;
+      return $"{displayNum} — ({displayLang})";
     }
-
-
-
-
-
-
-
-
   }
 }

@@ -60,13 +60,13 @@ namespace subs2srs
       None,      // Don't use a preset
       UltraFast, // The worst quality (fast!)
       SuperFast, // This is probably a good enough defualt. The speed is on par with MPEG4.
-      VeryFast, 
-      Faster,   
-      Fast,     
-      Medium,   
-      Slow,     
-      Slower,   
-      VerySlow, 
+      VeryFast,
+      Faster,
+      Fast,
+      Medium,
+      Slow,
+      Slower,
+      VerySlow,
       Placebo,  // The best quality (slow!!!)
     }
 
@@ -78,7 +78,7 @@ namespace subs2srs
       None,     // Don't use use a profile
       IPod320,  // This is for very old iPods
       IPod640,  // This is for newer iPods
-      Baseline, 
+      Baseline,
       Main,
       High,     // ffmpeg defaults to High
     }
@@ -118,7 +118,7 @@ namespace subs2srs
           audioCodecArg = command + "copy";
           break;
 
-        case AudioCodec.AAC: 
+        case AudioCodec.AAC:
           audioCodecArg = command + "aac";
           break;
 
@@ -126,7 +126,7 @@ namespace subs2srs
           audioCodecArg = command + "mp3";
           break;
 
-        default: audioCodecArg = ""; 
+        default: audioCodecArg = "";
           break;
       }
 
@@ -204,7 +204,7 @@ namespace subs2srs
 
 
     /// <summary>
-    /// Format a keyframe option. These are needed because x264 can only cut 
+    /// Format a keyframe option. These are needed because x264 can only cut
     /// on a keyframe and the default keyframe is interval is HUGE!
     /// </summary>
     public static string formatKeyframeOptionsArg(VideoCodec videoCodec)
@@ -372,21 +372,21 @@ namespace subs2srs
         outSize.Width = desiredSize.Width + (totalCropWidth - (int)((desiredSize.Width / (float)origSize.Width) * totalCropWidth));
         outSize.Height = desiredSize.Height + (totalCropHeight - (int)((desiredSize.Height / (float)origSize.Height) * totalCropHeight));
       }
- 
+
       return outSize;
     }
 
 
     /// <summary>
     /// Convert the input video using the specified options.
-    /// 
+    ///
     /// Note:
-    /// h.264 and .mp4 have timing/cutting issues. h.264 only cuts on the last keyframe, 
+    /// h.264 and .mp4 have timing/cutting issues. h.264 only cuts on the last keyframe,
     /// which could be several seconds before the time that you actually want to cut.
-    /// 
-    /// When cutting an .mp4 (even with MPEG4 video and MP3 audio), the cut will take place  
+    ///
+    /// When cutting an .mp4 (even with MPEG4 video and MP3 audio), the cut will take place
     /// ~0.5 seconds before it should.
-    /// 
+    ///
     /// (Is this still true?)
     /// </summary>
     public static void convertVideo(string inFile, string audioStream, TimeSpan startTime, TimeSpan endTime,
@@ -420,14 +420,14 @@ namespace subs2srs
       // 0:0 is assumed to be the video stream
       // Audio stream: 0:n where n is the number of the audio stream (usually 1)
       //
-      // Example format: 
-      // -y -i "G:\Temp\input.mkv" -ac 2 -map 0:v:0 -map 0:a:0 -codec:v libx264 -preset superfast -g 6 -keyint_min 6 
-      // -fpre "E:\subs2srs\subs2srs\bin\Release\Utils\ffmpeg\presets\libx264-ipod640.ffpreset" 
+      // Example format:
+      // -y -i "G:\Temp\input.mkv" -ac 2 -map 0:v:0 -map 0:a:0 -codec:v libx264 -preset superfast -g 6 -keyint_min 6
+      // -fpre "E:\subs2srs\subs2srs\bin\Release\Utils\ffmpeg\presets\libx264-ipod640.ffpreset"
       // -b:v 800k -codec:a aac -b:a 128k -ss 00:03:32.420 -t 00:02:03.650 -vf "scale 352:202, crop=352:202:0:0" -threads 0
       // "C:\Documents and Settings\cb4960\Local Settings\Temp\~subs2srs_temp.mp4"
       ffmpegConvertArgs = String.Format("-y -i \"{0}\" -ac 2 {1} {2} {3} {4} {5} {6} {7} {8} {9}" +
                                         " {10} -vf \"{11}, {12}\" {13} \"{14}\" ",
-                                        // Input video file name                    
+                                        // Input video file name
                                         inFile,                   // {0}
 
                                         // Mapping
@@ -496,7 +496,7 @@ namespace subs2srs
                                     // Duration
                                     durationArg,              // {2}
 
-                                    // Output video file name 
+                                    // Output video file name
                                     outFile);                 // {3}
 
       UtilsCommon.startFFmpeg(ffmpegCutArgs, false, true);
@@ -641,20 +641,91 @@ namespace subs2srs
 
 
     /// <summary>
-    /// Get the available audio streams from a video file
+    /// Get the available audio streams from a video file.
+    /// Uses ffprobe JSON output for reliable title metadata extraction,
+    /// falls back to ffmpeg -i regex parsing if ffprobe is unavailable.
     /// </summary>
-    /// <param name="file">The video file</param>
     public static List<InfoStream> getAvailableAudioStreams(string file)
     {
-      string videoInfo = "";
-      List<InfoStream> streamInfos = new List<InfoStream>();
+      try
+      {
+        return getAudioStreamsViaProbe(file);
+      }
+      catch
+      {
+        return getAudioStreamsFallback(file);
+      }
+    }
 
-      videoInfo = getVideoInfoStr(file);
+    /// <summary>
+    /// Get audio streams via ffprobe JSON output (includes track title metadata).
+    /// Title distinguishes "Japanese" from "Japanese (Commentary)".
+    /// </summary>
+    private static List<InfoStream> getAudioStreamsViaProbe(string file)
+    {
+      var psi = new ProcessStartInfo
+      {
+        FileName = "ffprobe",
+        Arguments = $"-v quiet -print_format json -show_streams -select_streams a \"{file}\"",
+        UseShellExecute = false,
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        CreateNoWindow = true
+      };
+
+      using var proc = Process.Start(psi);
+      string json = proc.StandardOutput.ReadToEnd();
+      proc.WaitForExit(10000);
+
+      var streams = new List<InfoStream>();
+      using var doc = System.Text.Json.JsonDocument.Parse(json);
+
+      if (!doc.RootElement.TryGetProperty("streams", out var arr))
+        return streams;
+
+      int count = 0;
+      foreach (var s in arr.EnumerateArray())
+      {
+        int index = s.GetProperty("index").GetInt32();
+        string streamNum = $"0:{index}";
+
+        string lang = "", trackTitle = "";
+        if (s.TryGetProperty("tags", out var tags))
+        {
+          if (tags.TryGetProperty("language", out var l))
+            lang = l.GetString() ?? "";
+          // Try both cases: some containers use "title", others "TITLE"
+          if (tags.TryGetProperty("title", out var t))
+            trackTitle = t.GetString() ?? "";
+          if (string.IsNullOrEmpty(trackTitle) && tags.TryGetProperty("TITLE", out var t2))
+            trackTitle = t2.GetString() ?? "";
+        }
+
+        string langFull = UtilsLang.LangThreeLetter2Full(lang);
+        string codec = s.TryGetProperty("codec_name", out var c) ? c.GetString() ?? "" : "";
+
+        var info = new InfoStream(streamNum, count.ToString(), langFull, codec);
+        info.Title = trackTitle;
+        streams.Add(info);
+        count++;
+      }
+
+      return streams;
+    }
+
+    /// <summary>
+    /// Fallback: parse audio streams from ffmpeg -i stderr.
+    /// No title metadata available through this method.
+    /// </summary>
+    private static List<InfoStream> getAudioStreamsFallback(string file)
+    {
+      string videoInfo = getVideoInfoStr(file);
+      var streamInfos = new List<InfoStream>();
 
       MatchCollection lineMatches = Regex.Matches(videoInfo,
         @".*Stream #(?<AudioStreamNum>\d\:\d)\(?(?<AudioStreamLang>\w*)\)?: Audio: (?<AudioStreamType>.*)",
         RegexOptions.Compiled);
-  
+
       if (lineMatches.Count != 0)
       {
         int count = 0;
@@ -667,7 +738,6 @@ namespace subs2srs
           string streamType = match.Groups["AudioStreamType"].ToString().Trim();
 
           streamInfos.Add(new InfoStream(streamNum, count.ToString(), streamLang, streamType));
-
           count++;
         }
       }
