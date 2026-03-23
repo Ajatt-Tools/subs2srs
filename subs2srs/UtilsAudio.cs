@@ -35,7 +35,7 @@ namespace subs2srs
     /// <summary>
     /// Rip (and re-encode) a portion of the audio from a video file.
     /// </summary>
-    public static void ripAudioFromVideo(string inFile, string stream, TimeSpan startTime, 
+    public static void ripAudioFromVideo(string inFile, string stream, TimeSpan startTime,
       TimeSpan endTime, int bitrate, string outFile, IProgressReporter dialogProgress)
     {
       string audioBitrateArg = UtilsVideo.formatAudioBitrateArg(bitrate);
@@ -44,8 +44,8 @@ namespace subs2srs
 
       string ffmpegAudioProgArgs = "";
 
-      // Example format: 
-      // -vn -y -i "G:\Temp\inputs.mkv" -ac 2 -map 0:1 -ss 00:03:32.420 -t 00:02:03.650 -b:a 128k -threads 0 "output.mp3" 
+      // Example format:
+      // -vn -y -i "G:\Temp\inputs.mkv" -ac 2 -map 0:1 -ss 00:03:32.420 -t 00:02:03.650 -b:a 128k -threads 0 "output.mp3"
       ffmpegAudioProgArgs = String.Format("-vn -y -i \"{0}\" -ac 2 {1} {2} {3} -threads 0 \"{4}\"",
                                           // Video file
                                           inFile,              // {0}
@@ -59,7 +59,7 @@ namespace subs2srs
                                           // Bitrate
                                           audioBitrateArg,     // {3}
 
-                                          // Output file name 
+                                          // Output file name
                                           outFile);            // {4}
 
       if (dialogProgress == null)
@@ -103,24 +103,92 @@ namespace subs2srs
 
       string ffmpegAudioProgArgs = "";
 
-      // Example format: 
+      // Example format:
       //-y -i "input.mp3" -ss 00:00:00.000 -t 00:00:01.900 -codec:a copy "output.mp3"
       ffmpegAudioProgArgs = String.Format("-y -i \"{0}\" {1} {2} \"{3}\"",
-                                          // Input file                                          
+                                          // Input file
                                           fileToCut,                             // {0}
 
-                                          // Time span                          
+                                          // Time span
                                           timeArg,                               // {1}
 
                                           // Audio codec
                                           audioCodecArg,                         // {2}
 
-                                          // Output file (including full path)             
+                                          // Output file (including full path)
                                           outFile);                              // {3}
 
       UtilsCommon.startFFmpeg(ffmpegAudioProgArgs, false, true);
     }
 
+    /// <summary>
+    /// Demux (copy) an audio track from a media file without re-encoding.
+    /// Places -ss before -i for fast keyframe-based input seeking.
+    /// Much faster than ripAudioFromVideo for large files.
+    /// </summary>
+    public static void demuxAudioCopy(string inFile, string stream,
+      TimeSpan startTime, TimeSpan endTime, string outFile)
+    {
+      string audioMapArg = UtilsVideo.formatAudioMapArg(stream);
+      TimeSpan duration = endTime - startTime;
+      if (duration < TimeSpan.Zero) duration = TimeSpan.Zero;
+
+      string startStr = startTime.ToString(@"hh\:mm\:ss\.fff");
+      string durationStr = duration.ToString(@"hh\:mm\:ss\.fff");
+
+      // -ss before -i: fast input seeking via keyframes (no decode-to-seek)
+      // -vn: skip video streams, -c:a copy: no audio re-encoding
+      string args = String.Format("-y -ss {0} -i \"{1}\" -t {2} {3} -vn -c:a copy \"{4}\"",
+        startStr,     // {0}
+        inFile,       // {1}
+        durationStr,  // {2}
+        audioMapArg,  // {3}
+        outFile);     // {4}
+
+      UtilsCommon.startFFmpeg(args, false, true);
+    }
+
+
+    /// <summary>
+    /// Cut a portion of audio and re-encode to the output format.
+    /// Unlike cutAudio (stream copy), this transcodes for frame-accurate
+    /// cuts and format conversion from any source codec.
+    /// </summary>
+    public static void cutAndEncodeAudio(string fileToCut, TimeSpan startTime,
+      TimeSpan endTime, int bitrate, string outFile)
+    {
+      string timeArg = UtilsVideo.formatStartTimeAndDurationArg(startTime, endTime);
+      string audioBitrateArg = UtilsVideo.formatAudioBitrateArg(bitrate);
+
+      // Re-encode: specified bitrate, stereo downmix
+      string args = String.Format("-y -i \"{0}\" {1} -ac 2 {2} \"{3}\"",
+        fileToCut,       // {0}
+        timeArg,         // {1}
+        audioBitrateArg, // {2}
+        outFile);        // {3}
+
+      UtilsCommon.startFFmpeg(args, false, true);
+    }
+
+    /// <summary>
+    /// Decode audio to WAV (PCM) format with progress reporting.
+    /// WAV provides sample-accurate seeking (byte offset = sample index),
+    /// enabling frame-accurate cuts in subsequent parallel processing.
+    /// </summary>
+    public static void decodeToWav(string inFile, string outFile,
+      IProgressReporter dialogProgress)
+    {
+      // -ac 2: stereo downmix (consistent with ripAudioFromVideo)
+      // Output format inferred from .wav extension: PCM s16le
+      string args = String.Format("-y -i \"{0}\" -ac 2 -threads 0 \"{1}\"",
+        inFile,   // {0}
+        outFile); // {1}
+
+      if (dialogProgress == null)
+        UtilsCommon.startFFmpeg(args, false, true);
+      else
+        UtilsCommon.startFFmpegProgress(args, dialogProgress);
+    }
 
     /// <summary>
     /// Convert audio file to another format (ex. mp3 -> wav).
@@ -131,19 +199,19 @@ namespace subs2srs
 
       // Examples:
       // -y -i "input.mp3"" -ac 2 -threads 0 "output.wav"
-      ffmpegAudioProgArgs = String.Format("-y -i \"{0}\" -ac {1} -threads 0 \"{2}\"",                          
+      ffmpegAudioProgArgs = String.Format("-y -i \"{0}\" -ac {1} -threads 0 \"{2}\"",
                                           mp3File,     // {0}
                                           numChannels, // {1}
                                           outFile);    // {2}
 
       UtilsCommon.startFFmpeg(ffmpegAudioProgArgs, false, true);
     }
-    
+
 
     /// <summary>
     /// Tag an audio file (currently, only MP3 ID3 tags are supported).
     /// </summary>
-    public static void tagAudio(string inFile, string artist, string albumTitle, 
+    public static void tagAudio(string inFile, string artist, string albumTitle,
       string songTitle, string genre, string lyrics, int track, int totalTracks)
     {
       try
@@ -184,10 +252,10 @@ namespace subs2srs
         finalDir = finalDir.TrimEnd(new char[] { Path.DirectorySeparatorChar });
       }
 
-      string args = String.Format(@"{0} ""{1}{2}*.mp3""", 
+      string args = String.Format(@"{0} ""{1}{2}*.mp3""",
         ConstantSettings.AudioNormalizeArgs, finalDir, Path.DirectorySeparatorChar);
 
-      UtilsCommon.startProcess(ConstantSettings.PathNormalizeAudioExeRel, 
+      UtilsCommon.startProcess(ConstantSettings.PathNormalizeAudioExeRel,
         ConstantSettings.PathNormalizeAudioExeFull, args);
     }
 

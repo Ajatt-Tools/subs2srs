@@ -70,9 +70,13 @@ namespace subs2srs
         TimeSpan entireClipStartTime = combArray[0].Subs1.StartTime;
         TimeSpan entireClipEndTime = combArray[combArray.Count - 1].Subs1.EndTime;
 
-        // Use a unique temp file per episode to avoid collisions on retry
-        string tempMp3Filename = Path.Combine(Path.GetTempPath(),
-          $"{Path.GetFileNameWithoutExtension(ConstantSettings.TempAudioFilename)}_{episodeCount}{Path.GetExtension(ConstantSettings.TempAudioFilename)}");
+        // Temp file for demuxed audio (stream copy, no re-encode)
+        string tempDemuxFile = Path.Combine(Path.GetTempPath(),
+          $"subs2srs_demux_{episodeCount}.mka");
+
+        // Temp file for decoded PCM audio (sample-accurate seeking)
+        string tempWavFile = Path.Combine(Path.GetTempPath(),
+          $"subs2srs_decoded_{episodeCount}.wav");
 
         // Apply pad to entire clip timings (if requested)
         if (Settings.Instance.AudioClips.PadEnabled)
@@ -81,32 +85,34 @@ namespace subs2srs
           entireClipEndTime = UtilsSubs.applyTimePad(entireClipEndTime, Settings.Instance.AudioClips.PadEnd);
         }
 
-        // Skip entire episode (including expensive audio extraction) if all clips already exist
+        // Skip entire episode (including expensive extraction) if all clips already exist
         if (checkAllAudioClipsExist(combArray, name, episodeCount, progressCount, workerVars.MediaDir))
         {
           progressCount += combArray.Count;
           continue;
         }
 
-        // Do we need to extract the audio from the video file?
+        // Extraction strategy: copy-demux (fast) when source needs extraction,
+        // direct mp3 cut (copy) when source is already mp3
+        bool useDemuxEncode = false;
+
         if (Settings.Instance.AudioClips.UseAudioFromVideo)
         {
-          string progressText = $"Extracting audio from video file {episodeCount} of {totalEpisodes}";
+          dialogProgress.UpdateProgress(
+            $"Demuxing audio from video {episodeCount} of {totalEpisodes}");
 
           string streamNum = Settings.Instance.VideoClips.AudioStream?.Num ?? "";
           if (streamNum.Length == 0 || streamNum == "-" || !streamNum.Contains(":"))
-              streamNum = "0:a:0";
+            streamNum = "0:a:0";
 
-          bool success = convertToMp3(
+          UtilsAudio.demuxAudioCopy(
             Settings.Instance.VideoClips.Files[episodeCount - 1],
             streamNum,
-            progressText,
-            dialogProgress,
             entireClipStartTime,
             entireClipEndTime,
-            tempMp3Filename);
+            tempDemuxFile);
 
-          if (!success)
+          if (!File.Exists(tempDemuxFile) || new FileInfo(tempDemuxFile).Length == 0)
           {
             if (dialogProgress.Cancel)
               return false;
@@ -115,41 +121,76 @@ namespace subs2srs
                                 "Make sure that the video does not have any DRM restrictions.");
             return false;
           }
+
+          useDemuxEncode = true;
         }
-        // If the reencode option is set or the input audio is not an mp3, reencode to mp3
         else if (ConstantSettings.ReencodeBeforeSplittingAudio || !inputFileIsMp3)
         {
-          string progressText = $"Reencoding audio file {episodeCount} of {totalEpisodes}";
+          dialogProgress.UpdateProgress(
+            $"Demuxing audio file {episodeCount} of {totalEpisodes}");
 
-          bool success = convertToMp3(
+          UtilsAudio.demuxAudioCopy(
             Settings.Instance.AudioClips.Files[episodeCount - 1],
             "0",
-            progressText,
-            dialogProgress,
             entireClipStartTime,
             entireClipEndTime,
-            tempMp3Filename);
+            tempDemuxFile);
 
-          if (!success)
+          if (!File.Exists(tempDemuxFile) || new FileInfo(tempDemuxFile).Length == 0)
           {
             if (dialogProgress.Cancel)
               return false;
 
-            UtilsMsg.showErrMsg("Failed to reencode the audio file.\n" +
+            UtilsMsg.showErrMsg("Failed to demux the audio file.\n" +
                                 "Make sure that the audio file does not have any DRM restrictions.");
+            return false;
+          }
+
+          useDemuxEncode = true;
+        }
+
+        // Phase 2: decode demuxed audio to WAV (PCM).
+        // WAV seeking is byte-offset based = sample-accurate (±0.02ms).
+        // This lets parallel phase 3 do frame-accurate cuts via re-encode,
+        // where "decoding" WAV is just reading bytes (near-zero CPU cost).
+        if (useDemuxEncode)
+        {
+          TimeSpan demuxDuration = entireClipEndTime - entireClipStartTime;
+
+          dialogProgress.UpdateProgress(
+            $"Decoding audio for episode {episodeCount} of {totalEpisodes}");
+          dialogProgress.EnableDetail(true);
+          dialogProgress.SetDuration(demuxDuration);
+
+          // temp.mka already starts at 0:00, decode the whole file to WAV
+          UtilsAudio.decodeToWav(tempDemuxFile, tempWavFile, dialogProgress);
+
+          dialogProgress.EnableDetail(false);
+
+          // Demuxed container no longer needed
+          try { File.Delete(tempDemuxFile); } catch { }
+
+          if (!File.Exists(tempWavFile) || new FileInfo(tempWavFile).Length == 0)
+          {
+            if (dialogProgress.Cancel)
+              return false;
+
+            UtilsMsg.showErrMsg("Failed to decode the audio.\n" +
+                                "Make sure the source file is not corrupted.");
             return false;
           }
         }
 
-        // Determine source file and whether timing shift is needed (same for all lines in episode)
-        bool needsShift = Settings.Instance.AudioClips.UseAudioFromVideo
-          || ConstantSettings.ReencodeBeforeSplittingAudio || !inputFileIsMp3;
-        string fileToCut = needsShift
-          ? tempMp3Filename
+        // Source file: decoded WAV (starts from 0, needs time shift)
+        // or original mp3 file (absolute timings, no shift)
+        bool needsShift = useDemuxEncode;
+        string fileToCut = useDemuxEncode
+          ? tempWavFile
           : Settings.Instance.AudioClips.Files[episodeCount - 1];
 
         int epNum = episodeCount; // capture for lambda
         int baseCount = progressCount;
+        int audioBitrate = Settings.Instance.AudioClips.Bitrate;
 
         // Pre-compute work items with fixed sequence numbers
         var workItems = new List<(int seqNum, int epLineNum, InfoCombined comb)>(combArray.Count);
@@ -206,7 +247,13 @@ namespace subs2srs
 
             try
             {
-              UtilsAudio.cutAudio(fileToCut, startTime, endTime, tmpName);
+              // WAV source: cut + encode to mp3 (decode WAV = read bytes, ~0 CPU).
+              // Seeking in WAV is byte-offset based = sample-accurate (±0.02ms).
+              // MP3 source: stream copy (no re-encode, ±13ms frame boundary accuracy).
+              if (useDemuxEncode)
+                UtilsAudio.cutAndEncodeAudio(fileToCut, startTime, endTime, audioBitrate, tmpName);
+              else
+                UtilsAudio.cutAudio(fileToCut, startTime, endTime, tmpName);
 
               if (File.Exists(tmpName))
               {
@@ -241,14 +288,15 @@ namespace subs2srs
 
         progressCount += combArray.Count;
 
-        // Delete temp file only after Parallel.ForEach has fully completed
-        try { File.Delete(tempMp3Filename); } catch { }
+        // Delete temp files after Parallel.ForEach has fully completed
+        try { File.Delete(tempDemuxFile); } catch { }
+        try { File.Delete(tempWavFile); } catch { }
 
         if (cancelled)
           return false;
       }
 
-      // Normalize all mp3 files in the media directory
+      // Normalize all audio files in the media directory
       if (Settings.Instance.AudioClips.Normalize)
       {
         dialogProgress.UpdateProgress(-1, "Normalizing audio...");
