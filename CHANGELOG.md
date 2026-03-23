@@ -54,6 +54,7 @@
 
 **UX:**
 - `OnVideoChanged` — ffprobe runs off UI thread, no longer freezes interface on large files or network paths
+- `max_parallel_tasks` preference exposed in Preferences dialog
 
 **Refactoring:**
 - `DialogProgress` static wrapper class removed — `IProgressReporter` used directly
