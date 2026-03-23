@@ -393,6 +393,12 @@ namespace subs2srs
     public bool Enabled { get; set; } = true;
     public ImageSize Size { get; set; } = new ImageSize(240, 160);
     public ImageCrop Crop { get; set; } = new ImageCrop();
+
+    /// <summary>
+    /// JPEG quality for ffmpeg -q:v flag (1=best, 31=worst).
+    /// Ignored when output format is PNG.
+    /// </summary>
+    public int Quality { get; set; } = 3;
   }
 
 

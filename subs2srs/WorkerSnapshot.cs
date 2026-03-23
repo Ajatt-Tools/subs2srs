@@ -88,8 +88,11 @@ namespace subs2srs
           {
             string ext = Path.GetExtension(outFile);
             string tmpFile = Path.ChangeExtension(outFile, ".tmp" + ext);
-            UtilsSnapshot.takeSnapshotFromVideo(videoFileName, midTime, Settings.Instance.Snapshots.Size,
-              Settings.Instance.Snapshots.Crop, tmpFile);
+            UtilsSnapshot.takeSnapshotFromVideo(videoFileName, midTime,
+              Settings.Instance.Snapshots.Size,
+              Settings.Instance.Snapshots.Crop,
+              Settings.Instance.Snapshots.Quality,
+              tmpFile);
             File.Move(tmpFile, outFile, overwrite: true);
           }
 
