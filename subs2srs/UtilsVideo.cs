@@ -749,17 +749,16 @@ namespace subs2srs
     /// Validate that the selected audio stream has consistent language/title
     /// across all video files. Returns a warning message if mismatch is found,
     /// null if everything is consistent.
-    /// Probes all files via ffprobe (fast: ~100ms per file).
     /// </summary>
     public static string validateAudioStreamConsistency(string[] videoFiles, int audioStreamIndex)
     {
       if (videoFiles == null || videoFiles.Length <= 1)
         return null;
 
-      // Probe each episode, collect stream info at the selected index
       string refLang = null, refTitle = null;
       int refEpisode = -1;
-      var mismatches = new List<string>();
+      var langMismatches = new List<string>();
+      var commentaryWarnings = new List<string>();
       var missing = new List<int>();
 
       for (int i = 0; i < videoFiles.Length; i++)
@@ -779,7 +778,6 @@ namespace subs2srs
         string lang = s.Lang ?? "";
         string title = s.Title ?? "";
 
-        // First valid episode becomes the reference
         if (refEpisode < 0)
         {
           refLang = lang;
@@ -788,20 +786,28 @@ namespace subs2srs
           continue;
         }
 
-        if (lang != refLang || title != refTitle)
+        // Language mismatch: case-insensitive (Japanese vs japanese)
+        if (!string.Equals(lang, refLang, StringComparison.OrdinalIgnoreCase))
         {
-          string desc = string.IsNullOrEmpty(title)
-            ? $"  Episode {epNum}: {(string.IsNullOrEmpty(lang) ? "???" : lang)}"
-            : $"  Episode {epNum}: {(string.IsNullOrEmpty(lang) ? "???" : lang)} — \"{title}\"";
-          mismatches.Add(desc);
+          langMismatches.Add($"  Episode {epNum}: {(string.IsNullOrEmpty(lang) ? "???" : lang)}");
+        }
+
+        // Commentary detection: one has commentary keywords, the other doesn't
+        bool refIsCommentary = IsCommentaryTrack(refTitle);
+        bool curIsCommentary = IsCommentaryTrack(title);
+        if (refIsCommentary != curIsCommentary)
+        {
+          string label = curIsCommentary ? "has commentary" : "no commentary";
+          commentaryWarnings.Add(
+            $"  Episode {epNum}: \"{title}\" ({label})");
         }
       }
 
-      if (mismatches.Count == 0 && missing.Count == 0)
+      if (langMismatches.Count == 0 && commentaryWarnings.Count == 0 && missing.Count == 0)
         return null;
 
       var sb = new StringBuilder();
-      sb.AppendLine($"Audio stream #{audioStreamIndex} differs across episodes:");
+      sb.AppendLine($"Audio stream #{audioStreamIndex} issues:");
       sb.AppendLine();
 
       string refDesc = string.IsNullOrEmpty(refTitle)
@@ -810,10 +816,18 @@ namespace subs2srs
       sb.AppendLine($"  Reference (episode {refEpisode}): {refDesc}");
       sb.AppendLine();
 
-      if (mismatches.Count > 0)
+      if (langMismatches.Count > 0)
       {
-        sb.AppendLine("Different content detected:");
-        foreach (var m in mismatches)
+        sb.AppendLine("Language differs:");
+        foreach (var m in langMismatches)
+          sb.AppendLine(m);
+        sb.AppendLine();
+      }
+
+      if (commentaryWarnings.Count > 0)
+      {
+        sb.AppendLine("Possible commentary track mismatch:");
+        foreach (var m in commentaryWarnings)
           sb.AppendLine(m);
         sb.AppendLine();
       }
@@ -824,8 +838,28 @@ namespace subs2srs
         sb.AppendLine();
       }
 
-      sb.Append("This may indicate a commentary track. Continue anyway?");
+      sb.Append("Continue anyway?");
       return sb.ToString();
+    }
+
+    /// <summary>
+    /// Check if a track title suggests commentary audio.
+    /// Case-insensitive keyword match against common commentary labels.
+    /// </summary>
+    private static bool IsCommentaryTrack(string title)
+    {
+      if (string.IsNullOrWhiteSpace(title))
+        return false;
+
+      // Common labels used in anime/TV BDs and web releases
+      string[] keywords = { "commentary", "comment", "director", "staff", "cast" };
+      string lower = title.ToLowerInvariant();
+      foreach (var kw in keywords)
+      {
+        if (lower.Contains(kw))
+          return true;
+      }
+      return false;
     }
 
 
