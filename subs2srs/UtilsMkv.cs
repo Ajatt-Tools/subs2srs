@@ -39,275 +39,164 @@ namespace subs2srs
       AUDIO
     }
 
-    // Used by getTrackList().
-    private enum TrackListParseState
-    {
-      SEARCH_FOR_START_OF_TRACKS, // |+ Segment tracks
-      GET_NEXT_TRACK,             // | + A track
-      GET_TRACK_NUM,              // |  + Track number: 3 (track ID for mkvmerge & mkvextract: 2)
-      GET_TRACK_TYPE,             // |  + Track type: subtitles
-      GET_CODEC_ID,               // |  + Codec ID: S_TEXT/ASS
-      GET_LANG,                   // |  + Language: eng
-    }
-
     /// <summary>
     /// Get list of audio and subtitle tracks in the provided .mkv file.
+    /// Handles both old and modern mkvinfo output formats by parsing
+    /// tree depth instead of matching exact indentation prefixes.
     /// </summary>
     public static List<MkvTrack> getTrackList(string mkvFile)
     {
       List<MkvTrack> trackList = new List<MkvTrack>();
 
-      if (Path.GetExtension(mkvFile) != ".mkv")
-      {
+      if (Path.GetExtension(mkvFile).ToLowerInvariant() != ".mkv")
         return trackList;
-      }
 
-      string args = String.Format("\"{0}\"", mkvFile);
-      string mkvIinfo = UtilsCommon.startProcessAndGetStdout(ConstantSettings.ExeMkvInfo, ConstantSettings.PathMkvInfoExeFull, args);
+      string args = $"\"{mkvFile}\"";
+      string output = UtilsCommon.startProcessAndGetStdout(
+        ConstantSettings.ExeMkvInfo, ConstantSettings.PathMkvInfoExeFull, args);
 
-      if (mkvIinfo == "Error.")
-      {
+      if (output == "Error.")
         return trackList;
-      }
 
-      mkvIinfo = mkvIinfo.Replace("\r\r", "");
+      output = output.Replace("\r", "");
+      string[] lines = output.Split('\n');
 
-      string[] lines = mkvIinfo.Split('\n');
+      int segDepth = -1;
+      bool inTracks = false;
+      MkvTrack curTrack = null;
 
-      TrackListParseState state = TrackListParseState.SEARCH_FOR_START_OF_TRACKS;
-
-      MkvTrack curTrack = new MkvTrack();
-
-      foreach (string line in lines)
+      foreach (string rawLine in lines)
       {
-        switch (state)
+        // Extract depth (whitespace length before '+') and content from tree line
+        var lineMatch = Regex.Match(rawLine, @"^\|(\s*)\+\s*(.*)$");
+        if (!lineMatch.Success)
+          continue;
+
+        int depth = lineMatch.Groups[1].Value.Length;
+        string content = lineMatch.Groups[2].Value.Trim();
+
+        if (!inTracks)
         {
-          case TrackListParseState.SEARCH_FOR_START_OF_TRACKS:
+          if (Regex.IsMatch(content, @"^(Segment\s+)?Tracks$", RegexOptions.IgnoreCase))
           {
-            if (line.StartsWith("|+ Segment tracks"))
-            {
-              state = TrackListParseState.GET_NEXT_TRACK;
-            }
-
-            break;
+            segDepth = depth;
+            inTracks = true;
           }
+          continue;
+        }
 
-          case TrackListParseState.GET_NEXT_TRACK:
-          {
-            // Reset track info
-            curTrack = new MkvTrack();
+        // Past the tracks section — a sibling or ancestor of "Segment tracks"
+        if (depth <= segDepth)
+        {
+          if (curTrack != null && IsValidTrack(curTrack))
+            trackList.Add(curTrack);
+          break;
+        }
 
-            if (line.StartsWith("| + A track"))
-            {
-              state = TrackListParseState.GET_TRACK_NUM;
-            }
+        // New track entry (one nesting level below "Segment tracks")
+        if (depth == segDepth + 1)
+        {
+          if (curTrack != null && IsValidTrack(curTrack))
+            trackList.Add(curTrack);
 
-            break;
-          }
+          curTrack = Regex.IsMatch(content, @"^(A\s+)?[Tt]rack\s*$")
+            ? new MkvTrack()
+            : null;
+          continue;
+        }
 
-          case TrackListParseState.GET_TRACK_NUM:
-          {
-            Match match = Regex.Match(line, @"^\|  \+ Track number: \d+ \(track ID for mkvmerge & mkvextract: (?<TrackNum>\d+)\)");
+        if (curTrack == null)
+          continue;
 
-            if (match.Success)
-            {
-              curTrack.TrackID = match.Groups["TrackNum"].ToString().Trim();
-              state = TrackListParseState.GET_TRACK_TYPE;
-            }
+        // Track properties (deeper nesting)
+        var m = Regex.Match(content,
+          @"^Track number:.*\(track ID for mkvmerge & mkvextract:\s*(?<Num>\d+)\)");
+        if (m.Success)
+        {
+          curTrack.TrackID = m.Groups["Num"].Value;
+          continue;
+        }
 
-            break;
-          }
+        m = Regex.Match(content, @"^Track type:\s*(?<Type>\w+)");
+        if (m.Success)
+        {
+          string t = m.Groups["Type"].Value;
+          if (t == "subtitles")
+            curTrack.TrackType = TrackType.SUBTITLES;
+          else if (t == "audio")
+            curTrack.TrackType = TrackType.AUDIO;
+          else
+            curTrack = null; // video or other — skip
+          continue;
+        }
 
-          case TrackListParseState.GET_TRACK_TYPE:
-          {
-            Match match = Regex.Match(line, @"^\|  \+ Track type: (?<TrackType>\w+)");
+        m = Regex.Match(content, @"^Codec ID:\s*(?<Codec>.+)");
+        if (m.Success)
+        {
+          string ext = MapCodecToExtension(m.Groups["Codec"].Value.Trim());
+          if (ext != null)
+            curTrack.Extension = ext;
+          else
+            curTrack = null; // unrecognized codec — skip
+          continue;
+        }
 
-            if (match.Success)
-            {
-              string trackType = match.Groups["TrackType"].ToString().Trim();
-
-              if (trackType == "subtitles")
-              {
-                curTrack.TrackType = TrackType.SUBTITLES;
-                state = TrackListParseState.GET_CODEC_ID;
-              }
-              else if (trackType == "audio")
-              {
-                curTrack.TrackType = TrackType.AUDIO;
-                state = TrackListParseState.GET_CODEC_ID;
-              }
-              else
-              {
-                state = TrackListParseState.GET_NEXT_TRACK;
-              }
-            }
-
-            break;
-          }
-
-          case TrackListParseState.GET_CODEC_ID:
-          {
-            Match match = Regex.Match(line, @"^\|  \+ Codec ID: (?<CodecID>.+)");
-
-            if (match.Success)
-            {
-              string codecID = match.Groups["CodecID"].ToString().Trim();
-
-              curTrack.Extension = codecID;
-
-              // See http://matroska.org/technical/specs/codecid/index.html
-
-              // Try subtitle Codec IDs first
-              if (codecID == "S_VOBSUB")
-              {
-                curTrack.Extension = "sub";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID == "S_TEXT/UTF8")
-              {
-                curTrack.Extension = "srt";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID == "S_TEXT/ASS")
-              {
-                curTrack.Extension = "ass";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID == "S_TEXT/SSA")
-              {
-                curTrack.Extension = "ssa";
-                state = TrackListParseState.GET_LANG;
-              }
-              //
-              // Now try audio Codec IDs
-              //
-              else if (codecID == "A_MPEG/L3")
-              {
-                curTrack.Extension = "mp3";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID == "A_MPEG/L2")
-              {
-                curTrack.Extension = "mp2";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID == "A_MPEG/L1")
-              {
-                curTrack.Extension = "mp1";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID.StartsWith("A_PCM"))
-              {
-                curTrack.Extension = "wav";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID == "A_MPC")
-              {
-                curTrack.Extension = "mpc";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID.StartsWith("A_AC3"))
-              {
-                curTrack.Extension = "ac3";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID.StartsWith("A_ALAC"))
-              {
-                curTrack.Extension = "m4a";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID.StartsWith("A_DTS"))
-              {
-                curTrack.Extension = "dts";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID == "A_VORBIS")
-              {
-                curTrack.Extension = "ogg";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID == "A_FLAC")
-              {
-                curTrack.Extension = "flac";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID.StartsWith("A_REAL"))
-              {
-                curTrack.Extension = "rm";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID.StartsWith("A_AAC"))
-              {
-                curTrack.Extension = "aac";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID.StartsWith("A_QUICKTIME"))
-              {
-                curTrack.Extension = "aiff";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID == "A_TTA1")
-              {
-                curTrack.Extension = "tta";
-                state = TrackListParseState.GET_LANG;
-              }
-              else if (codecID == "A_WAVPACK4")
-              {
-                curTrack.Extension = "wv";
-                state = TrackListParseState.GET_LANG;
-              }
-              else
-              {
-                state = TrackListParseState.GET_NEXT_TRACK;
-              }
-            }
-
-            break;
-          }
-
-          // Note: Lang is optional
-          case TrackListParseState.GET_LANG:
-          {
-            Match match = Regex.Match(line, @"^\|  \+ Language: (?<Lang>\w+)");
-
-            if (match.Success)
-            {
-              curTrack.Lang = match.Groups["Lang"].ToString().Trim();
-
-              // All required info for this track was found, add it to the list
-              trackList.Add(curTrack);
-
-              state = TrackListParseState.GET_NEXT_TRACK;
-            }
-            else
-            {
-              if (line.StartsWith("| + A track"))
-              {
-                // Lang is missing, add what we have
-                trackList.Add(curTrack);
-
-                state = TrackListParseState.GET_TRACK_NUM;
-
-                // Reset track info
-                curTrack = new MkvTrack();
-              }
-              else if (line.StartsWith("|+")) // Are we past the track section?
-              {
-                // Lang is missing, add what we have
-                trackList.Add(curTrack);
-                goto lbl_end_parse;
-              }
-            }
-
-            break;
-          }
+        // Match "Language:" but not "Language (IETF BCP 47):" to keep 3-letter codes
+        m = Regex.Match(content, @"^Language:\s*(?<Lang>\S+)");
+        if (m.Success)
+        {
+          curTrack.Lang = m.Groups["Lang"].Value;
+          continue;
         }
       }
 
-      lbl_end_parse:
+      // Handle last track when file ends without a following section
+      if (curTrack != null && IsValidTrack(curTrack))
+        trackList.Add(curTrack);
 
       return trackList;
     }
+
+
+    private static bool IsValidTrack(MkvTrack track)
+    {
+      return track.TrackType != TrackType.UNKNOWN
+        && !string.IsNullOrEmpty(track.Extension)
+        && !string.IsNullOrEmpty(track.TrackID);
+    }
+
+
+    private static string MapCodecToExtension(string codecID)
+    {
+      // Subtitle codecs
+      if (codecID == "S_VOBSUB") return "sub";
+      if (codecID == "S_TEXT/UTF8") return "srt";
+      if (codecID == "S_TEXT/ASS") return "ass";
+      if (codecID == "S_TEXT/SSA") return "ssa";
+      if (codecID == "S_HDMV/PGS") return "sup";
+
+      // Audio codecs
+      if (codecID == "A_MPEG/L3") return "mp3";
+      if (codecID == "A_MPEG/L2") return "mp2";
+      if (codecID == "A_MPEG/L1") return "mp1";
+      if (codecID.StartsWith("A_PCM")) return "wav";
+      if (codecID == "A_MPC") return "mpc";
+      if (codecID.StartsWith("A_AC3")) return "ac3";
+      if (codecID.StartsWith("A_EAC3")) return "eac3";
+      if (codecID.StartsWith("A_ALAC")) return "m4a";
+      if (codecID.StartsWith("A_DTS")) return "dts";
+      if (codecID == "A_VORBIS") return "ogg";
+      if (codecID == "A_OPUS") return "opus";
+      if (codecID == "A_FLAC") return "flac";
+      if (codecID.StartsWith("A_REAL")) return "rm";
+      if (codecID.StartsWith("A_AAC")) return "aac";
+      if (codecID.StartsWith("A_QUICKTIME")) return "aiff";
+      if (codecID == "A_TTA1") return "tta";
+      if (codecID == "A_WAVPACK4") return "wv";
+
+      return null;
+    }
+
 
 
     /// <summary>
@@ -404,7 +293,3 @@ namespace subs2srs
     }
   }
 }
-
-
-
-
