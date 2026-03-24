@@ -30,7 +30,7 @@ namespace subs2srs
     public class DialogDuelingSubtitles : Dialog
     {
         // Settings backup
-        private SaveSettings _oldSettings = new SaveSettings();
+        private Settings _snapshot;
 
         // Styles
         private InfoStyle _styleSubs1 = new InfoStyle();
@@ -281,10 +281,8 @@ namespace subs2srs
 
         private void LoadInitialState()
         {
-            // Save global settings
-            var cur = new SaveSettings();
-            cur.gatherData();
-            _oldSettings = ObjectCopier.Clone<SaveSettings>(cur);
+            // Snapshot global settings for restore on close
+            _snapshot = Settings.Instance.Snapshot();
 
             _chkRemoveNoCounterS1.Active = Settings.Instance.Subs[0].RemoveNoCounterpart;
             _chkRemoveNoCounterS2.Active = Settings.Instance.Subs[1].RemoveNoCounterpart;
@@ -295,7 +293,7 @@ namespace subs2srs
         protected override void OnResponse(ResponseType response_id)
         {
             // Restore global settings on any close
-            Settings.Instance.loadSettings(_oldSettings);
+            Settings.Instance.RestoreFrom(_snapshot);
             base.OnResponse(response_id);
         }
 
