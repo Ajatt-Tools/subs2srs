@@ -1,5 +1,14 @@
 # Changelog
 
+**Preferences: JSON migration**
+- `PrefIO` rewritten — preferences stored as `preferences.json` instead of custom `key = value` text format
+- `PreferencesData` POCO added as single serializable source of truth for all preferences
+- `ConstantSettings` mutable properties now delegate to `PreferencesData` backing store
+- `DialogPref.SavePreferences()` writes directly to `ConstantSettings` then calls `PrefIO.Write()`
+- Auto-migration from `preferences.txt` on first launch (old file left intact)
+- Removed: `SettingsPair`, `writeString()`, `writeDefaultPreferences()`, `Tok()`, `convertFromTokens()`, `convertToTokens()`, `convertOut()`, `preventBlank()`
+- Adding a new preference now requires 2 places instead of 7
+
 **Features:**
 - Per-episode cascading time shift rules — override global time shift per episode range; last rule where `FromEpisode ≤ episode` wins
 - Snapshot JPEG quality control — configurable `ffmpeg -q:v` (1–31, default 3), persisted in Preferences and `.s2s` files; ignored for PNG output

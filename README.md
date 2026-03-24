@@ -25,6 +25,7 @@ is carried over from the original with minimal changes.
 | Runtime | Mono | **.NET 10+** |
 | System.Drawing | Required everywhere | **Removed** — `SrsColor`, `FontInfo` used instead |
 | Serialization | `BinaryFormatter` | **System.Text.Json** (`ObjectCloner`) |
+| Preferences format | Custom `key = value` text with regex updates | **JSON** (`preferences.json`) |
 | Progress dialogs | `BackgroundWorker` + modal `DialogProgress` | **`async/await`** + `IProgressReporter` |
 | PropertyGrid (Preferences) | WinForms `PropertyGrid` | **`TreeView`** with editable cells |
 | Preview dialog | `BackgroundWorker` (deadlocked on Wayland) | **`Task.Run` + `async`** |
@@ -98,25 +99,26 @@ sudo make uninstall
 
 ## Configuration
 
-On first run, `preferences.txt` is created in
+On first run, `preferences.json` is created in
 `~/.config/subs2srs/` (or `$XDG_CONFIG_HOME/subs2srs/`).
+
+If a `preferences.txt` from a previous version exists, it is automatically
+migrated to JSON on first launch. The old file is left intact.
 
 Edit via **Preferences** dialog or manually.
 
 ### Adding a new preference
 
-1. Add entry to `PrefIO.writeDefaultPreferences()`
-2. Add default constant to `PrefDefaults`
-3. Add mutable property to `ConstantSettings`
-4. Add read logic to `PrefIO.read()`
-5. Add to `DialogPref.BuildPropTable()`
-6. Add to `DialogPref.SavePreferences()`
-7. Add to `Logger.writeSettingsToLog()`
-8. If the preference maps to `Settings.Instance`, add to `SaveSettings` constructor
+1. Add default constant to `PrefDefaults`
+2. Add property to `PreferencesData.cs` with default from `PrefDefaults`
+3. Add delegating property to `ConstantSettings`
+4. Add to `DialogPref.BuildPropTable()` + `DialogPref.SavePreferences()`
+5. Add to `Logger.writeSettingsToLog()`
+6. If the preference maps to `Settings.Instance`, add to `SaveSettings` constructor
 
 ### Parallelism
 
-Set `max_parallel_tasks` in Preferences → Misc (or in `preferences.txt`):
+Set `max_parallel_tasks` in Preferences → Misc (or in `preferences.json`):
 - `0` — auto (number of CPU cores, default)
 - `1` — sequential (no parallelism)
 - `N` — use up to N threads for media generation
