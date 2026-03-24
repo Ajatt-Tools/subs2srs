@@ -118,7 +118,17 @@ namespace subs2srs.Tests
             File.WriteAllText(_jsonPath,
                 "{{not valid json!!", Encoding.UTF8);
 
-            PrefIO.read();
+            // Suppress expected warning on stderr so test output stays clean
+            var origErr = Console.Error;
+            Console.SetError(TextWriter.Null);
+            try
+            {
+                PrefIO.read();
+            }
+            finally
+            {
+                Console.SetError(origErr);
+            }
 
             Assert.Equal(PrefDefaults.MainWindowWidth,
                 ConstantSettings.MainWindowWidth);
