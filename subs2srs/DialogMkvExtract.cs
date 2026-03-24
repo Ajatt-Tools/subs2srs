@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using SysPath = System.IO.Path;
 using System.Threading;
 using System.Threading.Tasks;
 using Gtk;
@@ -121,7 +122,7 @@ namespace subs2srs
                 _selectedFiles.Clear();
                 foreach (string f in dlg.Filenames)
                 {
-                    if (Path.GetExtension(f).ToLowerInvariant() == ".mkv")
+                    if (SysPath.GetExtension(f).ToLowerInvariant() == ".mkv")
                         _selectedFiles.Add(f);
                 }
                 UpdateFileDisplay();
@@ -144,7 +145,7 @@ namespace subs2srs
         {
             var names = new List<string>(_selectedFiles.Count);
             foreach (string f in _selectedFiles)
-                names.Add($"\"{Path.GetFileName(f)}\"");
+                names.Add($"\"{SysPath.GetFileName(f)}\"");
             _txtFiles.Text = string.Join(", ", names);
 
             _lblFileCount.Text = _selectedFiles.Count == 1
@@ -238,8 +239,8 @@ namespace subs2srs
                     if (string.IsNullOrEmpty(displayLang))
                         displayLang = "Unknown";
 
-                    string fileName = Path.Combine(outDir,
-                        $"{Path.GetFileNameWithoutExtension(files[i])} - Track {Convert.ToInt32(track.TrackID):00} - {displayLang}.{track.Extension}");
+                    string fileName = SysPath.Combine(outDir,
+                        $"{SysPath.GetFileNameWithoutExtension(files[i])} - Track {Convert.ToInt32(track.TrackID):00} - {displayLang}.{track.Extension}");
 
                     // Capture for closure
                     int curEp = i + 1, maxEp = files.Count;
