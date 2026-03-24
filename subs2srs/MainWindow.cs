@@ -165,6 +165,14 @@ namespace subs2srs
             };
             bottomHBox.PackStart(btnPref, false, false, 0);
 
+            var btnSaveProject = new Button("Save Project");
+            btnSaveProject.Clicked += OnSaveProject;
+            bottomHBox.PackStart(btnSaveProject, false, false, 0);
+
+            var btnLoadProject = new Button("Load Project");
+            btnLoadProject.Clicked += OnLoadProject;
+            bottomHBox.PackStart(btnLoadProject, false, false, 0);
+
             bottomHBox.PackStart(btnAbout, false, false, 0);
 
             _btnGo = new Button("Go!") { WidthRequest = 100 };
@@ -657,51 +665,104 @@ namespace subs2srs
         {
             PrefIO.read();
             Settings.Instance.reset();
+            PopulateUIFromSettings();
+        }
 
-            _txtDeckName.Text = Settings.Instance.DeckName != "" ? Settings.Instance.DeckName : "MyDeck";
-            _txtOutputDir.Text = Settings.Instance.OutputDir != ""
-                ? Settings.Instance.OutputDir
+        /// <summary>
+        /// Populate every UI widget from <see cref="Settings.Instance"/>.
+        /// Called on startup (after reset) and after loading a project file.
+        /// </summary>
+        private void PopulateUIFromSettings()
+        {
+            var s = Settings.Instance;
+
+            // ── Main tab ──────────────────────────────────────────────────
+            _txtDeckName.Text = s.DeckName != "" ? s.DeckName : "MyDeck";
+            _txtOutputDir.Text = s.OutputDir != ""
+                ? s.OutputDir
                 : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            _spinEpisodeStart.Value = Settings.Instance.EpisodeStartNumber;
+            _spinEpisodeStart.Value = s.EpisodeStartNumber;
 
-            _chkGenerateAudio.Active = Settings.Instance.AudioClips.Enabled;
-            // Sync audio bitrate combo with loaded settings
-            SetBitrateCombo(_comboAudioBitrate, Settings.Instance.AudioClips.Bitrate);
-            SetBitrateCombo(_comboVideoBitrateAudio, Settings.Instance.VideoClips.BitrateAudio);
-            _chkGenerateSnapshots.Active = Settings.Instance.Snapshots.Enabled;
-            _chkGenerateVideo.Active = Settings.Instance.VideoClips.Enabled;
+            _txtSubs1.Text = s.Subs[0].FilePattern;
+            _txtSubs2.Text = s.Subs[1].FilePattern;
+            _txtVideo.Text = s.VideoClips.FilePattern;
 
-            _spinSnapshotWidth.Value = Settings.Instance.Snapshots.Size.Width > 0 ? Settings.Instance.Snapshots.Size.Width : 240;
-            _spinSnapshotHeight.Value = Settings.Instance.Snapshots.Size.Height > 0 ? Settings.Instance.Snapshots.Size.Height : 160;
-            _spinSnapshotCropBottom.Value = Settings.Instance.Snapshots.Crop.Bottom;
-            _spinSnapshotQuality.Value = Settings.Instance.Snapshots.Quality > 0
-                ? Settings.Instance.Snapshots.Quality : 3;
+            SetEncodingCombo(_comboEncodingSubs1, s.Subs[0].Encoding);
+            SetEncodingCombo(_comboEncodingSubs2, s.Subs[1].Encoding);
 
-            _spinVideoWidth.Value = Settings.Instance.VideoClips.Size.Width > 0 ? Settings.Instance.VideoClips.Size.Width : 240;
-            _spinVideoHeight.Value = Settings.Instance.VideoClips.Size.Height > 0 ? Settings.Instance.VideoClips.Size.Height : 160;
-            _spinVideoCropBottom.Value = Settings.Instance.VideoClips.Crop.Bottom;
-            _spinVideoBitrateVideo.Value = Settings.Instance.VideoClips.BitrateVideo > 0 ? Settings.Instance.VideoClips.BitrateVideo : 800;
+            if (s.Subs[1].TimingsEnabled)
+                _radioTimingSubs2.Active = true;
+            else
+                _radioTimingSubs1.Active = true;
 
-            SetEncodingCombo(_comboEncodingSubs1, Settings.Instance.Subs[0].Encoding);
-            SetEncodingCombo(_comboEncodingSubs2, Settings.Instance.Subs[1].Encoding);
+            _chkTimeShift.Active = s.TimeShiftEnabled;
+            _spinTimeShiftSubs1.Value = s.Subs[0].TimeShift;
+            _spinTimeShiftSubs2.Value = s.Subs[1].TimeShift;
 
-            _radioTimingSubs1.Active = true;
-
-            // Load per-episode shift rules
+            // Per-episode shift rules
             _shiftRulesStore.Clear();
-            if (Settings.Instance.Subs[0].TimeShiftRules?.Count > 0)
+            if (s.Subs[0].TimeShiftRules?.Count > 0)
             {
-                for (int i = 0; i < Settings.Instance.Subs[0].TimeShiftRules.Count; i++)
+                for (int i = 0; i < s.Subs[0].TimeShiftRules.Count; i++)
                 {
-                    int fromEp = Settings.Instance.Subs[0].TimeShiftRules[i].FromEpisode;
-                    int s1 = Settings.Instance.Subs[0].TimeShiftRules[i].ShiftMs;
-                    int s2 = (Settings.Instance.Subs[1].TimeShiftRules?.Count > i)
-                        ? Settings.Instance.Subs[1].TimeShiftRules[i].ShiftMs : 0;
+                    int fromEp = s.Subs[0].TimeShiftRules[i].FromEpisode;
+                    int s1 = s.Subs[0].TimeShiftRules[i].ShiftMs;
+                    int s2 = (s.Subs[1].TimeShiftRules?.Count > i)
+                        ? s.Subs[1].TimeShiftRules[i].ShiftMs : 0;
                     _shiftRulesStore.AppendValues(fromEp, s1, s2);
                 }
             }
 
+            _chkSpan.Active = s.SpanEnabled;
+            _txtSpanStart.Text = s.SpanStart.ToString(@"h\:mm\:ss");
+            _txtSpanEnd.Text = s.SpanEnd.ToString(@"h\:mm\:ss");
+
+            // ── Audio tab ─────────────────────────────────────────────────
+            _chkGenerateAudio.Active = s.AudioClips.Enabled;
+            if (s.AudioClips.UseExistingAudio)
+                _radioAudioExisting.Active = true;
+            else
+                _radioAudioFromVideo.Active = true;
+            _txtAudioFile.Text = s.AudioClips.FilePattern;
+            SetBitrateCombo(_comboAudioBitrate, s.AudioClips.Bitrate);
+            _chkAudioPad.Active = s.AudioClips.PadEnabled;
+            _spinAudioPadStart.Value = s.AudioClips.PadStart;
+            _spinAudioPadEnd.Value = s.AudioClips.PadEnd;
+            _chkNormalize.Active = s.AudioClips.Normalize;
+
+            // ── Snapshot tab ──────────────────────────────────────────────
+            _chkGenerateSnapshots.Active = s.Snapshots.Enabled;
+            _spinSnapshotWidth.Value = s.Snapshots.Size.Width > 0 ? s.Snapshots.Size.Width : 240;
+            _spinSnapshotHeight.Value = s.Snapshots.Size.Height > 0 ? s.Snapshots.Size.Height : 160;
+            _spinSnapshotCropBottom.Value = s.Snapshots.Crop.Bottom;
+            _spinSnapshotQuality.Value = s.Snapshots.Quality > 0 ? s.Snapshots.Quality : 3;
+
+            // ── Video tab ─────────────────────────────────────────────────
+            _chkGenerateVideo.Active = s.VideoClips.Enabled;
+            _spinVideoWidth.Value = s.VideoClips.Size.Width > 0 ? s.VideoClips.Size.Width : 240;
+            _spinVideoHeight.Value = s.VideoClips.Size.Height > 0 ? s.VideoClips.Size.Height : 160;
+            _spinVideoCropBottom.Value = s.VideoClips.Crop.Bottom;
+            _spinVideoBitrateVideo.Value = s.VideoClips.BitrateVideo > 0 ? s.VideoClips.BitrateVideo : 800;
+            SetBitrateCombo(_comboVideoBitrateAudio, s.VideoClips.BitrateAudio);
+            _chkVideoPad.Active = s.VideoClips.PadEnabled;
+            _spinVideoPadStart.Value = s.VideoClips.PadStart;
+            _spinVideoPadEnd.Value = s.VideoClips.PadEnd;
+            _chkIPod.Active = s.VideoClips.IPodSupport;
+
             SetDefaultSize(ConstantSettings.MainWindowWidth, ConstantSettings.MainWindowHeight);
+            UpdateTitle();
+        }
+
+        /// <summary>
+        /// Update the window title to reflect the current project file name.
+        /// </summary>
+        private void UpdateTitle()
+        {
+            var projectPath = Settings.Instance.ProjectPath;
+            if (!string.IsNullOrEmpty(projectPath))
+                Title = $"subs2srs — {System.IO.Path.GetFileNameWithoutExtension(projectPath)}";
+            else
+                Title = "subs2srs";
         }
 
         private void SaveSettings()
@@ -993,6 +1054,81 @@ namespace subs2srs
             if (col == 0 && val < 1) val = 1;
 
             _shiftRulesStore.SetValue(iter, col, val);
+        }
+
+        private void OnSaveProject(object? sender, EventArgs e)
+        {
+            SaveSettings();
+
+            var dlg = new FileChooserDialog(
+                "Save Project", this, FileChooserAction.Save,
+                "Cancel", ResponseType.Cancel,
+                "Save", ResponseType.Accept);
+
+            var filter = new FileFilter { Name = "subs2srs Project (*.s2s.json)" };
+            filter.AddPattern("*.s2s.json");
+            dlg.AddFilter(filter);
+            dlg.DoOverwriteConfirmation = true;
+
+            // Pre-fill filename from current project path or deck name
+            if (!string.IsNullOrEmpty(Settings.Instance.ProjectPath))
+                dlg.SetFilename(Settings.Instance.ProjectPath);
+            else if (!string.IsNullOrEmpty(Settings.Instance.DeckName))
+                dlg.CurrentName = Settings.Instance.DeckName + ".s2s.json";
+            else
+                dlg.CurrentName = "project.s2s.json";
+
+            if (dlg.Run() == (int)ResponseType.Accept)
+            {
+                string path = dlg.Filename;
+                if (!path.EndsWith(".s2s.json", StringComparison.OrdinalIgnoreCase))
+                    path += ".s2s.json";
+
+                try
+                {
+                    ProjectIO.Save(path, Settings.Instance);
+                    Settings.Instance.ProjectPath = path;
+                    UpdateTitle();
+                }
+                catch (Exception ex)
+                {
+                    UtilsMsg.showErrMsg($"Failed to save project:\n{ex.Message}");
+                }
+            }
+
+            dlg.Destroy();
+        }
+
+        private void OnLoadProject(object? sender, EventArgs e)
+        {
+            var dlg = new FileChooserDialog(
+                "Load Project", this, FileChooserAction.Open,
+                "Cancel", ResponseType.Cancel,
+                "Open", ResponseType.Accept);
+
+            var filter = new FileFilter { Name = "subs2srs Project (*.s2s.json)" };
+            filter.AddPattern("*.s2s.json");
+            dlg.AddFilter(filter);
+
+            var allFilter = new FileFilter { Name = "All files" };
+            allFilter.AddPattern("*");
+            dlg.AddFilter(allFilter);
+
+            if (dlg.Run() == (int)ResponseType.Accept)
+            {
+                try
+                {
+                    ProjectIO.Load(dlg.Filename);
+                    Settings.Instance.ProjectPath = dlg.Filename;
+                    PopulateUIFromSettings();
+                }
+                catch (Exception ex)
+                {
+                    UtilsMsg.showErrMsg($"Failed to load project:\n{ex.Message}");
+                }
+            }
+
+            dlg.Destroy();
         }
 
         // ── FILE DIALOGS ─────────────────────────────────────────────────────
