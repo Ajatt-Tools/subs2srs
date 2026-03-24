@@ -7,8 +7,19 @@ using Xunit;
 
 namespace subs2srs.Tests
 {
-    public class SettingsSnapshotTests
+    public class SettingsSnapshotTests : IDisposable
     {
+        // Reset singleton to a known state before each test
+        // to avoid pollution from other tests in the sequential run.
+        public SettingsSnapshotTests()
+        {
+            Settings.Instance.reset();
+        }
+
+        public void Dispose()
+        {
+            Settings.Instance.reset();
+        }
         // ── Snapshot produces independent deep copy ─────────────────────────
 
         [Fact]
