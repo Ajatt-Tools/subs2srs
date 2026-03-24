@@ -16,10 +16,10 @@
 
 ## Low priority
 
-- [ ] **Remove `SaveSettings` class**
-  Serialize `Settings.Instance` directly with `[JsonIgnore]` on transient
-  fields. `SaveSettings.gatherData()` and `Settings.loadSettings()` become
-  unnecessary. Requires analysis of all `.s2s` consumers.
+- [x] **Remove `SaveSettings` class**
+  Done. `Settings.Snapshot()` / `Settings.RestoreFrom()` replace
+  `SaveSettings.gatherData()` and `Settings.loadSettings()`.
+  `Settings` now has `[JsonPropertyName]` attributes for `.s2s` compatibility.
 
 - [x] **`Process` → async with `CancellationToken`**
   Done. `runProcessWithProgress()` uses `WaitForExitAsync(token)`.
