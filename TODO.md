@@ -4,14 +4,15 @@
 
 - [x] **Unit tests**
   Added xUnit project with tests for `UtilsSubs` (time formatting, padding,
-  overlap, roundtrip), `UtilsName.createName()`, `PrefIO.convertFromTokens()`.
+  overlap, roundtrip), `UtilsName.createName()`, `PrefIO` round-trip.
 
 - [x] **`UtilsCommon` — deduplicate process launching**
   Done. `getExePaths()` centralizes "try rel → try abs → try PATH".
 
-- [ ] **`PrefIO` — migrate to JSON**
-  Current regex-based replacement is fragile. Read both formats, write JSON.
-  Would break manual editing of `preferences.txt` — needs migration path.
+- [x] **`PrefIO` — migrate to JSON**
+  Done. `PreferencesData` POCO serialized via `System.Text.Json`.
+  Auto-migrates from old `preferences.txt` on first launch.
+  Adding a new preference: 2 places instead of 7.
 
 ## Low priority
 
