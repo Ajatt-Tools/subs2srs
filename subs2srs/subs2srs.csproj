@@ -8,14 +8,14 @@
     <EnableVobSub>false</EnableVobSub>
     <DefineConstants Condition="'$(EnableVobSub)' == 'true'">$(DefineConstants);ENABLE_VOBSUB</DefineConstants>
 
-    <!-- Assembly info → UtilsAssembly reads these -->
+    <!-- Assembly info — UtilsAssembly reads these -->
     <Authors>Christopher Brochtrup;fkzys</Authors>
     <Company>Christopher Brochtrup</Company>
-    <Copyright>Copyright © 2009-2016 Christopher Brochtrup. GTK3 port © 2026 fkzys</Copyright>
-    <Description>subs2srs GTK3/.NET 10 port — generate Anki cards from media with subtitles</Description>
+    <Copyright>Copyright © 2009-2016 Christopher Brochtrup. GTK4 port © 2026 fkzys</Copyright>
+    <Description>subs2srs GTK4/.NET 10 port — generate Anki cards from media with subtitles</Description>
     <PackageProjectUrl>https://gitlab.com/fkzys/subs2srs-gtk3</PackageProjectUrl>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,7 +23,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="GtkSharp" Version="3.24.24.95" />
+    <!-- GTK4 via Gir.Core bindings (replaces GtkSharp) -->
+    <PackageReference Include="GirCore.Gtk-4.0" Version="0.7.0" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.0"
                       Condition="'$(EnableVobSub)' == 'true'" />

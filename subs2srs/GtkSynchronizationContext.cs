@@ -16,6 +16,7 @@
 //  along with subs2srs.  If not, see <http://www.gnu.org/licenses/>.
 //
 //////////////////////////////////////////////////////////////////////////////
+
 using System;
 using System.Threading;
 
@@ -24,7 +25,9 @@ namespace subs2srs
     /// <summary>
     /// Routes async/await continuations back to the GTK main loop.
     /// Without this, code after 'await' runs on thread-pool threads,
-    /// causing GTK threading violations (g_object_remove_toggle_ref).
+    /// causing GTK threading violations.
+    ///
+    /// GTK4/Gir.Core equivalent: GLib.Functions.IdleAdd replaces GLib.Idle.Add.
     /// </summary>
     sealed class GtkSynchronizationContext : SynchronizationContext
     {
@@ -32,7 +35,13 @@ namespace subs2srs
 
         public override void Post(SendOrPostCallback d, object? state)
         {
-            GLib.Idle.Add(() => { d(state); return false; });
+            // Schedule callback on the GLib main loop (idle handler).
+            // Priority 0 = G_PRIORITY_DEFAULT_IDLE.
+            GLib.Functions.IdleAdd(0, () =>
+            {
+                d(state);
+                return false; // one-shot, do not repeat
+            });
         }
 
         public override void Send(SendOrPostCallback d, object? state)
@@ -46,7 +55,7 @@ namespace subs2srs
 
             using var done = new ManualResetEventSlim(false);
             Exception? caught = null;
-            GLib.Idle.Add(() =>
+            GLib.Functions.IdleAdd(0, () =>
             {
                 try { d(state); }
                 catch (Exception ex) { caught = ex; }
@@ -55,7 +64,8 @@ namespace subs2srs
             });
             done.Wait();
             if (caught != null)
-                System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(caught).Throw();
+                System.Runtime.ExceptionServices.ExceptionDispatchInfo
+                    .Capture(caught).Throw();
         }
 
         public override SynchronizationContext CreateCopy() => this;

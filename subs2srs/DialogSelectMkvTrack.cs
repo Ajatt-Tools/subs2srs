@@ -20,90 +20,142 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using Gtk;
 using IOPath = System.IO.Path;
 
 namespace subs2srs
 {
-    public class DialogSelectMkvTrack : Dialog
+    /// <summary>
+    /// Modal dialog to select and extract a subtitle track from an MKV file.
+    /// GTK4: replaces Gtk.Dialog with Gtk.Window + nested main loop for
+    /// synchronous-style RunDialog() calls.
+    /// </summary>
+    public class DialogSelectMkvTrack : Gtk.Window
     {
         private readonly string _mkvFile;
         private readonly int _subsNum;
         private readonly List<MkvTrack> _tracks;
 
-        private ComboBoxText _comboTrack;
-        private Button _btnExtract;
-        private Label _lblProgress;
-        private ProgressBar _progressBar;
+        private Gtk.DropDown _dropTrack;
+        private Gtk.StringList _trackModel;
+        private Gtk.Button _btnExtract;
+        private Gtk.Label _lblProgress;
+        private Gtk.ProgressBar _progressBar;
 
         public string ExtractedFile { get; private set; } = "";
 
-        public DialogSelectMkvTrack(Window parent, string mkvFile, int subsNum, List<MkvTrack> tracks)
-            : base("Select MKV Subtitle Track", parent, DialogFlags.Modal)
+        // Result: true = OK (extracted), false = cancelled
+        private bool? _result;
+        private GLib.MainLoop _loop;
+
+        public DialogSelectMkvTrack(Gtk.Window parent, string mkvFile, int subsNum, List<MkvTrack> tracks)
         {
             _mkvFile = mkvFile;
             _subsNum = subsNum;
             _tracks = tracks;
+
+            SetTitle("Select MKV Subtitle Track");
             SetDefaultSize(340, 150);
-            Resizable = false;
+            SetModal(true);
+            if (parent != null) SetTransientFor(parent);
+
             BuildUI();
         }
 
         private void BuildUI()
         {
-            var vbox = new Box(Orientation.Vertical, 6) { BorderWidth = 10 };
+            var vbox = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
+            vbox.SetMarginTop(10);
+            vbox.SetMarginBottom(10);
+            vbox.SetMarginStart(10);
+            vbox.SetMarginEnd(10);
 
-            vbox.PackStart(new Label("Select MKV subtitle track to use:") { Halign = Align.Start }, false, false, 0);
+            var lbl = Gtk.Label.New("Select MKV subtitle track to use:");
+            lbl.SetHalign(Gtk.Align.Start);
+            vbox.Append(lbl);
 
-            _comboTrack = new ComboBoxText();
-            foreach (var t in _tracks)
-                _comboTrack.AppendText(t.ToString());
-            if (_tracks.Count > 0) _comboTrack.Active = 0;
-            vbox.PackStart(_comboTrack, false, false, 0);
+            // Build track dropdown
+            var trackNames = new string[_tracks.Count];
+            for (int i = 0; i < _tracks.Count; i++)
+                trackNames[i] = _tracks[i].ToString();
+            _trackModel = Gtk.StringList.New(trackNames);
+            _dropTrack = Gtk.DropDown.New(_trackModel, null);
+            if (_tracks.Count > 0) _dropTrack.SetSelected(0);
+            vbox.Append(_dropTrack);
 
-            _lblProgress = new Label("Extracting subtitle track...") { Halign = Align.Start, Visible = false };
-            vbox.PackStart(_lblProgress, false, false, 0);
+            _lblProgress = Gtk.Label.New("Extracting subtitle track...");
+            _lblProgress.SetHalign(Gtk.Align.Start);
+            _lblProgress.SetVisible(false);
+            vbox.Append(_lblProgress);
 
-            _progressBar = new ProgressBar { Visible = false };
-            vbox.PackStart(_progressBar, false, false, 0);
+            _progressBar = Gtk.ProgressBar.New();
+            _progressBar.SetVisible(false);
+            vbox.Append(_progressBar);
 
-            _btnExtract = new Button("Extract");
-            _btnExtract.Clicked += OnExtractClicked;
-            var btnBox = new Box(Orientation.Horizontal, 0);
-            btnBox.PackEnd(_btnExtract, false, false, 0);
-            vbox.PackStart(btnBox, false, false, 0);
+            _btnExtract = Gtk.Button.NewWithLabel("Extract");
+            _btnExtract.OnClicked += OnExtractClicked;
+            var btnBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 0);
+            btnBox.SetHalign(Gtk.Align.End);
+            btnBox.Append(_btnExtract);
+            vbox.Append(btnBox);
 
-            ContentArea.PackStart(vbox, true, true, 0);
-            ContentArea.ShowAll();
+            SetChild(vbox);
         }
 
-        private async void OnExtractClicked(object sender, EventArgs e)
+        /// <summary>
+        /// Show the dialog modally and return the response.
+        /// Spins a nested GLib main loop (same pattern as GTK3 Dialog.Run).
+        /// </summary>
+        public bool RunDialog()
         {
-            if (_comboTrack.Active < 0) return;
+            _result = null;
+            _loop = GLib.MainLoop.New(null, false);
 
-            _btnExtract.Sensitive = false;
-            _lblProgress.Visible = true;
-            _progressBar.Visible = true;
+            OnCloseRequest += (s, e) =>
+            {
+                if (_result == null) _result = false;
+                _loop.Quit();
+                return false;
+            };
+
+            Show();
+            _loop.Run();
+            return _result ?? false;
+        }
+
+        private async void OnExtractClicked(Gtk.Button sender, EventArgs e)
+        {
+            uint sel = _dropTrack.GetSelected();
+            if (sel == uint.MaxValue || sel >= (uint)_tracks.Count) return;
+
+            _btnExtract.SetSensitive(false);
+            _lblProgress.SetVisible(true);
+            _progressBar.SetVisible(true);
             _progressBar.Pulse();
 
-            var selectedTrack = _tracks[_comboTrack.Active];
+            var selectedTrack = _tracks[(int)sel];
             string tempFileName = _subsNum == 2
                 ? ConstantSettings.TempMkvExtractSubs2Filename
                 : ConstantSettings.TempMkvExtractSubs1Filename;
 
             string extractedFile = $"{IOPath.GetTempPath()}{tempFileName}.{selectedTrack.Extension}";
 
-            uint pulseTimer = GLib.Timeout.Add(100, () => { _progressBar.Pulse(); return true; });
+            // Pulse timer using GLib.Functions.TimeoutAdd
+            uint pulseTimer = GLib.Functions.TimeoutAdd(0, 100, () =>
+            {
+                _progressBar.Pulse();
+                return true;
+            });
 
             await Task.Run(() => UtilsMkv.extractTrack(_mkvFile, selectedTrack.TrackID, extractedFile));
 
-            GLib.Source.Remove(pulseTimer);
+            GLib.Functions.SourceRemove(pulseTimer);
 
             ExtractedFile = extractedFile;
             if (IOPath.GetExtension(ExtractedFile) == ".sub")
                 ExtractedFile = IOPath.ChangeExtension(ExtractedFile, ".idx");
 
-            Respond(ResponseType.Ok);
+            _result = true;
+            Close();
         }
     }
 }

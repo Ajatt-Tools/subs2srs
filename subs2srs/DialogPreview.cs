@@ -16,37 +16,46 @@
 //  along with subs2srs.  If not, see <http://www.gnu.org/licenses/>.
 //
 //////////////////////////////////////////////////////////////////////////////
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Gtk;
 using System.IO;
 using SysPath = System.IO.Path;
 
 namespace subs2srs
 {
-    public class DialogPreview : Window
+    /// <summary>
+    /// Preview window — GTK4/Gir.Core port.
+    ///
+    /// GTK4 removed TreeView/ListStore. This port uses Gtk.ColumnView
+    /// backed by a Gio.ListStore of PreviewItem GObject wrappers,
+    /// providing a sortable, scrollable multi-column list.
+    ///
+    /// Snapshot preview uses Gtk.Picture (replaces Gtk.Image with Pixbuf).
+    /// </summary>
+    public class DialogPreview : Gtk.Window
     {
-        private const string ActiveBg = "#F5FFFA";
-        private const string InactiveBg = "#FFB6C1";
-        private const string WarnFg = "#FF0000";
-        private const string NormalFg = "#000000";
-
-        private enum C { Subs1, Subs2, Start, End, Dur, Bg, Fg, Idx }
+        private const string ActiveCss = "background-color: #F5FFFA;";
+        private const string InactiveCss = "background-color: #FFB6C1;";
+        private const string WarnCss = "color: #FF0000;";
 
         // Widgets
-        private ComboBoxText _comboEp;
-        private TreeView _tv;
-        private ListStore _store;
-        private Entry _txtS1, _txtS2, _txtFind;
-        private Label _lblTime;
-        private Gtk.Image _imgSnap;
-        private CheckButton _chkSnap;
-        private Button _btnAudio, _btnGo;
-        private Label _lblEpL, _lblEpA, _lblEpI, _lblTL, _lblTA, _lblTI;
-        private ProgressBar _progress;
+        private Gtk.DropDown _comboEp;
+        private Gtk.StringList _epModel;
+        private Gtk.ListView _listView;
+        private Gio.ListStore _store;
+        private List<PreviewItem> _items = new();
+        private Gtk.SingleSelection _selection;
+        private Gtk.Entry _txtS1, _txtS2, _txtFind;
+        private Gtk.Label _lblTime;
+        private Gtk.Picture _imgSnap;
+        private Gtk.CheckButton _chkSnap;
+        private Gtk.Button _btnAudio, _btnGo;
+        private Gtk.Label _lblEpL, _lblEpA, _lblEpI, _lblTL, _lblTA, _lblTI;
+        private Gtk.ProgressBar _progress;
 
         // State
         private WorkerVars _wv;
@@ -67,47 +76,44 @@ namespace subs2srs
         /// </summary>
         public event EventHandler GoRequested;
 
-        public DialogPreview() : base(WindowType.Toplevel)
+        public DialogPreview() : base()
         {
-            Title = "Preview";
+            SetTitle("Preview");
             SetDefaultSize(1000, 750);
-            WindowPosition = WindowPosition.Center;
-            DeleteEvent += (o, a) => { a.RetVal = true; Hide(); };
+
+            // Hide instead of destroying on close
+            OnCloseRequest += (s, e) =>
+            {
+                SetVisible(false);
+                return true; // prevent destruction
+            };
+
             BuildUI();
         }
 
         public void StartPreview()
         {
             _destroyed = false;
-            ShowAll();
+            Show();
             PopulateEpCombo();
             RunPreviewAsync();
         }
 
         /// <summary>
-        /// Clean up temp files and dispose snapshot pixbuf.
+        /// Clean up temp files and dispose snapshot texture.
         /// Called internally and by MainWindow on application exit.
         /// </summary>
         public void CleanupAndDestroy()
         {
             _destroyed = true;
             Cleanup();
-            Destroy();
+            Close();
         }
 
         private void Cleanup()
         {
-            // Dispose snapshot pixbuf deterministically
-            try
-            {
-                var pb = _imgSnap?.Pixbuf;
-                if (pb != null)
-                {
-                    _imgSnap.Pixbuf = null;
-                    pb.Dispose();
-                }
-            }
-            catch { }
+            // Clear snapshot picture
+            try { _imgSnap?.SetPaintable(null); } catch { }
 
             if (_wv?.MediaDir != null && Directory.Exists(_wv.MediaDir))
                 try { Directory.Delete(_wv.MediaDir, true); } catch { }
@@ -117,130 +123,250 @@ namespace subs2srs
 
         private void BuildUI()
         {
-            var vbox = new Box(Orientation.Vertical, 4) { BorderWidth = 6 };
+            var vbox = Gtk.Box.New(Gtk.Orientation.Vertical, 4);
+            vbox.SetMarginTop(6);
+            vbox.SetMarginBottom(6);
+            vbox.SetMarginStart(6);
+            vbox.SetMarginEnd(6);
 
             // Top bar
-            var top = new Box(Orientation.Horizontal, 6);
-            top.PackStart(new Label("Episode:"), false, false, 0);
-            _comboEp = new ComboBoxText();
-            _comboEp.Changed += (s, e) => OnEpisodeChanged();
-            top.PackStart(_comboEp, false, false, 0);
-            var btnRegen = new Button("Regenerate");
-            btnRegen.Clicked += OnRegenClicked;
-            top.PackStart(btnRegen, false, false, 0);
-            vbox.PackStart(top, false, false, 0);
+            var top = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
+            top.Append(Gtk.Label.New("Episode:"));
+            _epModel = Gtk.StringList.New(Array.Empty<string>());
+            _comboEp = Gtk.DropDown.New(_epModel, null);
+            _comboEp.OnNotify += (s, e) =>
+            {
+                if (e.Pspec.GetName() == "selected") OnEpisodeChanged();
+            };
+            top.Append(_comboEp);
+            var btnRegen = Gtk.Button.NewWithLabel("Regenerate");
+            btnRegen.OnClicked += OnRegenClicked;
+            top.Append(btnRegen);
+            vbox.Append(top);
 
-            // TreeView
-            _store = new ListStore(typeof(string), typeof(string), typeof(string),
-                typeof(string), typeof(string), typeof(string), typeof(string), typeof(int));
-            _tv = new TreeView(_store) { EnableSearch = false };
-            _tv.Selection.Mode = SelectionMode.Multiple;
-            _tv.Selection.Changed += OnSelChanged;
-            AddCol("Subs1", (int)C.Subs1, 300);
-            AddCol("Subs2", (int)C.Subs2, 200);
-            AddCol("Start", (int)C.Start, 110);
-            AddCol("End", (int)C.End, 110);
-            AddCol("Duration", (int)C.Dur, 110);
-            var sw = new ScrolledWindow { ShadowType = ShadowType.In };
-            sw.Add(_tv);
-            vbox.PackStart(sw, true, true, 0);
+            // List view — takes all available vertical space
+            _store = Gio.ListStore.New(Gtk.StringObject.GetGType());
+            _selection = Gtk.SingleSelection.New(_store);
+            _selection.OnNotify += (s, e) =>
+            {
+                if (e.Pspec.GetName() == "selected") OnSelChanged();
+            };
 
-            // Text preview
-            var pg = new Grid { RowSpacing = 4, ColumnSpacing = 6 };
-            pg.Attach(new Label("Subs1:") { Halign = Align.End }, 0, 0, 1, 1);
-            _txtS1 = new Entry { Hexpand = true };
-            _txtS1.Changed += OnS1Changed;
+            _listView = Gtk.ListView.New(_selection, BuildListItemFactory());
+            _listView.SetVexpand(true);
+
+            var sw = Gtk.ScrolledWindow.New();
+            sw.SetChild(_listView);
+            sw.SetVexpand(true);
+            // Ensure the list keeps space — minimum height
+            sw.SetSizeRequest(-1, 250);
+            vbox.Append(sw);
+
+            // === Bottom detail panel — fixed size, never expands ===
+            var detailBox = Gtk.Box.New(Gtk.Orientation.Vertical, 4);
+            detailBox.SetVexpand(false);
+            detailBox.SetValign(Gtk.Align.End);
+
+            // Text fields grid
+            var pg = Gtk.Grid.New();
+            pg.SetRowSpacing(4);
+            pg.SetColumnSpacing(6);
+            pg.SetVexpand(false);
+
+            var lblS1 = Gtk.Label.New("Subs1:");
+            lblS1.SetHalign(Gtk.Align.End);
+            pg.Attach(lblS1, 0, 0, 1, 1);
+            _txtS1 = Gtk.Entry.New();
+            _txtS1.SetHexpand(true);
+            _txtS1.OnChanged += OnS1Changed;
             pg.Attach(_txtS1, 1, 0, 1, 1);
-            pg.Attach(new Label("Subs2:") { Halign = Align.End }, 0, 1, 1, 1);
-            _txtS2 = new Entry { Hexpand = true };
-            _txtS2.Changed += OnS2Changed;
+
+            var lblS2 = Gtk.Label.New("Subs2:");
+            lblS2.SetHalign(Gtk.Align.End);
+            pg.Attach(lblS2, 0, 1, 1, 1);
+            _txtS2 = Gtk.Entry.New();
+            _txtS2.SetHexpand(true);
+            _txtS2.OnChanged += OnS2Changed;
             pg.Attach(_txtS2, 1, 1, 1, 1);
-            _lblTime = new Label("") { Halign = Align.Start };
+
+            _lblTime = Gtk.Label.New("");
+            _lblTime.SetHalign(Gtk.Align.Start);
             pg.Attach(_lblTime, 1, 2, 1, 1);
 
-            _chkSnap = new CheckButton("Snapshot preview") { Active = true };
+            // Snapshot row: checkbox on the left, picture in a clipping container
+            _chkSnap = Gtk.CheckButton.NewWithLabel("Snapshot preview");
+            _chkSnap.SetActive(true);
+            _chkSnap.SetValign(Gtk.Align.Start);
             pg.Attach(_chkSnap, 0, 3, 1, 1);
-            _imgSnap = new Gtk.Image();
-            pg.Attach(_imgSnap, 1, 3, 1, 1);
-            vbox.PackStart(pg, false, false, 0);
 
-            vbox.PackStart(new Separator(Orientation.Horizontal), false, false, 2);
+            // Picture inside a ScrolledWindow that acts as a fixed-size viewport.
+            // ScrolledWindow respects size request and clips content,
+            // preventing Picture from inflating the grid.
+            _imgSnap = Gtk.Picture.New();
+            _imgSnap.SetContentFit(Gtk.ContentFit.Contain);
+            _imgSnap.SetCanShrink(true);
+            _imgSnap.SetHalign(Gtk.Align.Center);
+            _imgSnap.SetValign(Gtk.Align.Center);
+
+            var snapScroll = Gtk.ScrolledWindow.New();
+            snapScroll.SetPolicy(Gtk.PolicyType.Never, Gtk.PolicyType.Never);
+            snapScroll.SetSizeRequest(200, 120);
+            snapScroll.SetHexpand(false);
+            snapScroll.SetVexpand(false);
+            snapScroll.SetHalign(Gtk.Align.Start);
+            snapScroll.SetValign(Gtk.Align.Start);
+            snapScroll.SetChild(_imgSnap);
+            pg.Attach(snapScroll, 1, 3, 1, 1);
+
+            detailBox.Append(pg);
+            detailBox.Append(Gtk.Separator.New(Gtk.Orientation.Horizontal));
 
             // Action buttons row 1
-            var ab1 = new Box(Orientation.Horizontal, 4);
-            BtnPack(ab1, "Select All", (s, e) => SelectAll());
-            BtnPack(ab1, "Select None", (s, e) => SelectNone());
-            BtnPack(ab1, "Invert", (s, e) => InvertSel());
-            ab1.PackStart(new Separator(Orientation.Vertical), false, false, 4);
-            BtnPack(ab1, "Activate", OnActivate);
-            BtnPack(ab1, "Deactivate", OnDeactivate);
-            vbox.PackStart(ab1, false, false, 0);
+            var ab1 = Gtk.Box.New(Gtk.Orientation.Horizontal, 4);
+            AppendBtn(ab1, "Activate", OnActivate);
+            AppendBtn(ab1, "Deactivate", OnDeactivate);
+            detailBox.Append(ab1);
 
             // Find + audio
-            var ab2 = new Box(Orientation.Horizontal, 4);
-            ab2.PackStart(new Label("Find:"), false, false, 0);
-            _txtFind = new Entry { WidthChars = 25 };
-            _txtFind.Activated += (s, e) => FindNext();
-            ab2.PackStart(_txtFind, false, false, 0);
-            BtnPack(ab2, "Find Next", (s, e) => FindNext());
-            ab2.PackStart(new Separator(Orientation.Vertical), false, false, 8);
-            _btnAudio = new Button("Preview Audio");
-            _btnAudio.Clicked += OnPreviewAudio;
-            ab2.PackStart(_btnAudio, false, false, 0);
-            vbox.PackStart(ab2, false, false, 0);
+            var ab2 = Gtk.Box.New(Gtk.Orientation.Horizontal, 4);
+            ab2.Append(Gtk.Label.New("Find:"));
+            _txtFind = Gtk.Entry.New();
+            _txtFind.SetWidthChars(25);
+            _txtFind.OnActivate += (s, e) => FindNext();
+            ab2.Append(_txtFind);
+            AppendBtn(ab2, "Find Next", (s, e) => FindNext());
+            ab2.Append(Gtk.Separator.New(Gtk.Orientation.Vertical));
+            _btnAudio = Gtk.Button.NewWithLabel("Preview Audio");
+            _btnAudio.OnClicked += OnPreviewAudio;
+            ab2.Append(_btnAudio);
+            detailBox.Append(ab2);
 
             // Stats
-            var sf = new Frame("Statistics");
-            var sg = new Grid { RowSpacing = 2, ColumnSpacing = 8, BorderWidth = 4 };
-            sg.Attach(new Label("Episode —"), 0, 0, 1, 1);
-            sg.Attach(new Label("Lines:"), 1, 0, 1, 1);
-            _lblEpL = new Label("0"); sg.Attach(_lblEpL, 2, 0, 1, 1);
-            sg.Attach(new Label("Active:"), 3, 0, 1, 1);
-            _lblEpA = new Label("0"); sg.Attach(_lblEpA, 4, 0, 1, 1);
-            sg.Attach(new Label("Inactive:"), 5, 0, 1, 1);
-            _lblEpI = new Label("0"); sg.Attach(_lblEpI, 6, 0, 1, 1);
-            sg.Attach(new Label("Total —"), 0, 1, 1, 1);
-            sg.Attach(new Label("Lines:"), 1, 1, 1, 1);
-            _lblTL = new Label("0"); sg.Attach(_lblTL, 2, 1, 1, 1);
-            sg.Attach(new Label("Active:"), 3, 1, 1, 1);
-            _lblTA = new Label("0"); sg.Attach(_lblTA, 4, 1, 1, 1);
-            sg.Attach(new Label("Inactive:"), 5, 1, 1, 1);
-            _lblTI = new Label("0"); sg.Attach(_lblTI, 6, 1, 1, 1);
-            sf.Add(sg);
-            vbox.PackStart(sf, false, false, 0);
+            var sf = Gtk.Frame.New("Statistics");
+            var sg = Gtk.Grid.New();
+            sg.SetRowSpacing(2);
+            sg.SetColumnSpacing(8);
+            sg.SetMarginTop(4);
+            sg.SetMarginBottom(4);
+            sg.SetMarginStart(4);
+            sg.SetMarginEnd(4);
+            sg.Attach(Gtk.Label.New("Episode —"), 0, 0, 1, 1);
+            sg.Attach(Gtk.Label.New("Lines:"), 1, 0, 1, 1);
+            _lblEpL = Gtk.Label.New("0"); sg.Attach(_lblEpL, 2, 0, 1, 1);
+            sg.Attach(Gtk.Label.New("Active:"), 3, 0, 1, 1);
+            _lblEpA = Gtk.Label.New("0"); sg.Attach(_lblEpA, 4, 0, 1, 1);
+            sg.Attach(Gtk.Label.New("Inactive:"), 5, 0, 1, 1);
+            _lblEpI = Gtk.Label.New("0"); sg.Attach(_lblEpI, 6, 0, 1, 1);
+            sg.Attach(Gtk.Label.New("Total —"), 0, 1, 1, 1);
+            sg.Attach(Gtk.Label.New("Lines:"), 1, 1, 1, 1);
+            _lblTL = Gtk.Label.New("0"); sg.Attach(_lblTL, 2, 1, 1, 1);
+            sg.Attach(Gtk.Label.New("Active:"), 3, 1, 1, 1);
+            _lblTA = Gtk.Label.New("0"); sg.Attach(_lblTA, 4, 1, 1, 1);
+            sg.Attach(Gtk.Label.New("Inactive:"), 5, 1, 1, 1);
+            _lblTI = Gtk.Label.New("0"); sg.Attach(_lblTI, 6, 1, 1, 1);
+            sf.SetChild(sg);
+            detailBox.Append(sf);
 
-            _progress = new ProgressBar { ShowText = true, Text = "" };
-            vbox.PackStart(_progress, false, false, 0);
+            _progress = Gtk.ProgressBar.New();
+            _progress.SetShowText(true);
+            _progress.SetText("");
+            detailBox.Append(_progress);
 
-            // Bottom
-            var bot = new Box(Orientation.Horizontal, 6);
-            _btnGo = new Button("Go!") { WidthRequest = 100 };
-            _btnGo.Clicked += OnGoClicked;
-            var btnClose = new Button("Close") { WidthRequest = 100 };
-            btnClose.Clicked += (s, e) => Hide();
-            bot.PackEnd(_btnGo, false, false, 0);
-            bot.PackEnd(btnClose, false, false, 0);
-            vbox.PackStart(bot, false, false, 0);
+            // Bottom buttons
+            var bot = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
+            bot.SetHalign(Gtk.Align.End);
+            var btnClose = Gtk.Button.NewWithLabel("Close");
+            btnClose.SetSizeRequest(100, -1);
+            btnClose.OnClicked += (s, e) => SetVisible(false);
+            bot.Append(btnClose);
+            _btnGo = Gtk.Button.NewWithLabel("Go!");
+            _btnGo.SetSizeRequest(100, -1);
+            _btnGo.OnClicked += OnGoClicked;
+            bot.Append(_btnGo);
+            detailBox.Append(bot);
 
-            Add(vbox);
+            vbox.Append(detailBox);
+            SetChild(vbox);
         }
 
-        private void AddCol(string title, int modelCol, int width)
+        /// <summary>
+        /// Build a SignalListItemFactory that renders each PreviewItem
+        /// as a horizontal box with multiple labels.
+        /// </summary>
+        private Gtk.SignalListItemFactory BuildListItemFactory()
         {
-            var r = new CellRendererText();
-            var c = new TreeViewColumn(title, r, "text", modelCol,
-                "background", (int)C.Bg, "foreground", (int)C.Fg);
-            c.Resizable = true;
-            c.FixedWidth = width;
-            c.Sizing = TreeViewColumnSizing.Fixed;
-            _tv.AppendColumn(c);
+            var factory = Gtk.SignalListItemFactory.New();
+
+            factory.OnSetup += (f, args) =>
+            {
+                var listItem = (Gtk.ListItem)args.Object;
+                var box = Gtk.Box.New(Gtk.Orientation.Horizontal, 8);
+
+                var lblS1 = Gtk.Label.New("");
+                lblS1.SetHexpand(true);
+                lblS1.SetHalign(Gtk.Align.Start);
+                lblS1.SetEllipsize(Pango.EllipsizeMode.End);
+                lblS1.SetWidthChars(35);
+                box.Append(lblS1);
+
+                var lblS2 = Gtk.Label.New("");
+                lblS2.SetHexpand(true);
+                lblS2.SetHalign(Gtk.Align.Start);
+                lblS2.SetEllipsize(Pango.EllipsizeMode.End);
+                lblS2.SetWidthChars(25);
+                box.Append(lblS2);
+
+                var lblStart = Gtk.Label.New("");
+                lblStart.SetWidthChars(14);
+                box.Append(lblStart);
+
+                var lblEnd = Gtk.Label.New("");
+                lblEnd.SetWidthChars(14);
+                box.Append(lblEnd);
+
+                var lblDur = Gtk.Label.New("");
+                lblDur.SetWidthChars(14);
+                box.Append(lblDur);
+
+                listItem.SetChild(box);
+            };
+
+            factory.OnBind += (f, args) =>
+            {
+                var listItem = (Gtk.ListItem)args.Object;
+                uint pos = listItem.GetPosition();
+                if (pos >= _items.Count) return;
+
+                var item = _items[(int)pos];
+                var box = (Gtk.Box)listItem.GetChild();
+                if (box == null) return;
+
+                var lblS1 = (Gtk.Label)box.GetFirstChild();
+                var lblS2 = (Gtk.Label)lblS1.GetNextSibling();
+                var lblStart = (Gtk.Label)lblS2.GetNextSibling();
+                var lblEnd = (Gtk.Label)lblStart.GetNextSibling();
+                var lblDur = (Gtk.Label)lblEnd.GetNextSibling();
+
+                lblS1.SetText(item.Subs1Text);
+                lblS2.SetText(item.Subs2Text);
+                lblStart.SetText(item.StartText);
+                lblEnd.SetText(item.EndText);
+                lblDur.SetText(item.DurText);
+            };
+
+            return factory;
         }
 
-        private void BtnPack(Box box, string label, EventHandler handler)
+        /// <summary>
+        /// Helper: create a labelled button, attach handler, append to box.
+        /// Gir.Core Gtk.Button.OnClicked uses EventHandler&lt;EventArgs&gt;.
+        /// </summary>
+        private void AppendBtn(Gtk.Box box, string label,
+            GObject.SignalHandler<Gtk.Button> handler)
         {
-            var b = new Button(label);
-            b.Clicked += handler;
-            box.PackStart(b, false, false, 0);
+            var b = Gtk.Button.NewWithLabel(label);
+            b.OnClicked += handler;
+            box.Append(b);
         }
 
         // ── PREVIEW GENERATION ──────────────────────────────────────────────
@@ -248,13 +374,16 @@ namespace subs2srs
         private void PopulateEpCombo()
         {
             _guard = true;
-            int prev = _comboEp.Active;
-            _comboEp.RemoveAll();
+            uint prev = _comboEp.GetSelected();
             int n = UtilsSubs.getNumSubsFiles(Settings.Instance.Subs[0].FilePattern);
             int first = Settings.Instance.EpisodeStartNumber;
+            var names = new string[n];
             for (int i = 0; i < n; i++)
-                _comboEp.AppendText((i + first).ToString());
-            _comboEp.Active = (prev >= 0 && prev < n) ? prev : 0;
+                names[i] = (i + first).ToString();
+            _epModel = Gtk.StringList.New(names);
+            _comboEp.SetModel(_epModel);
+            _comboEp.SetSelected(
+                (prev < (uint)n) ? prev : 0);
             _guard = false;
         }
 
@@ -262,7 +391,7 @@ namespace subs2srs
         {
             if (_running) return;
             _running = true;
-            Sensitive = false;
+            SetSensitive(false);
             var reporter = new PProgress(_progress, () => _destroyed);
 
             WorkerVars result = null;
@@ -282,35 +411,38 @@ namespace subs2srs
             if (_destroyed) return;
 
             _running = false;
-            Sensitive = true;
+            SetSensitive(true);
             if (err != null)
             {
-                _progress.Text = "Error";
-                _progress.Fraction = 0;
+                _progress.SetText("Error");
+                _progress.SetFraction(0);
                 if (!(err is OperationCanceledException))
                     UtilsMsg.showErrMsg(err.Message);
                 return;
             }
 
             _wv = result;
-            int ep = _comboEp.Active >= 0 ? _comboEp.Active : 0;
+            int ep = (int)_comboEp.GetSelected();
+            if (ep < 0) ep = 0;
             _guard = true;
-            PopulateTree(ep);
+            PopulateList(ep);
             _guard = false;
             UpdateStats();
-            _progress.Text = "Preview ready";
-            _progress.Fraction = 1.0;
+            _progress.SetText("Preview ready");
+            _progress.SetFraction(1.0);
 
-            if (_store.GetIterFirst(out var iter))
+            if (_store.GetNItems() > 0)
             {
-                _tv.Selection.SelectIter(iter);
-                _tv.GrabFocus();
+                _selection.SetSelected(0);
+                // Explicitly trigger detail update for the first item
+                // because SetSelected(0) may not fire notify when already 0
+                OnSelChanged();
             }
         }
-
         private WorkerVars DoPreviewWork(IProgressReporter rpt)
         {
-            string dir = SysPath.Combine(SysPath.GetTempPath(), ConstantSettings.TempPreviewDirName);
+            string dir = SysPath.Combine(SysPath.GetTempPath(),
+                ConstantSettings.TempPreviewDirName);
             if (Directory.Exists(dir))
                 try { Directory.Delete(dir, true); } catch { }
             Directory.CreateDirectory(dir);
@@ -324,7 +456,8 @@ namespace subs2srs
 
             int total = 0;
             foreach (var a in wv.CombinedAll) total += a.Count;
-            if (total == 0) throw new Exception("No lines could be parsed from subtitle files.");
+            if (total == 0)
+                throw new Exception("No lines could be parsed from subtitle files.");
 
             c = sw.inactivateLines(wv, rpt);
             if (c == null) throw new OperationCanceledException();
@@ -333,30 +466,28 @@ namespace subs2srs
             return wv;
         }
 
-        // ── TREE VIEW ───────────────────────────────────────────────────────
+        // ── LIST VIEW ───────────────────────────────────────────────────────
 
-        private void PopulateTree(int epIdx)
+        private void PopulateList(int epIdx)
         {
-            _store.Clear();
-            if (_wv?.CombinedAll == null || epIdx < 0 || epIdx >= _wv.CombinedAll.Count) return;
+            _store.RemoveAll();
+            _items.Clear();
+            if (_wv?.CombinedAll == null || epIdx < 0
+                || epIdx >= _wv.CombinedAll.Count) return;
 
             var arr = _wv.CombinedAll[epIdx];
             for (int i = 0; i < arr.Count; i++)
             {
                 var cb = arr[i];
-                string dur = FmtTime(UtilsSubs.getDurationTime(cb.Subs1.StartTime, cb.Subs1.EndTime));
-                bool tooLong = IsLong(cb);
-                if (tooLong) dur += " (Long!)";
+                string dur = FmtTime(UtilsSubs.getDurationTime(
+                    cb.Subs1.StartTime, cb.Subs1.EndTime));
+                if (IsLong(cb)) dur += " (Long!)";
 
-                _store.AppendValues(
-                    cb.Subs1.Text,
-                    cb.Subs2.Text,
-                    FmtTime(cb.Subs1.StartTime),
-                    FmtTime(cb.Subs1.EndTime),
-                    dur,
-                    cb.Active ? ActiveBg : InactiveBg,
-                    tooLong ? WarnFg : NormalFg,
-                    i);
+                _items.Add(PreviewItem.Create(
+                    cb.Subs1.Text, cb.Subs2.Text,
+                    FmtTime(cb.Subs1.StartTime), FmtTime(cb.Subs1.EndTime),
+                    dur, cb.Active, i));
+                _store.Append(Gtk.StringObject.New(""));
             }
         }
 
@@ -372,32 +503,36 @@ namespace subs2srs
 
         // ── SELECTION ───────────────────────────────────────────────────────
 
-        private void OnSelChanged(object s, EventArgs e)
+        private void OnSelChanged()
         {
             if (_guard) return;
-            var comb = GetFirstSelected();
+            var comb = GetSelectedCombined();
             if (comb == null) return;
 
             _cur = comb;
             _guard = true;
-            _txtS1.Text = comb.Subs1.Text;
-            _txtS2.Text = comb.Subs2.Text;
-            _txtS2.Sensitive = Settings.Instance.Subs[1].Files.Length > 0;
-            _lblTime.Text = FmtTime(comb.Subs1.StartTime) + "  —  " + FmtTime(comb.Subs1.EndTime);
+            _txtS1.SetText(comb.Subs1.Text);
+            _txtS2.SetText(comb.Subs2.Text);
+            _txtS2.SetSensitive(Settings.Instance.Subs[1].Files.Length > 0);
+            _lblTime.SetText(FmtTime(comb.Subs1.StartTime)
+                + "  —  " + FmtTime(comb.Subs1.EndTime));
             _guard = false;
 
             UpdateSnapshot(comb);
         }
 
-        private InfoCombined GetFirstSelected()
+        private InfoCombined GetSelectedCombined()
         {
-            var paths = _tv.Selection.GetSelectedRows();
-            if (paths.Length == 0) return null;
-            if (!_store.GetIter(out var iter, paths[0])) return null;
-            int idx = (int)_store.GetValue(iter, (int)C.Idx);
-            int ep = _comboEp.Active;
-            if (_wv?.CombinedAll == null || ep < 0 || ep >= _wv.CombinedAll.Count) return null;
+            uint sel = _selection.GetSelected();
+            if (sel == Gtk.Constants.INVALID_LIST_POSITION) return null;
+            if (sel >= _items.Count) return null;
+
+            var item = _items[(int)sel];
+            int ep = (int)_comboEp.GetSelected();
+            if (_wv?.CombinedAll == null || ep < 0
+                || ep >= _wv.CombinedAll.Count) return null;
             var arr = _wv.CombinedAll[ep];
+            int idx = item.Index;
             return idx >= 0 && idx < arr.Count ? arr[idx] : null;
         }
 
@@ -405,15 +540,18 @@ namespace subs2srs
 
         private void UpdateSnapshot(InfoCombined comb)
         {
-            if (!_chkSnap.Active || Settings.Instance.VideoClips.Files == null ||
-                Settings.Instance.VideoClips.Files.Length == 0) return;
+            if (!_chkSnap.GetActive()
+                || Settings.Instance.VideoClips.Files == null
+                || Settings.Instance.VideoClips.Files.Length == 0) return;
 
-            int ep = _comboEp.Active;
+            int ep = (int)_comboEp.GetSelected();
             if (ep < 0 || ep >= Settings.Instance.VideoClips.Files.Length) return;
 
             string video = Settings.Instance.VideoClips.Files[ep];
-            TimeSpan mid = UtilsSubs.getMidpointTime(comb.Subs1.StartTime, comb.Subs1.EndTime);
-            string outFile = SysPath.Combine(_wv.MediaDir, ConstantSettings.TempImageFilename);
+            TimeSpan mid = UtilsSubs.getMidpointTime(
+                comb.Subs1.StartTime, comb.Subs1.EndTime);
+            string outFile = SysPath.Combine(_wv.MediaDir,
+                ConstantSettings.TempImageFilename);
 
             try { File.Delete(outFile); } catch { }
 
@@ -427,116 +565,72 @@ namespace subs2srs
             }).ContinueWith(_ =>
             {
                 if (_destroyed) return;
-                Application.Invoke((s2, e2) =>
+                GLib.Functions.IdleAdd(0, () =>
                 {
-                    if (_destroyed) return;
+                    if (_destroyed) return false;
                     try
                     {
                         if (File.Exists(outFile))
                         {
-                            var pb = new Gdk.Pixbuf(outFile);
-                            var old = _imgSnap.Pixbuf;
-                            _imgSnap.Pixbuf = pb;
-                            old?.Dispose();
+                            // GTK4: load texture from file for Gtk.Picture
+                            var gfile = Gio.FileHelper.NewForPath(outFile);
+                            _imgSnap.SetFile(gfile);
                         }
                     }
                     catch { }
+                    return false;
                 });
             });
         }
 
         // ── TEXT EDITING ────────────────────────────────────────────────────
 
-        private void OnS1Changed(object s, EventArgs e)
+        private void OnS1Changed(Gtk.Editable sender, EventArgs e)
         {
             if (_guard || _cur == null || _wv == null) return;
-            _cur.Subs1.Text = _txtS1.Text;
-            UpdateCurrentRow();
+            _cur.Subs1.Text = _txtS1.GetText();
             _changed = true;
         }
 
-        private void OnS2Changed(object s, EventArgs e)
+        private void OnS2Changed(Gtk.Editable sender, EventArgs e)
         {
             if (_guard || _cur == null || _wv == null) return;
-            _cur.Subs2.Text = _txtS2.Text;
-            UpdateCurrentRow();
+            _cur.Subs2.Text = _txtS2.GetText();
             _changed = true;
-        }
-
-        private void UpdateCurrentRow()
-        {
-            var paths = _tv.Selection.GetSelectedRows();
-            if (paths.Length == 0) return;
-            if (!_store.GetIter(out var iter, paths[0])) return;
-            _store.SetValue(iter, (int)C.Subs1, _cur.Subs1.Text);
-            _store.SetValue(iter, (int)C.Subs2, _cur.Subs2.Text);
         }
 
         // ── ACTIVATE / DEACTIVATE ───────────────────────────────────────────
 
-        private void OnActivate(object s, EventArgs e) => SetActiveSelected(true);
-        private void OnDeactivate(object s, EventArgs e) => SetActiveSelected(false);
+        private void OnActivate(Gtk.Button s, EventArgs e) => SetActiveSel(true);
+        private void OnDeactivate(Gtk.Button s, EventArgs e) => SetActiveSel(false);
 
-        private void SetActiveSelected(bool active)
+        private void SetActiveSel(bool active)
         {
             if (_wv == null) return;
-            int ep = _comboEp.Active;
+            int ep = (int)_comboEp.GetSelected();
             if (ep < 0) return;
 
-            foreach (var path in _tv.Selection.GetSelectedRows())
-            {
-                if (!_store.GetIter(out var iter, path)) continue;
-                int idx = (int)_store.GetValue(iter, (int)C.Idx);
-                _wv.CombinedAll[ep][idx].Active = active;
-                _store.SetValue(iter, (int)C.Bg, active ? ActiveBg : InactiveBg);
-            }
+            uint sel = _selection.GetSelected();
+            if (sel == Gtk.Constants.INVALID_LIST_POSITION) return;
+            if (sel >= _items.Count) return;
+
+            var item = _items[(int)sel];
+            int idx = item.Index;
+            _wv.CombinedAll[ep][idx].Active = active;
+            item.IsActive = active;
+
             UpdateStats();
             _changed = true;
-        }
-
-        // ── SELECT ALL / NONE / INVERT ──────────────────────────────────────
-
-        private void SelectAll()
-        {
-            _guard = true;
-            _tv.Selection.SelectAll();
-            _guard = false;
-            var c = GetFirstSelected();
-            if (c != null) OnSelChanged(null, null);
-        }
-
-        private void SelectNone()
-        {
-            _guard = true;
-            _tv.Selection.UnselectAll();
-            _guard = false;
-        }
-
-        private void InvertSel()
-        {
-            _guard = true;
-            if (!_store.GetIterFirst(out var iter)) { _guard = false; return; }
-            do
-            {
-                var treePath = _store.GetPath(iter);
-                if (_tv.Selection.PathIsSelected(treePath))
-                    _tv.Selection.UnselectPath(treePath);
-                else
-                    _tv.Selection.SelectPath(treePath);
-            } while (_store.IterNext(ref iter));
-            _guard = false;
-            var c = GetFirstSelected();
-            if (c != null) OnSelChanged(null, null);
         }
 
         // ── FIND ────────────────────────────────────────────────────────────
 
         private void FindNext()
         {
-            string text = _txtFind.Text.Trim().ToLower();
+            string text = _txtFind.GetText().Trim().ToLower();
             if (text.Length == 0 || _wv == null) return;
 
-            int ep = _comboEp.Active;
+            int ep = (int)_comboEp.GetSelected();
             if (ep < 0) return;
             var arr = _wv.CombinedAll[ep];
             int count = arr.Count;
@@ -549,10 +643,9 @@ namespace subs2srs
                     cb.Subs2.Text.ToLower().Contains(text))
                 {
                     _findIdx = i;
-                    var treePath = new Gtk.TreePath(new[] { i });
-                    _tv.Selection.UnselectAll();
-                    _tv.Selection.SelectPath(treePath);
-                    _tv.ScrollToCell(treePath, null, true, 0.5f, 0);
+                    _selection.SetSelected((uint)i);
+                    _listView.ScrollTo((uint)i,
+                        Gtk.ListScrollFlags.Focus, null);
                     return;
                 }
             }
@@ -560,18 +653,20 @@ namespace subs2srs
 
         // ── AUDIO PREVIEW ───────────────────────────────────────────────────
 
-        private async void OnPreviewAudio(object s, EventArgs e)
+        private async void OnPreviewAudio(Gtk.Button s, EventArgs e)
         {
             if (_cur == null || _wv == null) return;
-            int ep = _comboEp.Active;
+            int ep = (int)_comboEp.GetSelected();
             if (ep < 0) return;
 
-            _btnAudio.Sensitive = false;
-            _btnAudio.Label = "Extracting...";
+            _btnAudio.SetSensitive(false);
+            _btnAudio.SetLabel("Extracting...");
 
             var comb = _cur;
-            string mp3 = SysPath.Combine(_wv.MediaDir, ConstantSettings.TempAudioFilename);
-            string wav = SysPath.Combine(_wv.MediaDir, ConstantSettings.TempAudioPreviewFilename);
+            string mp3 = SysPath.Combine(_wv.MediaDir,
+                ConstantSettings.TempAudioFilename);
+            string wav = SysPath.Combine(_wv.MediaDir,
+                ConstantSettings.TempAudioPreviewFilename);
 
             await Task.Run(() =>
             {
@@ -581,21 +676,25 @@ namespace subs2srs
                 TimeSpan st = comb.Subs1.StartTime, en = comb.Subs1.EndTime;
                 if (Settings.Instance.AudioClips.PadEnabled)
                 {
-                    st = UtilsSubs.applyTimePad(st, -Settings.Instance.AudioClips.PadStart);
-                    en = UtilsSubs.applyTimePad(en, Settings.Instance.AudioClips.PadEnd);
+                    st = UtilsSubs.applyTimePad(st,
+                        -Settings.Instance.AudioClips.PadStart);
+                    en = UtilsSubs.applyTimePad(en,
+                        Settings.Instance.AudioClips.PadEnd);
                 }
 
                 if (Settings.Instance.AudioClips.UseAudioFromVideo &&
                     Settings.Instance.VideoClips.Files?.Length > ep)
                 {
-                    string streamNum = Settings.Instance.VideoClips.AudioStream?.Num;
-                    if (string.IsNullOrEmpty(streamNum) || streamNum == "-" || !streamNum.Contains(":"))
+                    string streamNum =
+                        Settings.Instance.VideoClips.AudioStream?.Num;
+                    if (string.IsNullOrEmpty(streamNum)
+                        || streamNum == "-" || !streamNum.Contains(":"))
                         streamNum = "0:a:0";
 
                     UtilsAudio.ripAudioFromVideo(
                         Settings.Instance.VideoClips.Files[ep],
-                        streamNum,
-                        st, en, Settings.Instance.AudioClips.Bitrate, mp3, null);
+                        streamNum, st, en,
+                        Settings.Instance.AudioClips.Bitrate, mp3, null);
                 }
 
                 if (File.Exists(mp3) && new FileInfo(mp3).Length > 0)
@@ -604,8 +703,8 @@ namespace subs2srs
 
             if (_destroyed) return;
 
-            _btnAudio.Sensitive = true;
-            _btnAudio.Label = "Preview Audio";
+            _btnAudio.SetSensitive(true);
+            _btnAudio.SetLabel("Preview Audio");
 
             if (File.Exists(wav))
             {
@@ -613,7 +712,8 @@ namespace subs2srs
                 {
                     var p = new Process();
                     p.StartInfo.FileName = "ffplay";
-                    p.StartInfo.Arguments = $"-nodisp -autoexit -loglevel quiet \"{wav}\"";
+                    p.StartInfo.Arguments =
+                        $"-nodisp -autoexit -loglevel quiet \"{wav}\"";
                     p.StartInfo.UseShellExecute = false;
                     p.StartInfo.CreateNoWindow = true;
                     p.Start();
@@ -627,10 +727,10 @@ namespace subs2srs
         private void OnEpisodeChanged()
         {
             if (_guard || _wv == null) return;
-            int ep = _comboEp.Active;
+            int ep = (int)_comboEp.GetSelected();
             if (ep < 0 || ep >= _wv.CombinedAll.Count) return;
             _guard = true;
-            PopulateTree(ep);
+            PopulateList(ep);
             _guard = false;
             UpdateStats();
             _findIdx = 0;
@@ -641,7 +741,7 @@ namespace subs2srs
         private void UpdateStats()
         {
             if (_wv?.CombinedAll == null) return;
-            int ep = _comboEp.Active;
+            int ep = (int)_comboEp.GetSelected();
             if (ep < 0 || ep >= _wv.CombinedAll.Count) return;
 
             int epL = 0, epA = 0, epI = 0, tL = 0, tA = 0, tI = 0;
@@ -657,17 +757,17 @@ namespace subs2srs
                     if (cb.Active) tA++; else tI++;
                 }
 
-            _lblEpL.Text = epL.ToString();
-            _lblEpA.Text = epA.ToString();
-            _lblEpI.Text = epI.ToString();
-            _lblTL.Text = tL.ToString();
-            _lblTA.Text = tA.ToString();
-            _lblTI.Text = tI.ToString();
+            _lblEpL.SetText(epL.ToString());
+            _lblEpA.SetText(epA.ToString());
+            _lblEpI.SetText(epI.ToString());
+            _lblTL.SetText(tL.ToString());
+            _lblTA.SetText(tA.ToString());
+            _lblTI.SetText(tI.ToString());
         }
 
         // ── REGENERATE ──────────────────────────────────────────────────────
 
-        private void OnRegenClicked(object s, EventArgs e)
+        private void OnRegenClicked(Gtk.Button s, EventArgs e)
         {
             if (_running) return;
             if (_changed)
@@ -681,7 +781,8 @@ namespace subs2srs
             _guard = true;
             _wv = null;
             _cur = null;
-            _store.Clear();
+            _store.RemoveAll();
+            _items.Clear();
             _guard = false;
 
             PopulateEpCombo();
@@ -690,14 +791,10 @@ namespace subs2srs
 
         // ── GO (delegate to MainWindow) ─────────────────────────────────────
 
-        private void OnGoClicked(object s, EventArgs e)
+        private void OnGoClicked(Gtk.Button s, EventArgs e)
         {
             if (_wv?.CombinedAll == null) return;
-
-            // Save any text edits / active state back to settings
             RefreshSettings?.Invoke(this, EventArgs.Empty);
-
-            // Raise event — MainWindow handles actual processing
             GoRequested?.Invoke(this, EventArgs.Empty);
         }
 
@@ -705,7 +802,7 @@ namespace subs2srs
 
         private class PProgress : IProgressReporter
         {
-            private readonly ProgressBar _b;
+            private readonly Gtk.ProgressBar _b;
             private readonly Func<bool> _isDestroyed;
             private readonly CancellationTokenSource _cts = new();
             private bool _cancel;
@@ -725,11 +822,12 @@ namespace subs2srs
 
             public CancellationToken Token => _cts.Token;
 
-            public PProgress(ProgressBar b, Func<bool> isDestroyed)
+            public PProgress(Gtk.ProgressBar b, Func<bool> isDestroyed)
             {
                 _b = b;
                 _isDestroyed = isDestroyed;
-                GLib.Timeout.Add(50, OnPoll);
+                // Poll for UI updates every 50ms
+                GLib.Functions.TimeoutAdd(0, 50, OnPoll);
             }
 
             public void Stop()
@@ -753,20 +851,30 @@ namespace subs2srs
                 }
                 if (dirty)
                 {
-                    if (text != null) _b.Text = text;
-                    if (frac >= 0) _b.Fraction = frac;
+                    if (text != null) _b.SetText(text);
+                    if (frac >= 0) _b.SetFraction(frac);
                 }
                 return _active;
             }
 
             public void NextStep(int step, string desc)
             {
-                lock (_sync) { _text = $"[{step}/{StepsTotal}] {desc}"; _fraction = 0.0; _dirty = true; }
+                lock (_sync)
+                {
+                    _text = $"[{step}/{StepsTotal}] {desc}";
+                    _fraction = 0.0;
+                    _dirty = true;
+                }
             }
 
             public void UpdateProgress(int pct, string text)
             {
-                lock (_sync) { _text = text; _fraction = Math.Max(0, Math.Min(1, pct / 100.0)); _dirty = true; }
+                lock (_sync)
+                {
+                    _text = text;
+                    _fraction = Math.Max(0, Math.Min(1, pct / 100.0));
+                    _dirty = true;
+                }
             }
 
             public void UpdateProgress(string text)
@@ -777,6 +885,37 @@ namespace subs2srs
             public void EnableDetail(bool en) { }
             public void SetDuration(TimeSpan d) { }
             public void OnFFmpegOutput(object sender, DataReceivedEventArgs e) { }
+        }
+    }
+
+    // ── PreviewItem GObject wrapper ─────────────────────────────────────────
+    // Gio.ListStore requires items that are GObject subclasses.
+    // This lightweight wrapper holds the display data for one preview row.
+
+    /// <summary>
+    /// Plain data holder for a single preview list row.
+    /// Cannot subclass GObject.Object in Gir.Core 0.7 (no public parameterless ctor).
+    /// Data is stored in a parallel List; ListStore holds dummy StringObjects.
+    /// </summary>
+    public class PreviewItem
+    {
+        public string Subs1Text { get; set; } = "";
+        public string Subs2Text { get; set; } = "";
+        public string StartText { get; set; } = "";
+        public string EndText { get; set; } = "";
+        public string DurText { get; set; } = "";
+        public bool IsActive { get; set; } = true;
+        public int Index { get; set; } = -1;
+
+        public static PreviewItem Create(string s1, string s2,
+            string start, string end, string dur, bool active, int idx)
+        {
+            return new PreviewItem
+            {
+                Subs1Text = s1, Subs2Text = s2,
+                StartText = start, EndText = end, DurText = dur,
+                IsActive = active, Index = idx
+            };
         }
     }
 }
