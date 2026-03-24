@@ -405,6 +405,23 @@ namespace subs2srs
             _comboAudioStream = Gtk.DropDown.New(_audioStreamModel, null);
             _comboAudioStream.SetSelected(0);
             grid.Attach(_comboAudioStream, 1, row, 2, 1);
+            // Scroll wheel changes audio stream selection
+            var audioStreamScroll = Gtk.EventControllerScroll.New(
+                Gtk.EventControllerScrollFlags.Vertical);
+            audioStreamScroll.OnScroll += (ctrl, args) =>
+            {
+                uint count = _audioStreamModel.GetNItems();
+                if (count > 1)
+                {
+                    uint cur = _comboAudioStream.GetSelected();
+                    if (args.Dy > 0 && cur + 1 < count)
+                        _comboAudioStream.SetSelected(cur + 1);
+                    else if (args.Dy < 0 && cur > 0)
+                        _comboAudioStream.SetSelected(cur - 1);
+                }
+                return true; // consume the event
+            };
+            _comboAudioStream.AddController(audioStreamScroll);
             row++;
 
             // Output dir
