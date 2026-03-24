@@ -368,6 +368,23 @@ namespace subs2srs
             AttachLabel(grid, "Subs1 Encoding:", 0, row);
             (_comboEncodingSubs1, _encModel1) = BuildEncodingDropDown();
             grid.Attach(_comboEncodingSubs1, 1, row, 2, 1);
+            // Scroll wheel changes Subs1 encoding selection
+            var encScroll1 = Gtk.EventControllerScroll.New(
+                Gtk.EventControllerScrollFlags.Vertical);
+            encScroll1.OnScroll += (ctrl, args) =>
+            {
+                uint count = _encModel1.GetNItems();
+                if (count > 1)
+                {
+                    uint cur = _comboEncodingSubs1.GetSelected();
+                    if (args.Dy > 0 && cur + 1 < count)
+                        _comboEncodingSubs1.SetSelected(cur + 1);
+                    else if (args.Dy < 0 && cur > 0)
+                        _comboEncodingSubs1.SetSelected(cur - 1);
+                }
+                return true;
+            };
+            _comboEncodingSubs1.AddController(encScroll1);
             row++;
 
             // Subs2
@@ -385,6 +402,23 @@ namespace subs2srs
             AttachLabel(grid, "Subs2 Encoding:", 0, row);
             (_comboEncodingSubs2, _encModel2) = BuildEncodingDropDown();
             grid.Attach(_comboEncodingSubs2, 1, row, 2, 1);
+            // Scroll wheel changes Subs2 encoding selection
+            var encScroll2 = Gtk.EventControllerScroll.New(
+                Gtk.EventControllerScrollFlags.Vertical);
+            encScroll2.OnScroll += (ctrl, args) =>
+            {
+                uint count = _encModel2.GetNItems();
+                if (count > 1)
+                {
+                    uint cur = _comboEncodingSubs2.GetSelected();
+                    if (args.Dy > 0 && cur + 1 < count)
+                        _comboEncodingSubs2.SetSelected(cur + 1);
+                    else if (args.Dy < 0 && cur > 0)
+                        _comboEncodingSubs2.SetSelected(cur - 1);
+                }
+                return true;
+            };
+            _comboEncodingSubs2.AddController(encScroll2);
             row++;
 
             // Video
