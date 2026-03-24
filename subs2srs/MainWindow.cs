@@ -677,9 +677,12 @@ namespace subs2srs
 
             // ── Main tab ──────────────────────────────────────────────────
             _txtDeckName.Text = s.DeckName != "" ? s.DeckName : "MyDeck";
+            // Fallback chain: project OutputDir > preference default > ~/Documents
             _txtOutputDir.Text = s.OutputDir != ""
                 ? s.OutputDir
-                : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                : ConstantSettings.DefaultOutputDir != ""
+                    ? ConstantSettings.DefaultOutputDir
+                    : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             _spinEpisodeStart.Value = s.EpisodeStartNumber;
 
             _txtSubs1.Text = s.Subs[0].FilePattern;
@@ -770,6 +773,13 @@ namespace subs2srs
             {
                 Settings.Instance.DeckName = _txtDeckName.Text.Trim();
                 Settings.Instance.OutputDir = _txtOutputDir.Text.Trim();
+                // Remember as default output dir for future sessions
+                string newOutputDir = Settings.Instance.OutputDir;
+                if (newOutputDir.Length > 0 && newOutputDir != ConstantSettings.DefaultOutputDir)
+                {
+                    ConstantSettings.DefaultOutputDir = newOutputDir;
+                    PrefIO.Write();
+                }
                 Settings.Instance.EpisodeStartNumber = (int)_spinEpisodeStart.Value;
 
                 // Subs

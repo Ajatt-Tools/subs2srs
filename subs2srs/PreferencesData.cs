@@ -71,6 +71,9 @@ namespace subs2srs
         // ── File browser ─────────────────────────────────────────────────────
         public string DefaultFileBrowserStartDir { get; set; } = PrefDefaults.DefaultFileBrowserStartDir;
 
+        // ── Output directory ────────────────────────────────────────────────
+        public string DefaultOutputDir { get; set; } = PrefDefaults.DefaultOutputDir;
+
         // ── Line filtering ───────────────────────────────────────────────────
         public bool DefaultRemoveStyledLinesSubs1 { get; set; } = PrefDefaults.DefaultRemoveStyledLinesSubs1;
         public bool DefaultRemoveStyledLinesSubs2 { get; set; } = PrefDefaults.DefaultRemoveStyledLinesSubs2;

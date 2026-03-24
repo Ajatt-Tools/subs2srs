@@ -213,6 +213,15 @@ namespace subs2srs
                 PrefDefaults.DefaultFileBrowserStartDir));
             propTable["File Browser Start Folder"] = ConstantSettings.DefaultFileBrowserStartDir;
 
+            // default_output_dir
+            propTable.Properties.Add(new PropertySpec("Default Output Directory", typeof(string),
+                "User Interface Defaults",
+                "The default output directory for generated files.\n\n"
+                + "When set, this directory will be used instead of ~/Documents on startup.\n"
+                + "Also auto-updated when you run Go with a different output directory.",
+                PrefDefaults.DefaultOutputDir));
+            propTable["Default Output Directory"] = ConstantSettings.DefaultOutputDir;
+
             // default_remove_styled_lines_subs1
             propTable.Properties.Add(new PropertySpec("Remove Subs1 Styled Lines", typeof(bool),
                 "User Interface Defaults",
@@ -938,6 +947,8 @@ namespace subs2srs
                 UtilsCommon.checkRange((int)propTable["Context Nearby Line Range Trailing"], 0, 99999, PrefDefaults.DefaultContextTrailingRange);
 
             ConstantSettings.DefaultFileBrowserStartDir = getStr("File Browser Start Folder");
+
+            ConstantSettings.DefaultOutputDir = getStr("Default Output Directory");
 
             ConstantSettings.DefaultRemoveStyledLinesSubs1 = (bool)propTable["Remove Subs1 Styled Lines"];
             ConstantSettings.DefaultRemoveStyledLinesSubs2 = (bool)propTable["Remove Subs2 Styled Lines"];

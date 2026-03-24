@@ -53,6 +53,7 @@ namespace subs2srs
     public const int DefaultContextLeadingRange = 15;
     public const int DefaultContextTrailingRange = 15;
     public const string DefaultFileBrowserStartDir = "";
+    public const string DefaultOutputDir = "";
     public const bool DefaultRemoveStyledLinesSubs1 = true;
     public const bool DefaultRemoveStyledLinesSubs2 = true;
     public const bool DefaultRemoveNoCounterpartSubs1 = true;
@@ -332,6 +333,12 @@ namespace subs2srs
     {
         get => Prefs.DefaultFileBrowserStartDir;
         set => Prefs.DefaultFileBrowserStartDir = value;
+    }
+
+    public static string DefaultOutputDir
+    {
+        get => Prefs.DefaultOutputDir;
+        set => Prefs.DefaultOutputDir = value;
     }
 
     public static bool DefaultRemoveStyledLinesSubs1
@@ -1080,7 +1087,7 @@ namespace subs2srs
 
       VobSubColors = new VobSubColors();
       LanguageSpecific = new LanguageSpecific();
-      OutputDir = "";
+      OutputDir = ConstantSettings.DefaultOutputDir;
       TimeShiftEnabled = false;
       SpanEnabled = false;
       SpanStart = TimeSpan.FromMilliseconds(90_000);
