@@ -252,6 +252,22 @@ namespace subs2srs
             advFrame.Add(advBox);
             vbox.PackStart(advFrame, false, false, 0);
 
+            // MKV Extract
+            var mkvFrame = new Frame("MKV Extract");
+            var mkvBox = new Box(Orientation.Vertical, 6) { BorderWidth = 8 };
+            mkvBox.PackStart(new Label("Extract subtitle and audio tracks from MKV files.")
+                { Halign = Align.Start }, false, false, 0);
+            var btnMkvExtract = new Button("MKV Extract...") { Halign = Align.Start };
+            btnMkvExtract.Clicked += (s, e) =>
+            {
+                var dlg = new DialogMkvExtract(this);
+                dlg.Run();
+                dlg.Destroy();
+            };
+            mkvBox.PackStart(btnMkvExtract, false, false, 0);
+            mkvFrame.Add(mkvBox);
+            vbox.PackStart(mkvFrame, false, false, 0);
+
             return vbox;
         }
 
