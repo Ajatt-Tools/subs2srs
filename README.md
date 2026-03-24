@@ -100,12 +100,16 @@ sudo make uninstall
 ## Configuration
 
 On first run, `preferences.json` is created in
-`~/.config/subs2srs/` (or `$XDG_CONFIG_HOME/subs2srs/`).
+`~/.config/subs2srs/`.
 
-If a `preferences.txt` from a previous version exists, it is automatically
-migrated to JSON on first launch. The old file is left intact.
+If a `preferences.txt` from a previous version exists in the same directory,
+it is automatically migrated to JSON on first launch. The old file is left
+intact.
 
-Edit via **Preferences** dialog or manually.
+Projects are saved as `.s2s.json` files (File → Save/Load Project).
+
+Edit preferences via **Preferences** dialog or by editing `preferences.json`
+directly.
 
 ### Adding a new preference
 
