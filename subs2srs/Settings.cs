@@ -119,7 +119,7 @@ namespace subs2srs
   // 3) Add delegating property to ConstantSettings (below).
   // 4) Add to DialogPref.BuildPropTable + DialogPref.SavePreferences.
   // 5) Add to Logger.writeSettingsToLog.
-  // 6) For GUI settings (ones that map to Settings.Instance), add to SaveSettings constructor.
+  // 6) For GUI settings (ones that map to Settings.Instance), add to Settings.Reset().
 
   public static class ConstantSettings
   {
@@ -863,94 +863,8 @@ namespace subs2srs
 
   public sealed class Settings
   {
-    private static readonly Settings instance = new Settings();
+    private static readonly Settings instance = CreateDefaults();
 
-    public SubSettings[] Subs { get; set; }
-    public VideoClips VideoClips { get; set; }
-    public AudioClips AudioClips { get; set; }
-    public Snapshots Snapshots { get; set; }
-    public VobSubColors VobSubColors { get; set; }
-    public LanguageSpecific LanguageSpecific { get; set; }
-    public string OutputDir { get; set; }
-    public bool TimeShiftEnabled { get; set; }
-    public bool SpanEnabled { get; set; }
-    public TimeSpan SpanStart { get; set; }
-    public TimeSpan SpanEnd { get; set; }
-
-    private string _deckName = "";
-    public string DeckName
-    {
-      get => _deckName;
-      set => _deckName = value.Trim().Replace(" ", "_");
-    }
-
-    public int EpisodeStartNumber { get; set; }
-    public List<string> ActorList { get; set; }
-
-    public int ContextLeadingCount { get; set; }
-    public int ContextTrailingCount { get; set; }
-    public bool ContextLeadingIncludeSnapshots { get; set; }
-    public bool ContextLeadingIncludeAudioClips { get; set; }
-    public bool ContextLeadingIncludeVideoClips { get; set; }
-    public int ContextLeadingRange { get; set; }
-    public bool ContextTrailingIncludeSnapshots { get; set; }
-    public bool ContextTrailingIncludeAudioClips { get; set; }
-    public bool ContextTrailingIncludeVideoClips { get; set; }
-    public int ContextTrailingRange { get; set; }
-
-    public static Settings Instance => instance;
-
-    static Settings() { }
-    private Settings() { reset(); }
-
-    public void loadSettings(SaveSettings settings)
-    {
-      Subs = settings.Subs;
-      Subs[0].Files = Array.Empty<string>();
-      Subs[1].Files = Array.Empty<string>();
-      VideoClips = settings.VideoClips;
-      VideoClips.Files = Array.Empty<string>();
-      AudioClips = settings.AudioClips;
-      AudioClips.Files = Array.Empty<string>();
-      Snapshots = settings.Snapshots;
-      VobSubColors = settings.VobSubColors;
-      LanguageSpecific = settings.LanguageSpecific;
-
-      OutputDir = settings.OutputDir;
-
-      TimeShiftEnabled = settings.TimeShiftEnabled;
-
-      SpanEnabled = settings.SpanEnabled;
-      SpanStart = settings.SpanStart;
-      SpanEnd = settings.SpanEnd;
-
-      DeckName = settings.DeckName;
-      EpisodeStartNumber = settings.EpisodeStartNumber;
-
-      ActorList = settings.ActorList;
-
-      ContextLeadingCount = settings.ContextLeadingCount;
-      ContextLeadingIncludeSnapshots = settings.ContextLeadingIncludeSnapshots;
-      ContextLeadingIncludeAudioClips = settings.ContextLeadingIncludeAudioClips;
-      ContextLeadingIncludeVideoClips = settings.ContextLeadingIncludeVideoClips;
-      ContextLeadingRange = settings.ContextLeadingRange;
-
-      ContextTrailingCount = settings.ContextTrailingCount;
-      ContextTrailingIncludeSnapshots = settings.ContextTrailingIncludeSnapshots;
-      ContextTrailingIncludeAudioClips = settings.ContextTrailingIncludeAudioClips;
-      ContextTrailingIncludeVideoClips = settings.ContextTrailingIncludeVideoClips;
-      ContextTrailingRange = settings.ContextTrailingRange;
-    }
-
-    public void reset()
-    {
-      loadSettings(new SaveSettings());
-    }
-  }
-
-
-  public class SaveSettings
-  {
     [JsonPropertyName("subs")]
     public SubSettings[] Subs { get; set; }
 
@@ -966,6 +880,7 @@ namespace subs2srs
     [JsonPropertyName("vobSubColors")]
     public VobSubColors VobSubColors { get; set; }
 
+    // NOTE: typo "langauge" preserved for .s2s backward compatibility
     [JsonPropertyName("langaugeSpecific")]
     public LanguageSpecific LanguageSpecific { get; set; }
 
@@ -984,8 +899,14 @@ namespace subs2srs
     [JsonPropertyName("spanEnd")]
     public TimeSpan SpanEnd { get; set; }
 
+    private string _deckName = "";
+
     [JsonPropertyName("deckName")]
-    public string DeckName { get; set; }
+    public string DeckName
+    {
+      get => _deckName;
+      set => _deckName = value.Trim().Replace(" ", "_");
+    }
 
     [JsonPropertyName("episodeStartNumber")]
     public int EpisodeStartNumber { get; set; }
@@ -995,6 +916,9 @@ namespace subs2srs
 
     [JsonPropertyName("contextLeadingCount")]
     public int ContextLeadingCount { get; set; }
+
+    [JsonPropertyName("contextTrailingCount")]
+    public int ContextTrailingCount { get; set; }
 
     [JsonPropertyName("contextLeadingIncludeSnapshots")]
     public bool ContextLeadingIncludeSnapshots { get; set; }
@@ -1008,9 +932,6 @@ namespace subs2srs
     [JsonPropertyName("contextLeadingRange")]
     public int ContextLeadingRange { get; set; }
 
-    [JsonPropertyName("contextTrailingCount")]
-    public int ContextTrailingCount { get; set; }
-
     [JsonPropertyName("contextTrailingIncludeSnapshots")]
     public bool ContextTrailingIncludeSnapshots { get; set; }
 
@@ -1023,7 +944,76 @@ namespace subs2srs
     [JsonPropertyName("contextTrailingRange")]
     public int ContextTrailingRange { get; set; }
 
-    public SaveSettings()
+    public static Settings Instance => instance;
+
+    // Public parameterless constructor required by ObjectCopier (JSON round-trip).
+    public Settings() { }
+
+    // Explicit static ctor preserves lazy initialization semantics.
+    static Settings() { }
+
+    /// <summary>
+    /// Create a new <see cref="Settings"/> instance with all defaults applied.
+    /// </summary>
+    public static Settings CreateDefaults()
+    {
+      var s = new Settings();
+      s.Reset();
+      return s;
+    }
+
+    /// <summary>
+    /// Deep-clone the current state for later restore via <see cref="RestoreFrom"/>.
+    /// </summary>
+    public Settings Snapshot() => ObjectCopier.Clone(this);
+
+    /// <summary>
+    /// Overwrite all mutable properties from <paramref name="other"/>.
+    /// Transient arrays (Files) are reset to empty.
+    /// </summary>
+    public void RestoreFrom(Settings other)
+    {
+      Subs = other.Subs;
+      Subs[0].Files = Array.Empty<string>();
+      Subs[1].Files = Array.Empty<string>();
+      VideoClips = other.VideoClips;
+      VideoClips.Files = Array.Empty<string>();
+      AudioClips = other.AudioClips;
+      AudioClips.Files = Array.Empty<string>();
+      Snapshots = other.Snapshots;
+      VobSubColors = other.VobSubColors;
+      LanguageSpecific = other.LanguageSpecific;
+
+      OutputDir = other.OutputDir;
+
+      TimeShiftEnabled = other.TimeShiftEnabled;
+
+      SpanEnabled = other.SpanEnabled;
+      SpanStart = other.SpanStart;
+      SpanEnd = other.SpanEnd;
+
+      DeckName = other.DeckName;
+      EpisodeStartNumber = other.EpisodeStartNumber;
+
+      ActorList = other.ActorList;
+
+      ContextLeadingCount = other.ContextLeadingCount;
+      ContextLeadingIncludeSnapshots = other.ContextLeadingIncludeSnapshots;
+      ContextLeadingIncludeAudioClips = other.ContextLeadingIncludeAudioClips;
+      ContextLeadingIncludeVideoClips = other.ContextLeadingIncludeVideoClips;
+      ContextLeadingRange = other.ContextLeadingRange;
+
+      ContextTrailingCount = other.ContextTrailingCount;
+      ContextTrailingIncludeSnapshots = other.ContextTrailingIncludeSnapshots;
+      ContextTrailingIncludeAudioClips = other.ContextTrailingIncludeAudioClips;
+      ContextTrailingIncludeVideoClips = other.ContextTrailingIncludeVideoClips;
+      ContextTrailingRange = other.ContextTrailingRange;
+    }
+
+    /// <summary>
+    /// Set all properties to their defaults (synced from ConstantSettings / PrefDefaults).
+    /// </summary>
+    public void Reset()
     {
       Subs = new SubSettings[2];
       Subs[0] = new SubSettings();
@@ -1106,39 +1096,9 @@ namespace subs2srs
       ContextTrailingRange = ConstantSettings.DefaultContextTrailingRange;
     }
 
-    public void gatherData()
+    public void reset()
     {
-      Subs = Settings.Instance.Subs;
-      VideoClips = Settings.Instance.VideoClips;
-      AudioClips = Settings.Instance.AudioClips;
-      Snapshots = Settings.Instance.Snapshots;
-      VobSubColors = Settings.Instance.VobSubColors;
-      LanguageSpecific = Settings.Instance.LanguageSpecific;
-
-      OutputDir = Settings.Instance.OutputDir;
-
-      TimeShiftEnabled = Settings.Instance.TimeShiftEnabled;
-
-      SpanEnabled = Settings.Instance.SpanEnabled;
-      SpanStart = Settings.Instance.SpanStart;
-      SpanEnd = Settings.Instance.SpanEnd;
-
-      DeckName = Settings.Instance.DeckName;
-      EpisodeStartNumber = Settings.Instance.EpisodeStartNumber;
-
-      ActorList = Settings.Instance.ActorList;
-
-      ContextLeadingCount = Settings.Instance.ContextLeadingCount;
-      ContextLeadingIncludeSnapshots = Settings.Instance.ContextLeadingIncludeSnapshots;
-      ContextLeadingIncludeAudioClips = Settings.Instance.ContextLeadingIncludeAudioClips;
-      ContextLeadingIncludeVideoClips = Settings.Instance.ContextLeadingIncludeVideoClips;
-      ContextLeadingRange = Settings.Instance.ContextLeadingRange;
-
-      ContextTrailingCount = Settings.Instance.ContextTrailingCount;
-      ContextTrailingIncludeSnapshots = Settings.Instance.ContextTrailingIncludeSnapshots;
-      ContextTrailingIncludeAudioClips = Settings.Instance.ContextTrailingIncludeAudioClips;
-      ContextTrailingIncludeVideoClips = Settings.Instance.ContextTrailingIncludeVideoClips;
-      ContextTrailingRange = Settings.Instance.ContextTrailingRange;
+      Reset();
     }
   }
 }

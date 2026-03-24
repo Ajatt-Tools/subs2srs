@@ -29,7 +29,7 @@ namespace subs2srs
 {
     public class DialogExtractAudioFromMedia : Dialog
     {
-        private SaveSettings oldSettings = new SaveSettings();
+        private Settings _snapshot;
 
         // Media
         private Entry _txtMediaFile;
@@ -380,9 +380,8 @@ namespace subs2srs
 
         private void LoadInitialState()
         {
-            SaveSettings curSettings = new SaveSettings();
-            curSettings.gatherData();
-            oldSettings = ObjectCopier.Clone<SaveSettings>(curSettings); // save for restore on close
+            // Snapshot global settings for restore on close
+            _snapshot = Settings.Instance.Snapshot();
 
             _chkRemoveNoCounterS1.Active = Settings.Instance.Subs[0].RemoveNoCounterpart;
             _chkRemoveNoCounterS2.Active = Settings.Instance.Subs[1].RemoveNoCounterpart;
@@ -391,7 +390,7 @@ namespace subs2srs
 
             _txtOutputDir.Text = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
-            Destroyed += (s, e) => Settings.Instance.loadSettings(oldSettings);
+            Destroyed += (s, e) => Settings.Instance.RestoreFrom(_snapshot);
         }
 
         // ── EVENTS ──────────────────────────────────────────────────────────
@@ -667,7 +666,7 @@ namespace subs2srs
                             if (comb.Subs1.StartTime.TotalMilliseconds >= startTimeName.TotalMilliseconds
                                 && comb.Subs1.StartTime.TotalMilliseconds <= endTimeName.TotalMilliseconds)
                             {
-                                tagLyrics += FormatLyricsPair(comb, name, startTimeName, 
+                                tagLyrics += FormatLyricsPair(comb, name, startTimeName,
                                     episode + episodeStartNumber - 1, curLyricsNum, subs2Pattern) + "\n";
                                 curLyricsNum++;
                             }
@@ -681,7 +680,7 @@ namespace subs2srs
             return true;
         }
 
-        private string FormatLyricsPair(InfoCombined comb, UtilsName name, 
+        private string FormatLyricsPair(InfoCombined comb, UtilsName name,
             TimeSpan clipStartTime, int episode, int sequenceNum, string subs2Pattern)
         {
             string subs1Text = comb.Subs1.Text;
