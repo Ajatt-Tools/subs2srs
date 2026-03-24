@@ -171,9 +171,9 @@ namespace subs2srs
     public static string PathMkvExtractExeRel { get; } = "mkvextract";
     public static string PathMkvExtractExeFull { get; } = FindInPath("mkvextract");
 
-    public static string SettingsFilename { get; } = Path.Combine(
-      Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-      "subs2srs", "preferences.txt");
+    public static string SettingsFilename { get; set; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "subs2srs", "preferences.txt");
 
     // ── Backing store for preferences (populated by PrefIO.read) ─────
     internal static PreferencesData Prefs { get; set; } = new();
