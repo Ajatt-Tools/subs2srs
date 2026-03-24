@@ -14,6 +14,8 @@
 - Snapshot JPEG quality control — configurable `ffmpeg -q:v` (1–31, default 3), persisted in Preferences and `.s2s` files; ignored for PNG output
 - Audio track title in stream picker — shows container metadata title (e.g. "Commentary", "Original Soundtrack") via ffprobe JSON; falls back to ffmpeg regex parsing
 - Audio stream consistency validation — warns before processing when selected audio stream has mismatched language or commentary track across episodes
+- Output directory remembered between sessions — persisted as `default_output_dir` preference, auto-updated on Go
+- Save/Load Project in `.s2s.json` format (File → Save / File → Load)
 
 **Bug fixes:**
 - `Settings.Reset()` (was `SaveSettings.gatherData()`) — `ContextLeadingIncludeSnapshots` was copied from `AudioClips` instead of `Snapshots`
