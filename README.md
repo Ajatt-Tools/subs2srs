@@ -114,7 +114,7 @@ Edit via **Preferences** dialog or manually.
 3. Add delegating property to `ConstantSettings`
 4. Add to `DialogPref.BuildPropTable()` + `DialogPref.SavePreferences()`
 5. Add to `Logger.writeSettingsToLog()`
-6. If the preference maps to `Settings.Instance`, add to `SaveSettings` constructor
+6. If the preference maps to `Settings.Instance`, add to `Settings.Reset()`
 
 ### Parallelism
 

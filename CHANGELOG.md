@@ -16,7 +16,7 @@
 - Audio stream consistency validation — warns before processing when selected audio stream has mismatched language or commentary track across episodes
 
 **Bug fixes:**
-- `SaveSettings.gatherData()` — `ContextLeadingIncludeSnapshots` was copied from `AudioClips` instead of `Snapshots`
+- `Settings.Reset()` (was `SaveSettings.gatherData()`) — `ContextLeadingIncludeSnapshots` was copied from `AudioClips` instead of `Snapshots`
 - `WorkerSrs.genSrs()` — `TextWriter` without `using`, file descriptor leak on exception
 - `SubsProcessor.DoWork()` — empty `catch {}` silently swallowed VobSub copy errors
 - `Logger.flush()` — `StringBuilder` reset outside `lock`, race condition with `append()` under `Parallel.ForEach`
@@ -38,7 +38,7 @@
 - Audio stream consistency false positives reduced (relaxed matching logic)
 
 **Architecture:**
-- `ConstantSettings` → `Settings.Instance` synchronization moved from `MainWindow.LoadSettings()` into `SaveSettings` constructor — adding a new preference no longer requires manual sync in 6 places
+- `ConstantSettings` → `Settings.Instance` synchronization moved from `MainWindow.LoadSettings()` into `Settings.Reset()` — adding a new preference no longer requires manual sync in 6 places
 - Legacy per-key `PrefIO.getString/getBool/getInt/getFloat` methods removed (were `[Obsolete]`, unused)
 - `GtkSynchronizationContext` — routes `async/await` continuations to the GTK main loop; without it, code after `await Task.Run(...)` ran on thread-pool threads, causing GTK threading violations
 - `GLibLogFilter` — writer-level GLib log filter (`g_log_set_writer_func`) suppresses harmless `toggle_ref` warnings from GtkSharp GC finalizer
@@ -69,7 +69,7 @@
 - `DialogProgress` static wrapper class removed — `IProgressReporter` used directly
 - `AudioClips.filePattern` renamed to `FilePattern` with `[JsonPropertyName]` for `.s2s` compatibility
 - `PrefIO` — `StreamReader`/`StreamWriter` → `File.ReadAllText`/`WriteAllText`; create `preferences.txt` on first launch
-- `Settings.cs` — all model classes (`SubSettings`, `AudioClips`, `VideoClips`, `Snapshots`, `SaveSettings`, etc.) converted to auto-properties
+- `Settings.cs` — all model classes (`SubSettings`, `AudioClips`, `VideoClips`, `Snapshots`, etc.) converted to auto-properties; `SaveSettings` class removed in favour of `Settings.Snapshot()`/`RestoreFrom()`
 - `ConstantSettings` — 130 backing field + property pairs → auto-properties (~400 lines removed)
 - `InfoCombined`, `InfoLine` — auto-properties, remove `[Serializable]`
 - `ObjectCloner` — remove `IncludeFields` (no longer needed with auto-properties)
