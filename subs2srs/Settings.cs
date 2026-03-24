@@ -946,6 +946,13 @@ namespace subs2srs
 
     public static Settings Instance => instance;
 
+    /// <summary>
+    /// Path to the currently loaded/saved project file.
+    /// Empty when no project is loaded. Not serialized — runtime only.
+    /// </summary>
+    [JsonIgnore]
+    public string ProjectPath { get; set; } = "";
+
     // Public parameterless constructor required by ObjectCopier (JSON round-trip).
     public Settings() { }
 
