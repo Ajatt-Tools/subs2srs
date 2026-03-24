@@ -233,5 +233,92 @@ namespace subs2srs.Tests
             Assert.Equal(8, ConstantSettings.MaxParallelTasks);
             Assert.Equal(3, ConstantSettings.DefaultContextNumLeading);
         }
+
+        // ── DefaultOutputDir round-trip ───────────────────────────────────
+
+        [Fact]
+        public void ReadAfterWrite_DefaultOutputDir_RoundTrips()
+        {
+            ConstantSettings.Prefs = new PreferencesData
+            {
+                DefaultOutputDir = "/tmp/my_output",
+            };
+            PrefIO.Write();
+
+            ConstantSettings.Prefs = new PreferencesData();
+            PrefIO.read();
+
+            Assert.Equal("/tmp/my_output", ConstantSettings.DefaultOutputDir);
+        }
+
+        // ── Empty DefaultOutputDir falls back correctly ───────────────────
+
+        [Fact]
+        public void ReadAfterWrite_EmptyDefaultOutputDir_StaysEmpty()
+        {
+            ConstantSettings.Prefs = new PreferencesData
+            {
+                DefaultOutputDir = "",
+            };
+            PrefIO.Write();
+
+            ConstantSettings.Prefs = new PreferencesData
+            {
+                DefaultOutputDir = "/should/be/overwritten",
+            };
+            PrefIO.read();
+
+            Assert.Equal("", ConstantSettings.DefaultOutputDir);
+        }
+
+        // ── Missing field in old JSON → default empty string ──────────────
+
+        [Fact]
+        public void Read_OldJsonWithoutDefaultOutputDir_FallsBackToEmpty()
+        {
+            // Simulate a preferences.json that was written before this feature
+            File.WriteAllText(
+                Path.Combine(_tempDir, "preferences.json"),
+                "{\"MainWindowWidth\":800}",
+                Encoding.UTF8);
+
+            ConstantSettings.Prefs = new PreferencesData
+            {
+                DefaultOutputDir = "/should/be/reset",
+            };
+            PrefIO.read();
+
+            Assert.Equal("", ConstantSettings.DefaultOutputDir);
+        }
+
+        // ── Settings.Reset() picks up DefaultOutputDir from preference ────
+
+        [Fact]
+        public void Reset_UsesDefaultOutputDirFromPreference()
+        {
+            ConstantSettings.Prefs = new PreferencesData
+            {
+                DefaultOutputDir = "/data/anki",
+            };
+
+            var s = Settings.CreateDefaults();
+
+            Assert.Equal("/data/anki", s.OutputDir);
+        }
+
+        // ── Settings.Reset() with empty preference → empty OutputDir ──────
+
+        [Fact]
+        public void Reset_EmptyDefaultOutputDir_GivesEmptyOutputDir()
+        {
+            ConstantSettings.Prefs = new PreferencesData
+            {
+                DefaultOutputDir = "",
+            };
+
+            var s = Settings.CreateDefaults();
+
+            Assert.Equal("", s.OutputDir);
+        }
     }
 }
