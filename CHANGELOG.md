@@ -1,5 +1,22 @@
 # Changelog
 
+**GTK4 migration**
+- UI toolkit migrated from GTK3 (GtkSharp) to **GTK4** (GirCore.Gtk-4.0 0.7.0)
+- `ComboBoxText` replaced with `Gtk.DropDown` + `Gtk.StringList` throughout
+- `TreeView` / `ListStore` replaced with `Gtk.ListView` + `Gio.ListStore` (Preferences, Preview, shift rules, actors)
+- `FontButton` / `ColorButton` replaced with `FontDialogButton` / `ColorDialogButton` backed by `FontDialog` / `ColorDialog`
+- `FileChooserDialog` replaced with `Gtk.FileDialog` async API (`OpenAsync`, `SaveAsync`, `SelectFolderAsync`)
+- `Gio.FileHelper.NewForPath()` used for `FileDialog.InitialFolder` / `InitialFile` setup
+- `Gtk.Image` + `Pixbuf` replaced with `Gtk.Picture` for snapshot preview
+- `Box.PackStart` / `PackEnd` replaced with `Box.Append`
+- `ShowAll()` removed — GTK4 widgets are visible by default
+- `Destroyed` signal replaced with `OnCloseRequest` for window lifecycle
+- `Application.Invoke()` / `GLib.Idle.Add()` replaced with `GLib.Functions.IdleAdd()`
+- `GLib.Timeout.Add()` replaced with `GLib.Functions.TimeoutAdd()` for poll-based progress
+- `GtkSynchronizationContext` updated to use `GLib.Functions.IdleAdd()` for `async/await` continuations
+- `GLibLogFilter` (`g_log_set_writer_func`) removed — not needed with GirCore (GtkSharp `toggle_ref` warnings no longer occur)
+- Dialog setup uses `SetModal(true)` + `SetTransientFor(parent)` methods (GirCore binding style)
+
 **Preferences: JSON migration**
 - `PrefIO` rewritten — preferences stored as `preferences.json` instead of custom `key = value` text format
 - `PreferencesData` POCO added as single serializable source of truth for all preferences
