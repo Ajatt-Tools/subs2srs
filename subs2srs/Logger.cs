@@ -240,6 +240,7 @@ namespace subs2srs
       var(new { Settings.Instance.Snapshots.Crop.Bottom });
       var(new { Settings.Instance.Snapshots.Size.Width });
       var(new { Settings.Instance.Snapshots.Size.Height });
+      var(new { Settings.Instance.Snapshots.Quality });
 
       info("Video Clips:");
       var(new { Settings.Instance.VideoClips.AudioStream });
@@ -329,6 +330,7 @@ namespace subs2srs
       var(new { ConstantSettings.DefaultAudioNormalize });
       var(new { ConstantSettings.DefaultVideoClipVideoBitrate });
       var(new { ConstantSettings.DefaultVideoClipAudioBitrate });
+      var(new { ConstantSettings.DefaultSnapshotJpegQuality });
       var(new { DefaultIphoneSupport = ConstantSettings.DefaultIphoneSupport });
       var(new { ConstantSettings.DefaultEncodingSubs1 });
       var(new { ConstantSettings.DefaultEncodingSubs2 });
