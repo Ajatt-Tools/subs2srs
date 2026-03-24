@@ -191,10 +191,11 @@ namespace subs2srs
             _cts = new CancellationTokenSource();
             var token = _cts.Token;
             Exception error = null;
+            int extracted = 0;
 
             try
             {
-                await Task.Run(() => ExtractTracks(files, trackType, outDir, token));
+                extracted = await Task.Run(() => ExtractTracks(files, trackType, outDir, token));
             }
             catch (OperationCanceledException) { }
             catch (Exception ex) { error = ex; }
@@ -211,13 +212,21 @@ namespace subs2srs
 
             if (error != null)
                 UtilsMsg.showErrMsg($"Something went wrong: {error.Message}");
-            else if (!token.IsCancellationRequested)
-                UtilsMsg.showInfoMsg("Extraction complete.");
+            else if (token.IsCancellationRequested)
+                { /* cancelled */ }
+            else if (extracted == 0)
+                UtilsMsg.showErrMsg(
+                    "No tracks were found in the selected files.\n\n"
+                    + "Make sure mkvtoolnix is installed (mkvinfo, mkvextract).");
+            else
+                UtilsMsg.showInfoMsg($"Extraction complete. {extracted} track(s) extracted.");
         }
 
-        private void ExtractTracks(List<string> files, string trackType,
+        private int ExtractTracks(List<string> files, string trackType,
             string outDir, CancellationToken token)
         {
+            int totalExtracted = 0;
+
             for (int i = 0; i < files.Count; i++)
             {
                 token.ThrowIfCancellationRequested();
@@ -242,7 +251,6 @@ namespace subs2srs
                     string fileName = SysPath.Combine(outDir,
                         $"{SysPath.GetFileNameWithoutExtension(files[i])} - Track {Convert.ToInt32(track.TrackID):00} - {displayLang}.{track.Extension}");
 
-                    // Capture for closure
                     int curEp = i + 1, maxEp = files.Count;
                     int curTrack = t + 1, maxTrack = tracks.Count;
 
@@ -259,8 +267,11 @@ namespace subs2srs
                     });
 
                     UtilsMkv.extractTrack(files[i], track.TrackID, fileName);
+                    totalExtracted++;
                 }
             }
+
+            return totalExtracted;
         }
     }
 }
