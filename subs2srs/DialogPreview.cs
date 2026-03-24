@@ -38,8 +38,9 @@ namespace subs2srs
     /// </summary>
     public class DialogPreview : Gtk.Window
     {
-        private const string ActiveCss = "background-color: #F5FFFA;";
-        private const string InactiveCss = "background-color: #FFB6C1;";
+        // CSS class names for row background styling
+        private const string RowActiveCss = "preview-row-active";
+        private const string RowInactiveCss = "preview-row-inactive";
         private const string WarnCss = "color: #FF0000;";
 
         // Widgets
@@ -286,6 +287,25 @@ namespace subs2srs
             detailBox.Append(bot);
 
             vbox.Append(detailBox);
+            // Register CSS provider for row background and selection styling
+            var cssProvider = Gtk.CssProvider.New();
+            cssProvider.LoadFromString(
+                // Normal state
+                ".preview-row-active  { background-color: #FAEBD7; color: #1A1A1A; }" +
+                ".preview-row-inactive { background-color: #FFB6C1; color: #1A1A1A; }" +
+                ".preview-row-active  label { color: inherit; }" +
+                ".preview-row-inactive label { color: inherit; }" +
+                // Selected state — darker shade + visible outline
+                "listview > row:selected .preview-row-active  " +
+                    "{ background-color: #D2B48C; outline: 2px solid #3584E4; outline-offset: -2px; }" +
+                "listview > row:selected .preview-row-inactive " +
+                    "{ background-color: #E8849A; outline: 2px solid #3584E4; outline-offset: -2px; }" +
+                "listview > row:selected .preview-row-active  label { color: inherit; }" +
+                "listview > row:selected .preview-row-inactive label { color: inherit; }");
+            Gtk.StyleContext.AddProviderForDisplay(
+                Gdk.Display.GetDefault()!,
+                cssProvider,
+                800); // Higher priority to override theme defaults
             SetChild(vbox);
         }
 
@@ -301,6 +321,7 @@ namespace subs2srs
             {
                 var listItem = (Gtk.ListItem)args.Object;
                 var box = Gtk.Box.New(Gtk.Orientation.Horizontal, 8);
+                box.SetHexpand(true); // Ensure background fills entire row width
 
                 var lblS1 = Gtk.Label.New("");
                 lblS1.SetHexpand(true);
@@ -340,6 +361,11 @@ namespace subs2srs
                 var item = _items[(int)pos];
                 var box = (Gtk.Box)listItem.GetChild();
                 if (box == null) return;
+
+                // Apply background color based on active/inactive state
+                box.RemoveCssClass(RowActiveCss);
+                box.RemoveCssClass(RowInactiveCss);
+                box.AddCssClass(item.IsActive ? RowActiveCss : RowInactiveCss);
 
                 var lblS1 = (Gtk.Label)box.GetFirstChild();
                 var lblS2 = (Gtk.Label)lblS1.GetNextSibling();
@@ -618,6 +644,13 @@ namespace subs2srs
             int idx = item.Index;
             _wv.CombinedAll[ep][idx].Active = active;
             item.IsActive = active;
+
+            // Force row rebind so CSS class updates visually
+            _guard = true;
+            _store.Remove(sel);
+            _store.Insert(sel, Gtk.StringObject.New(""));
+            _selection.SetSelected(sel);
+            _guard = false;
 
             UpdateStats();
             _changed = true;
