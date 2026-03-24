@@ -75,8 +75,9 @@ namespace subs2srs
         }
 
         /// <summary>
-        /// Create XDG directories and default preferences file on first run.
+        /// Create XDG directories on first run.
         /// Must be called before Logger or PrefIO are accessed.
+        /// Preferences file is created automatically by PrefIO.read().
         /// </summary>
         private static void EnsureAppDirectories()
         {
@@ -90,10 +91,6 @@ namespace subs2srs
                 // ~/.local/share/subs2srs/Logs/
                 if (!string.IsNullOrEmpty(ConstantSettings.LogDir))
                     Directory.CreateDirectory(ConstantSettings.LogDir); // no-op if exists
-
-                // Generate default preferences.txt if missing
-                if (!File.Exists(ConstantSettings.SettingsFilename))
-                    PrefIO.writeDefaultPreferences();
             }
             catch (Exception ex)
             {
@@ -134,7 +131,7 @@ namespace subs2srs
             dialog.Run();
             dialog.Destroy();
         }
-        
+
         private static bool ShowConfirmImpl(string msg, string title)
         {
             var dialog = new MessageDialog(null, DialogFlags.Modal,

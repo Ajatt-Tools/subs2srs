@@ -388,232 +388,232 @@ namespace subs2srs
                 "User Interface Defaults",
                 "Specify the list of characters in the 'Join Lines That End With One of the Following Characters' Subs1 option.",
                 PrefDefaults.DefaultJoinSentencesCharListSubs1));
-            propTable["Join Lines That End With One of the Following Characters Subs1"] = convertToTokens(ConstantSettings.DefaultJoinSentencesCharListSubs1);
+            propTable["Join Lines That End With One of the Following Characters Subs1"] = ConstantSettings.DefaultJoinSentencesCharListSubs1;
 
             // default_join_sentences_char_list_subs2
             propTable.Properties.Add(new PropertySpec("Join Lines That End With One of the Following Characters Subs2", typeof(string),
                 "User Interface Defaults",
                 "Specify the list of characters in the 'Join Lines That End With One of the Following Characters' Subs2 option.",
                 PrefDefaults.DefaultJoinSentencesCharListSubs2));
-            propTable["Join Lines That End With One of the Following Characters Subs2"] = convertToTokens(ConstantSettings.DefaultJoinSentencesCharListSubs2);
+            propTable["Join Lines That End With One of the Following Characters Subs2"] = ConstantSettings.DefaultJoinSentencesCharListSubs2;
 
             // srs_filename_format
             propTable.Properties.Add(new PropertySpec("SRS Filename Format", typeof(string),
                 "SRS File Formatting (Uses Tokens)",
                 "The format to use for SRS (ex. Anki) import filename.\n\n"
                 + "Supported Tokens: All except ${episode_num}, ${sequence_num}, ${subs1_line}, ${subs2_line}, or any of the time tokens.",
-                convertToTokens(PrefDefaults.SrsFilenameFormat)));
-            propTable["SRS Filename Format"] = convertToTokens(ConstantSettings.SrsFilenameFormat);
+                PrefDefaults.SrsFilenameFormat));
+            propTable["SRS Filename Format"] = ConstantSettings.SrsFilenameFormat;
 
             // srs_delimiter
             propTable.Properties.Add(new PropertySpec("Delimiter", typeof(string),
                 "SRS File Formatting (Uses Tokens)",
                 "The delimiter to use for the SRS (ex. Anki) import file.\n\nSupported Tokens: Only ${tab}.",
-                convertToTokens(PrefDefaults.SrsDelimiter)));
-            propTable["Delimiter"] = convertToTokens(ConstantSettings.SrsDelimiter);
+                PrefDefaults.SrsDelimiter));
+            propTable["Delimiter"] = ConstantSettings.SrsDelimiter;
 
             // srs_tag_format
             propTable.Properties.Add(new PropertySpec("Tag Format", typeof(string),
                 "SRS File Formatting (Uses Tokens)",
                 "The format to use for the tag in the SRS import file. Leave blank if you do not want to include it.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.SrsTagFormat)));
-            propTable["Tag Format"] = convertToTokens(ConstantSettings.SrsTagFormat);
+                PrefDefaults.SrsTagFormat));
+            propTable["Tag Format"] = ConstantSettings.SrsTagFormat;
 
             // srs_sequence_marker_format
             propTable.Properties.Add(new PropertySpec("Sequence Marker Format", typeof(string),
                 "SRS File Formatting (Uses Tokens)",
                 "The format to use for the sequence marker in the SRS import file. Leave blank if you do not want to include it.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.SrsSequenceMarkerFormat)));
-            propTable["Sequence Marker Format"] = convertToTokens(ConstantSettings.SrsSequenceMarkerFormat);
+                PrefDefaults.SrsSequenceMarkerFormat));
+            propTable["Sequence Marker Format"] = ConstantSettings.SrsSequenceMarkerFormat;
 
             // srs_audio_filename_prefix
             propTable.Properties.Add(new PropertySpec("Audio Clip Prefix", typeof(string),
                 "SRS File Formatting (Uses Tokens)",
                 "The format to use for the prefix of the audio entry in the SRS import file.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.SrsAudioFilenamePrefix)));
-            propTable["Audio Clip Prefix"] = convertToTokens(ConstantSettings.SrsAudioFilenamePrefix);
+                PrefDefaults.SrsAudioFilenamePrefix));
+            propTable["Audio Clip Prefix"] = ConstantSettings.SrsAudioFilenamePrefix;
 
             // audio_filename_format
             propTable.Properties.Add(new PropertySpec("Audio Clip Filename Format", typeof(string),
                 "Audio Clip Formatting (Uses Tokens)",
                 "The format to use for audio clip filenames. You must ensure that each filename will be unique.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.AudioFilenameFormat)));
-            propTable["Audio Clip Filename Format"] = convertToTokens(ConstantSettings.AudioFilenameFormat);
+                PrefDefaults.AudioFilenameFormat));
+            propTable["Audio Clip Filename Format"] = ConstantSettings.AudioFilenameFormat;
 
             // audio_id3_artist
             propTable.Properties.Add(new PropertySpec("ID3 Tag Artist", typeof(string),
                 "Audio Clip Formatting (Uses Tokens)",
                 "The format to use for the audio file's ID3 Artist tag.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.AudioId3Artist)));
-            propTable["ID3 Tag Artist"] = convertToTokens(ConstantSettings.AudioId3Artist);
+                PrefDefaults.AudioId3Artist));
+            propTable["ID3 Tag Artist"] = ConstantSettings.AudioId3Artist;
 
             // audio_id3_album
             propTable.Properties.Add(new PropertySpec("ID3 Tag Album", typeof(string),
                 "Audio Clip Formatting (Uses Tokens)",
                 "The format to use for the audio file's ID3 Album tag.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.AudioId3Album)));
-            propTable["ID3 Tag Album"] = convertToTokens(ConstantSettings.AudioId3Album);
+                PrefDefaults.AudioId3Album));
+            propTable["ID3 Tag Album"] = ConstantSettings.AudioId3Album;
 
             // audio_id3_title
             propTable.Properties.Add(new PropertySpec("ID3 Tag Title", typeof(string),
                 "Audio Clip Formatting (Uses Tokens)",
                 "The format to use for the audio file's ID3 Title tag.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.AudioId3Title)));
-            propTable["ID3 Tag Title"] = convertToTokens(ConstantSettings.AudioId3Title);
+                PrefDefaults.AudioId3Title));
+            propTable["ID3 Tag Title"] = ConstantSettings.AudioId3Title;
 
             // audio_id3_genre
             propTable.Properties.Add(new PropertySpec("ID3 Tag Genre", typeof(string),
                 "Audio Clip Formatting (Uses Tokens)",
                 "The format to use for the audio file's ID3 Genre tag.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.AudioId3Genre)));
-            propTable["ID3 Tag Genre"] = convertToTokens(ConstantSettings.AudioId3Genre);
+                PrefDefaults.AudioId3Genre));
+            propTable["ID3 Tag Genre"] = ConstantSettings.AudioId3Genre;
 
             // audio_id3_lyrics
             propTable.Properties.Add(new PropertySpec("ID3 Tag Lyrics", typeof(string),
                 "Audio Clip Formatting (Uses Tokens)",
                 "The format to use for the audio file's ID3 Lyrics tag.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.AudioId3Lyrics)));
-            propTable["ID3 Tag Lyrics"] = convertToTokens(ConstantSettings.AudioId3Lyrics);
+                PrefDefaults.AudioId3Lyrics));
+            propTable["ID3 Tag Lyrics"] = ConstantSettings.AudioId3Lyrics;
 
             // srs_audio_filename_suffix
             propTable.Properties.Add(new PropertySpec("Audio Clip Suffix", typeof(string),
                 "SRS File Formatting (Uses Tokens)",
                 "The format to use for the suffix of the audio entry in the SRS import file.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.SrsAudioFilenameSuffix)));
-            propTable["Audio Clip Suffix"] = convertToTokens(ConstantSettings.SrsAudioFilenameSuffix);
+                PrefDefaults.SrsAudioFilenameSuffix));
+            propTable["Audio Clip Suffix"] = ConstantSettings.SrsAudioFilenameSuffix;
 
             // srs_snapshot_filename_prefix
             propTable.Properties.Add(new PropertySpec("Snapshot Prefix", typeof(string),
                 "SRS File Formatting (Uses Tokens)",
                 "The format to use for the prefix of the snapshot entry in the SRS import file.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.SrsSnapshotFilenamePrefix)));
-            propTable["Snapshot Prefix"] = convertToTokens(ConstantSettings.SrsSnapshotFilenamePrefix);
+                PrefDefaults.SrsSnapshotFilenamePrefix));
+            propTable["Snapshot Prefix"] = ConstantSettings.SrsSnapshotFilenamePrefix;
 
             // snapshot_filename_format
             propTable.Properties.Add(new PropertySpec("Snapshot Filename Format", typeof(string),
                 "Snapshot Formatting (Uses Tokens)",
                 "The format to use for snapshot filenames. You must ensure that each filename will be unique.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.SnapshotFilenameFormat)));
-            propTable["Snapshot Filename Format"] = convertToTokens(ConstantSettings.SnapshotFilenameFormat);
+                PrefDefaults.SnapshotFilenameFormat));
+            propTable["Snapshot Filename Format"] = ConstantSettings.SnapshotFilenameFormat;
 
             // srs_snapshot_filename_suffix
             propTable.Properties.Add(new PropertySpec("Snapshot Suffix", typeof(string),
                 "SRS File Formatting (Uses Tokens)",
                 "The format to use for the suffix of the snapshot entry in the SRS import file.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.SrsSnapshotFilenameSuffix)));
-            propTable["Snapshot Suffix"] = convertToTokens(ConstantSettings.SrsSnapshotFilenameSuffix);
+                PrefDefaults.SrsSnapshotFilenameSuffix));
+            propTable["Snapshot Suffix"] = ConstantSettings.SrsSnapshotFilenameSuffix;
 
             // srs_video_filename_prefix
             propTable.Properties.Add(new PropertySpec("Video Clip Prefix", typeof(string),
                 "SRS File Formatting (Uses Tokens)",
                 "The format to use for the prefix of the video entry in the SRS import file.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.SrsVideoFilenamePrefix)));
-            propTable["Video Clip Prefix"] = convertToTokens(ConstantSettings.SrsVideoFilenamePrefix);
+                PrefDefaults.SrsVideoFilenamePrefix));
+            propTable["Video Clip Prefix"] = ConstantSettings.SrsVideoFilenamePrefix;
 
             // video_filename_format
             propTable.Properties.Add(new PropertySpec("Video Clip Filename Format", typeof(string),
                 "Video Formatting (Uses Tokens)",
                 "The format to use for video clip filenames. You must ensure that each filename will be unique.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.VideoFilenameFormat)));
-            propTable["Video Clip Filename Format"] = convertToTokens(ConstantSettings.VideoFilenameFormat);
+                PrefDefaults.VideoFilenameFormat));
+            propTable["Video Clip Filename Format"] = ConstantSettings.VideoFilenameFormat;
 
             // srs_video_filename_suffix
             propTable.Properties.Add(new PropertySpec("Video Clip Suffix", typeof(string),
                 "SRS File Formatting (Uses Tokens)",
                 "The format to use for the suffix of the video entry in the SRS import file.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.SrsVideoFilenameSuffix)));
-            propTable["Video Clip Suffix"] = convertToTokens(ConstantSettings.SrsVideoFilenameSuffix);
+                PrefDefaults.SrsVideoFilenameSuffix));
+            propTable["Video Clip Suffix"] = ConstantSettings.SrsVideoFilenameSuffix;
 
             // srs_vobsub_filename_prefix
             propTable.Properties.Add(new PropertySpec("Vobsub Prefix", typeof(string),
                 "SRS File Formatting (Uses Tokens)",
                 "The format to use for the prefix of the vobsub entry in the SRS import file.\n\nSupported Tokens: Only ${deck_name}.",
-                convertToTokens(PrefDefaults.SrsVobsubFilenamePrefix)));
-            propTable["Vobsub Prefix"] = convertToTokens(ConstantSettings.SrsVobsubFilenamePrefix);
+                PrefDefaults.SrsVobsubFilenamePrefix));
+            propTable["Vobsub Prefix"] = ConstantSettings.SrsVobsubFilenamePrefix;
 
             // srs_vobsub_filename_suffix
             propTable.Properties.Add(new PropertySpec("Vobsub Suffix", typeof(string),
                 "SRS File Formatting (Uses Tokens)",
                 "The format to use for the suffix of the vobsub entry in the SRS import file.\n\nSupported Tokens: Only ${deck_name}.",
-                convertToTokens(PrefDefaults.SrsVobsubFilenameSuffix)));
-            propTable["Vobsub Suffix"] = convertToTokens(ConstantSettings.SrsVobsubFilenameSuffix);
+                PrefDefaults.SrsVobsubFilenameSuffix));
+            propTable["Vobsub Suffix"] = ConstantSettings.SrsVobsubFilenameSuffix;
 
             // srs_subs1_format
             propTable.Properties.Add(new PropertySpec("Subs1 Format", typeof(string),
                 "SRS File Formatting (Uses Tokens)",
                 "The format to use when adding Subs1 to the SRS import file.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.SrsSubs1Format)));
-            propTable["Subs1 Format"] = convertToTokens(ConstantSettings.SrsSubs1Format);
+                PrefDefaults.SrsSubs1Format));
+            propTable["Subs1 Format"] = ConstantSettings.SrsSubs1Format;
 
             // srs_subs2_format
             propTable.Properties.Add(new PropertySpec("Subs2 Format", typeof(string),
                 "SRS File Formatting (Uses Tokens)",
                 "The format to use when adding Subs2 to the SRS import file.\n\nSupported Tokens: All.",
-                convertToTokens(PrefDefaults.SrsSubs2Format)));
-            propTable["Subs2 Format"] = convertToTokens(ConstantSettings.SrsSubs2Format);
+                PrefDefaults.SrsSubs2Format));
+            propTable["Subs2 Format"] = ConstantSettings.SrsSubs2Format;
 
             // extract_media_audio_filename_format
             propTable.Properties.Add(new PropertySpec("Extract Audio From Media Filename Format", typeof(string),
                 "Extract Audio from Media Formats (Uses Tokens)",
                 "The format to use for audio filenames in the Extract Audio from Media dialog.\n\nSupported Tokens: All except ${subs1_line}, ${subs2_line}, ${width} and ${height}.",
-                convertToTokens(PrefDefaults.ExtractMediaAudioFilenameFormat)));
-            propTable["Extract Audio From Media Filename Format"] = convertToTokens(ConstantSettings.ExtractMediaAudioFilenameFormat);
+                PrefDefaults.ExtractMediaAudioFilenameFormat));
+            propTable["Extract Audio From Media Filename Format"] = ConstantSettings.ExtractMediaAudioFilenameFormat;
 
             // extract_media_lyrics_subs1_format
             propTable.Properties.Add(new PropertySpec("Lyrics Subs1 Format", typeof(string),
                 "Extract Audio from Media Formats (Uses Tokens)",
                 "The format to use when adding Subs1 to the audio file's ID3 Lyrics tag.\n\nSupported Tokens: All except ${width} and ${height}.",
-                convertToTokens(PrefDefaults.ExtractMediaLyricsSubs1Format)));
-            propTable["Lyrics Subs1 Format"] = convertToTokens(ConstantSettings.ExtractMediaLyricsSubs1Format);
+                PrefDefaults.ExtractMediaLyricsSubs1Format));
+            propTable["Lyrics Subs1 Format"] = ConstantSettings.ExtractMediaLyricsSubs1Format;
 
             // extract_media_lyrics_subs2_format
             propTable.Properties.Add(new PropertySpec("Lyrics Subs2 Format", typeof(string),
                 "Extract Audio from Media Formats (Uses Tokens)",
                 "The format to use when adding Subs2 to the audio file's ID3 Lyrics tag.\n\nSupported Tokens: All except ${width} and ${height}.",
-                convertToTokens(PrefDefaults.ExtractMediaLyricsSubs2Format)));
-            propTable["Lyrics Subs2 Format"] = convertToTokens(ConstantSettings.ExtractMediaLyricsSubs2Format);
+                PrefDefaults.ExtractMediaLyricsSubs2Format));
+            propTable["Lyrics Subs2 Format"] = ConstantSettings.ExtractMediaLyricsSubs2Format;
 
             // dueling_subtitle_filename_format
             propTable.Properties.Add(new PropertySpec("Dueling Subtitles Filename Format", typeof(string),
                 "Dueling Subtitles Formats (Uses Tokens)",
                 "The format to use for dueling subtitle filenames.\n\nSupported Tokens: All except ${sequence_num}, ${subs1_line}, ${subs2_line}, ${width}, and ${height}.",
-                convertToTokens(PrefDefaults.DuelingSubtitleFilenameFormat)));
-            propTable["Dueling Subtitles Filename Format"] = convertToTokens(ConstantSettings.DuelingSubtitleFilenameFormat);
+                PrefDefaults.DuelingSubtitleFilenameFormat));
+            propTable["Dueling Subtitles Filename Format"] = ConstantSettings.DuelingSubtitleFilenameFormat;
 
             // dueling_quick_ref_filename_format
             propTable.Properties.Add(new PropertySpec("Quick Reference Filename Format", typeof(string),
                 "Dueling Subtitles Formats (Uses Tokens)",
                 "The format to use for dueling subtitle quick reference filenames.\n\nSupported Tokens: All except ${sequence_num}, ${subs1_line}, ${subs2_line}, ${width}, and ${height}.",
-                convertToTokens(PrefDefaults.DuelingQuickRefFilenameFormat)));
-            propTable["Quick Reference Filename Format"] = convertToTokens(ConstantSettings.DuelingQuickRefFilenameFormat);
+                PrefDefaults.DuelingQuickRefFilenameFormat));
+            propTable["Quick Reference Filename Format"] = ConstantSettings.DuelingQuickRefFilenameFormat;
 
             // dueling_quick_ref_subs1_format
             propTable.Properties.Add(new PropertySpec("Quick Reference Subs1 Format", typeof(string),
                 "Dueling Subtitles Formats (Uses Tokens)",
                 "The format to use when adding Subs1 to the quick reference file.\n\nSupported Tokens: All except ${width} and ${height}.",
-                convertToTokens(PrefDefaults.DuelingQuickRefSubs1Format)));
-            propTable["Quick Reference Subs1 Format"] = convertToTokens(ConstantSettings.DuelingQuickRefSubs1Format);
+                PrefDefaults.DuelingQuickRefSubs1Format));
+            propTable["Quick Reference Subs1 Format"] = ConstantSettings.DuelingQuickRefSubs1Format;
 
             // dueling_quick_ref_subs2_format
             propTable.Properties.Add(new PropertySpec("Quick Reference Subs2 Format", typeof(string),
                 "Dueling Subtitles Formats (Uses Tokens)",
                 "The format to use when adding Subs2 to the quick reference file.\n\nSupported Tokens: All except ${width} and ${height}.",
-                convertToTokens(PrefDefaults.DuelingQuickRefSubs2Format)));
-            propTable["Quick Reference Subs2 Format"] = convertToTokens(ConstantSettings.DuelingQuickRefSubs2Format);
+                PrefDefaults.DuelingQuickRefSubs2Format));
+            propTable["Quick Reference Subs2 Format"] = ConstantSettings.DuelingQuickRefSubs2Format;
 
             // video_player
             propTable.Properties.Add(new PropertySpec("Video Player Path", typeof(string),
                 "Video Player (Uses Tokens)",
                 "The video player to use in the Preview dialog.\n\nSupported Tokens: None.",
                 PrefDefaults.VideoPlayer));
-            propTable["Video Player Path"] = convertToTokens(ConstantSettings.VideoPlayer);
+            propTable["Video Player Path"] = ConstantSettings.VideoPlayer;
 
             // video_player_args
             propTable.Properties.Add(new PropertySpec("Video Player Arguments", typeof(string),
                 "Video Player (Uses Tokens)",
                 "The video player arguments to pass to the video player in the Preview dialog.\n\nSupported Tokens: All except ${subs1_line}, ${subs2_line}, ${total_line_num} and ${sequence_num}.",
-                convertToTokens(PrefDefaults.VideoPlayerArgs)));
-            propTable["Video Player Arguments"] = convertToTokens(ConstantSettings.VideoPlayerArgs);
+                PrefDefaults.VideoPlayerArgs));
+            propTable["Video Player Arguments"] = ConstantSettings.VideoPlayerArgs;
 
             // reencode_before_splitting_audio
             propTable.Properties.Add(new PropertySpec("Re-encode Before Splitting Audio", typeof(bool),
@@ -895,142 +895,167 @@ namespace subs2srs
 
         private void SavePreferences()
         {
-            var pairList = new List<PrefIO.SettingsPair>();
+            // Validate and write directly to ConstantSettings (delegates to Prefs)
 
-            pairList.Add(new PrefIO.SettingsPair("main_window_width",
-                UtilsCommon.checkRange((int)propTable["Main Window Width"], 0, 9999, PrefDefaults.MainWindowWidth).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("main_window_height",
-                UtilsCommon.checkRange((int)propTable["Main Window Height"], 0, 9999, PrefDefaults.MainWindowHeight).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_enable_audio_clip_generation", propTable["Enable Audio Clip Generation"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_enable_snapshots_generation", propTable["Enable Snapshots Generation"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_enable_video_clips_generation", propTable["Enable Video Clips Generation"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_audio_clip_bitrate",
+            ConstantSettings.MainWindowWidth =
+                UtilsCommon.checkRange((int)propTable["Main Window Width"], 0, 9999, PrefDefaults.MainWindowWidth);
+            ConstantSettings.MainWindowHeight =
+                UtilsCommon.checkRange((int)propTable["Main Window Height"], 0, 9999, PrefDefaults.MainWindowHeight);
+
+            ConstantSettings.DefaultEnableAudioClipGeneration = (bool)propTable["Enable Audio Clip Generation"];
+            ConstantSettings.DefaultEnableSnapshotsGeneration = (bool)propTable["Enable Snapshots Generation"];
+            ConstantSettings.DefaultEnableVideoClipsGeneration = (bool)propTable["Enable Video Clips Generation"];
+
+            ConstantSettings.DefaultAudioClipBitrate =
                 UtilsCommon.checkRangeInSet((int)propTable["Audio Clip Bitrate"],
-                new List<int>(new[] { 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256, 320 }),
-                PrefDefaults.DefaultAudioClipBitrate).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_audio_normalize", propTable["Normalize Audio"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_video_clip_video_bitrate",
-                UtilsCommon.checkRange((int)propTable["Video Clip Video Bitrate"], 100, 3000, PrefDefaults.DefaultVideoClipVideoBitrate).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_video_clip_audio_bitrate",
-                UtilsCommon.checkRangeInSet((int)propTable["Video Clip Audio Bitrate"],
-                new List<int>(new[] { 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256, 320 }),
-                PrefDefaults.DefaultVideoClipAudioBitrate).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_ipod_support", propTable["iPhone Support"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_snapshot_jpeg_quality",
-                UtilsCommon.checkRange((int)propTable["Snapshot JPEG Quality"], 1, 31, PrefDefaults.DefaultSnapshotJpegQuality).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_encoding_subs1",
-                checkValidEncoding((string)propTable["Encoding Subs1"], PrefDefaults.DefaultEncodingSubs1)));
-            pairList.Add(new PrefIO.SettingsPair("default_encoding_subs2",
-                checkValidEncoding((string)propTable["Encoding Subs2"], PrefDefaults.DefaultEncodingSubs2)));
-            pairList.Add(new PrefIO.SettingsPair("default_context_num_leading",
-                UtilsCommon.checkRange((int)propTable["Context Number Leading"], 0, 9, PrefDefaults.DefaultContextNumLeading).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_context_num_trailing",
-                UtilsCommon.checkRange((int)propTable["Context Number Trailing"], 0, 9, PrefDefaults.DefaultContextNumTrailing).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_context_leading_range",
-                UtilsCommon.checkRange((int)propTable["Context Nearby Line Range Leading"], 0, 99999, PrefDefaults.DefaultContextLeadingRange).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_context_trailing_range",
-                UtilsCommon.checkRange((int)propTable["Context Nearby Line Range Trailing"], 0, 99999, PrefDefaults.DefaultContextTrailingRange).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_file_browser_start_dir", convertOut("File Browser Start Folder")));
-            pairList.Add(new PrefIO.SettingsPair("default_remove_styled_lines_subs1", propTable["Remove Subs1 Styled Lines"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_remove_styled_lines_subs2", propTable["Remove Subs2 Styled Lines"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_remove_no_counterpart_subs1", propTable["Remove Subs1 Lines With No Obvious Counterpart"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_remove_no_counterpart_subs2", propTable["Remove Subs2 Lines With No Obvious Counterpart"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_included_text_subs1", convertOut("Included Text Subs1")));
-            pairList.Add(new PrefIO.SettingsPair("default_included_text_subs2", convertOut("Included Text Subs2")));
-            pairList.Add(new PrefIO.SettingsPair("default_excluded_text_subs1", convertOut("Excluded Text Subs1")));
-            pairList.Add(new PrefIO.SettingsPair("default_excluded_text_subs2", convertOut("Excluded Text Subs2")));
-            pairList.Add(new PrefIO.SettingsPair("default_exclude_duplicate_lines_subs1", propTable["Exclude Duplicate Lines Subs1"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_exclude_duplicate_lines_subs2", propTable["Exclude Duplicate Lines Subs2"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_exclude_lines_with_fewer_than_n_chars_subs1", propTable["Exclude Lines With Fewer Than n Characters Enable Subs1"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_exclude_lines_with_fewer_than_n_chars_subs2", propTable["Exclude Lines With Fewer Than n Characters Enable Subs2"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_exclude_lines_with_fewer_than_n_chars_num_subs1",
-                UtilsCommon.checkRange((int)propTable["Exclude Lines With Fewer Than n Characters Number Subs1"], 2, 99999, PrefDefaults.DefaultExcludeLinesFewerThanCharsNumSubs1).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_exclude_lines_with_fewer_than_n_chars_num_subs2",
-                UtilsCommon.checkRange((int)propTable["Exclude Lines With Fewer Than n Characters Number Subs2"], 2, 99999, PrefDefaults.DefaultExcludeLinesFewerThanCharsNumSubs2).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_exclude_lines_shorter_than_n_ms_subs1", propTable["Exclude Lines Shorter Than n Milliseconds Enable Subs1"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_exclude_lines_shorter_than_n_ms_subs2", propTable["Exclude Lines Shorter Than n Milliseconds Enable Subs2"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_exclude_lines_shorter_than_n_ms_num_subs1",
-                UtilsCommon.checkRange((int)propTable["Exclude Lines Shorter Than n Milliseconds Number Subs1"], 100, 99999, PrefDefaults.DefaultExcludeLinesShorterThanMsNumSubs1).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_exclude_lines_shorter_than_n_ms_num_subs2",
-                UtilsCommon.checkRange((int)propTable["Exclude Lines Shorter Than n Milliseconds Number Subs2"], 100, 99999, PrefDefaults.DefaultExcludeLinesShorterThanMsNumSubs2).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_exclude_lines_longer_than_n_ms_subs1", propTable["Exclude Lines Longer Than n Milliseconds Enable Subs1"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_exclude_lines_longer_than_n_ms_subs2", propTable["Exclude Lines Longer Than n Milliseconds Enable Subs2"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_exclude_lines_longer_than_n_ms_num_subs1",
-                UtilsCommon.checkRange((int)propTable["Exclude Lines Longer Than n Milliseconds Number Subs1"], 100, 99999, PrefDefaults.DefaultExcludeLinesLongerThanMsNumSubs1).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_exclude_lines_longer_than_n_ms_num_subs2",
-                UtilsCommon.checkRange((int)propTable["Exclude Lines Longer Than n Milliseconds Number Subs2"], 100, 99999, PrefDefaults.DefaultExcludeLinesLongerThanMsNumSubs2).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_join_sentences_subs1", propTable["Join Lines That End With One of the Following Characters Enable Subs1"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_join_sentences_subs2", propTable["Join Lines That End With One of the Following Characters Enable Subs2"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("default_join_sentences_char_list_subs1", preventBlank("Join Lines That End With One of the Following Characters Subs1")));
-            pairList.Add(new PrefIO.SettingsPair("default_join_sentences_char_list_subs2", preventBlank("Join Lines That End With One of the Following Characters Subs2")));
-            pairList.Add(new PrefIO.SettingsPair("srs_filename_format", preventBlank("SRS Filename Format")));
-            pairList.Add(new PrefIO.SettingsPair("srs_delimiter", preventBlank("Delimiter")));
-            pairList.Add(new PrefIO.SettingsPair("srs_tag_format", convertOut("Tag Format")));
-            pairList.Add(new PrefIO.SettingsPair("srs_sequence_marker_format", convertOut("Sequence Marker Format")));
-            pairList.Add(new PrefIO.SettingsPair("srs_audio_filename_prefix", convertOut("Audio Clip Prefix")));
-            pairList.Add(new PrefIO.SettingsPair("audio_filename_format", preventBlank("Audio Clip Filename Format")));
-            pairList.Add(new PrefIO.SettingsPair("audio_id3_artist", convertOut("ID3 Tag Artist")));
-            pairList.Add(new PrefIO.SettingsPair("audio_id3_album", convertOut("ID3 Tag Album")));
-            pairList.Add(new PrefIO.SettingsPair("audio_id3_title", convertOut("ID3 Tag Title")));
-            pairList.Add(new PrefIO.SettingsPair("audio_id3_genre", convertOut("ID3 Tag Genre")));
-            pairList.Add(new PrefIO.SettingsPair("audio_id3_lyrics", convertOut("ID3 Tag Lyrics")));
-            pairList.Add(new PrefIO.SettingsPair("srs_audio_filename_suffix", convertOut("Audio Clip Suffix")));
-            pairList.Add(new PrefIO.SettingsPair("srs_snapshot_filename_prefix", convertOut("Snapshot Prefix")));
-            pairList.Add(new PrefIO.SettingsPair("snapshot_filename_format", preventBlank("Snapshot Filename Format")));
-            pairList.Add(new PrefIO.SettingsPair("srs_snapshot_filename_suffix", convertOut("Snapshot Suffix")));
-            pairList.Add(new PrefIO.SettingsPair("srs_video_filename_prefix", convertOut("Video Clip Prefix")));
-            pairList.Add(new PrefIO.SettingsPair("video_filename_format", preventBlank("Video Clip Filename Format")));
-            pairList.Add(new PrefIO.SettingsPair("srs_video_filename_suffix", convertOut("Video Clip Suffix")));
-            pairList.Add(new PrefIO.SettingsPair("srs_vobsub_filename_prefix", convertOut("Vobsub Prefix")));
-            pairList.Add(new PrefIO.SettingsPair("srs_vobsub_filename_suffix", convertOut("Vobsub Suffix")));
-            pairList.Add(new PrefIO.SettingsPair("srs_subs1_format", preventBlank("Subs1 Format")));
-            pairList.Add(new PrefIO.SettingsPair("srs_subs2_format", preventBlank("Subs2 Format")));
-            pairList.Add(new PrefIO.SettingsPair("extract_media_audio_filename_format", preventBlank("Extract Audio From Media Filename Format")));
-            pairList.Add(new PrefIO.SettingsPair("extract_media_lyrics_subs1_format", preventBlank("Lyrics Subs1 Format")));
-            pairList.Add(new PrefIO.SettingsPair("extract_media_lyrics_subs2_format", convertOut("Lyrics Subs2 Format")));
-            pairList.Add(new PrefIO.SettingsPair("dueling_subtitle_filename_format", preventBlank("Dueling Subtitles Filename Format")));
-            pairList.Add(new PrefIO.SettingsPair("dueling_quick_ref_filename_format", preventBlank("Quick Reference Filename Format")));
-            pairList.Add(new PrefIO.SettingsPair("dueling_quick_ref_subs1_format", preventBlank("Quick Reference Subs1 Format")));
-            pairList.Add(new PrefIO.SettingsPair("dueling_quick_ref_subs2_format", convertOut("Quick Reference Subs2 Format")));
-            pairList.Add(new PrefIO.SettingsPair("video_player", convertOut("Video Player Path")));
-            pairList.Add(new PrefIO.SettingsPair("video_player_args", convertOut("Video Player Arguments")));
-            pairList.Add(new PrefIO.SettingsPair("reencode_before_splitting_audio", propTable["Re-encode Before Splitting Audio"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("enable_logging", propTable["Enable Logging"].ToString()));
-            pairList.Add(new PrefIO.SettingsPair("audio_normalize_args", convertOut("Normalize Audio Arguments")));
-            pairList.Add(new PrefIO.SettingsPair("long_clip_warning_seconds",
-                UtilsCommon.checkRange((int)propTable["Long Clip Warning"], 0, 99999, PrefDefaults.LongClipWarningSeconds).ToString()));
-            pairList.Add(new PrefIO.SettingsPair("max_parallel_tasks",
-                UtilsCommon.checkRange((int)propTable["Max Parallel Tasks"], 0, 128, PrefDefaults.MaxParallelTasks).ToString()));
+                    new List<int>(new[] { 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256, 320 }),
+                    PrefDefaults.DefaultAudioClipBitrate);
+            ConstantSettings.DefaultAudioNormalize = (bool)propTable["Normalize Audio"];
 
-            PrefIO.writeString(pairList);
-            PrefIO.read();
+            ConstantSettings.DefaultVideoClipVideoBitrate =
+                UtilsCommon.checkRange((int)propTable["Video Clip Video Bitrate"], 100, 3000, PrefDefaults.DefaultVideoClipVideoBitrate);
+            ConstantSettings.DefaultVideoClipAudioBitrate =
+                UtilsCommon.checkRangeInSet((int)propTable["Video Clip Audio Bitrate"],
+                    new List<int>(new[] { 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256, 320 }),
+                    PrefDefaults.DefaultVideoClipAudioBitrate);
+            ConstantSettings.DefaultIphoneSupport = (bool)propTable["iPhone Support"];
+
+            ConstantSettings.DefaultSnapshotJpegQuality =
+                UtilsCommon.checkRange((int)propTable["Snapshot JPEG Quality"], 1, 31, PrefDefaults.DefaultSnapshotJpegQuality);
+
+            ConstantSettings.DefaultEncodingSubs1 =
+                checkValidEncoding((string)propTable["Encoding Subs1"], PrefDefaults.DefaultEncodingSubs1);
+            ConstantSettings.DefaultEncodingSubs2 =
+                checkValidEncoding((string)propTable["Encoding Subs2"], PrefDefaults.DefaultEncodingSubs2);
+
+            ConstantSettings.DefaultContextNumLeading =
+                UtilsCommon.checkRange((int)propTable["Context Number Leading"], 0, 9, PrefDefaults.DefaultContextNumLeading);
+            ConstantSettings.DefaultContextNumTrailing =
+                UtilsCommon.checkRange((int)propTable["Context Number Trailing"], 0, 9, PrefDefaults.DefaultContextNumTrailing);
+            ConstantSettings.DefaultContextLeadingRange =
+                UtilsCommon.checkRange((int)propTable["Context Nearby Line Range Leading"], 0, 99999, PrefDefaults.DefaultContextLeadingRange);
+            ConstantSettings.DefaultContextTrailingRange =
+                UtilsCommon.checkRange((int)propTable["Context Nearby Line Range Trailing"], 0, 99999, PrefDefaults.DefaultContextTrailingRange);
+
+            ConstantSettings.DefaultFileBrowserStartDir = getStr("File Browser Start Folder");
+
+            ConstantSettings.DefaultRemoveStyledLinesSubs1 = (bool)propTable["Remove Subs1 Styled Lines"];
+            ConstantSettings.DefaultRemoveStyledLinesSubs2 = (bool)propTable["Remove Subs2 Styled Lines"];
+            ConstantSettings.DefaultRemoveNoCounterpartSubs1 = (bool)propTable["Remove Subs1 Lines With No Obvious Counterpart"];
+            ConstantSettings.DefaultRemoveNoCounterpartSubs2 = (bool)propTable["Remove Subs2 Lines With No Obvious Counterpart"];
+
+            ConstantSettings.DefaultIncludeTextSubs1 = getStr("Included Text Subs1");
+            ConstantSettings.DefaultIncludeTextSubs2 = getStr("Included Text Subs2");
+            ConstantSettings.DefaultExcludeTextSubs1 = getStr("Excluded Text Subs1");
+            ConstantSettings.DefaultExcludeTextSubs2 = getStr("Excluded Text Subs2");
+
+            ConstantSettings.DefaultExcludeDuplicateLinesSubs1 = (bool)propTable["Exclude Duplicate Lines Subs1"];
+            ConstantSettings.DefaultExcludeDuplicateLinesSubs2 = (bool)propTable["Exclude Duplicate Lines Subs2"];
+
+            ConstantSettings.DefaultExcludeLinesFewerThanCharsSubs1 = (bool)propTable["Exclude Lines With Fewer Than n Characters Enable Subs1"];
+            ConstantSettings.DefaultExcludeLinesFewerThanCharsSubs2 = (bool)propTable["Exclude Lines With Fewer Than n Characters Enable Subs2"];
+            ConstantSettings.DefaultExcludeLinesFewerThanCharsNumSubs1 =
+                UtilsCommon.checkRange((int)propTable["Exclude Lines With Fewer Than n Characters Number Subs1"], 2, 99999, PrefDefaults.DefaultExcludeLinesFewerThanCharsNumSubs1);
+            ConstantSettings.DefaultExcludeLinesFewerThanCharsNumSubs2 =
+                UtilsCommon.checkRange((int)propTable["Exclude Lines With Fewer Than n Characters Number Subs2"], 2, 99999, PrefDefaults.DefaultExcludeLinesFewerThanCharsNumSubs2);
+
+            ConstantSettings.DefaultExcludeLinesShorterThanMsSubs1 = (bool)propTable["Exclude Lines Shorter Than n Milliseconds Enable Subs1"];
+            ConstantSettings.DefaultExcludeLinesShorterThanMsSubs2 = (bool)propTable["Exclude Lines Shorter Than n Milliseconds Enable Subs2"];
+            ConstantSettings.DefaultExcludeLinesShorterThanMsNumSubs1 =
+                UtilsCommon.checkRange((int)propTable["Exclude Lines Shorter Than n Milliseconds Number Subs1"], 100, 99999, PrefDefaults.DefaultExcludeLinesShorterThanMsNumSubs1);
+            ConstantSettings.DefaultExcludeLinesShorterThanMsNumSubs2 =
+                UtilsCommon.checkRange((int)propTable["Exclude Lines Shorter Than n Milliseconds Number Subs2"], 100, 99999, PrefDefaults.DefaultExcludeLinesShorterThanMsNumSubs2);
+
+            ConstantSettings.DefaultExcludeLinesLongerThanMsSubs1 = (bool)propTable["Exclude Lines Longer Than n Milliseconds Enable Subs1"];
+            ConstantSettings.DefaultExcludeLinesLongerThanMsSubs2 = (bool)propTable["Exclude Lines Longer Than n Milliseconds Enable Subs2"];
+            ConstantSettings.DefaultExcludeLinesLongerThanMsNumSubs1 =
+                UtilsCommon.checkRange((int)propTable["Exclude Lines Longer Than n Milliseconds Number Subs1"], 100, 99999, PrefDefaults.DefaultExcludeLinesLongerThanMsNumSubs1);
+            ConstantSettings.DefaultExcludeLinesLongerThanMsNumSubs2 =
+                UtilsCommon.checkRange((int)propTable["Exclude Lines Longer Than n Milliseconds Number Subs2"], 100, 99999, PrefDefaults.DefaultExcludeLinesLongerThanMsNumSubs2);
+
+            ConstantSettings.DefaultJoinSentencesSubs1 = (bool)propTable["Join Lines That End With One of the Following Characters Enable Subs1"];
+            ConstantSettings.DefaultJoinSentencesSubs2 = (bool)propTable["Join Lines That End With One of the Following Characters Enable Subs2"];
+            ConstantSettings.DefaultJoinSentencesCharListSubs1 = getStrRequired("Join Lines That End With One of the Following Characters Subs1");
+            ConstantSettings.DefaultJoinSentencesCharListSubs2 = getStrRequired("Join Lines That End With One of the Following Characters Subs2");
+
+            ConstantSettings.SrsFilenameFormat = getStrRequired("SRS Filename Format");
+            ConstantSettings.SrsDelimiter = getStrRequired("Delimiter");
+            ConstantSettings.SrsTagFormat = getStr("Tag Format");
+            ConstantSettings.SrsSequenceMarkerFormat = getStr("Sequence Marker Format");
+
+            ConstantSettings.SrsAudioFilenamePrefix = getStr("Audio Clip Prefix");
+            ConstantSettings.AudioFilenameFormat = getStrRequired("Audio Clip Filename Format");
+            ConstantSettings.AudioId3Artist = getStr("ID3 Tag Artist");
+            ConstantSettings.AudioId3Album = getStr("ID3 Tag Album");
+            ConstantSettings.AudioId3Title = getStr("ID3 Tag Title");
+            ConstantSettings.AudioId3Genre = getStr("ID3 Tag Genre");
+            ConstantSettings.AudioId3Lyrics = getStr("ID3 Tag Lyrics");
+            ConstantSettings.SrsAudioFilenameSuffix = getStr("Audio Clip Suffix");
+
+            ConstantSettings.SrsSnapshotFilenamePrefix = getStr("Snapshot Prefix");
+            ConstantSettings.SnapshotFilenameFormat = getStrRequired("Snapshot Filename Format");
+            ConstantSettings.SrsSnapshotFilenameSuffix = getStr("Snapshot Suffix");
+
+            ConstantSettings.SrsVideoFilenamePrefix = getStr("Video Clip Prefix");
+            ConstantSettings.VideoFilenameFormat = getStrRequired("Video Clip Filename Format");
+            ConstantSettings.SrsVideoFilenameSuffix = getStr("Video Clip Suffix");
+
+            ConstantSettings.SrsVobsubFilenamePrefix = getStr("Vobsub Prefix");
+            ConstantSettings.SrsVobsubFilenameSuffix = getStr("Vobsub Suffix");
+
+            ConstantSettings.SrsSubs1Format = getStrRequired("Subs1 Format");
+            ConstantSettings.SrsSubs2Format = getStrRequired("Subs2 Format");
+
+            ConstantSettings.ExtractMediaAudioFilenameFormat = getStrRequired("Extract Audio From Media Filename Format");
+            ConstantSettings.ExtractMediaLyricsSubs1Format = getStrRequired("Lyrics Subs1 Format");
+            ConstantSettings.ExtractMediaLyricsSubs2Format = getStr("Lyrics Subs2 Format");
+
+            ConstantSettings.DuelingSubtitleFilenameFormat = getStrRequired("Dueling Subtitles Filename Format");
+            ConstantSettings.DuelingQuickRefFilenameFormat = getStrRequired("Quick Reference Filename Format");
+            ConstantSettings.DuelingQuickRefSubs1Format = getStrRequired("Quick Reference Subs1 Format");
+            ConstantSettings.DuelingQuickRefSubs2Format = getStr("Quick Reference Subs2 Format");
+
+            ConstantSettings.VideoPlayer = getStr("Video Player Path");
+            ConstantSettings.VideoPlayerArgs = getStr("Video Player Arguments");
+
+            ConstantSettings.ReencodeBeforeSplittingAudio = (bool)propTable["Re-encode Before Splitting Audio"];
+            ConstantSettings.EnableLogging = (bool)propTable["Enable Logging"];
+            ConstantSettings.AudioNormalizeArgs = getStr("Normalize Audio Arguments");
+
+            ConstantSettings.LongClipWarningSeconds =
+                UtilsCommon.checkRange((int)propTable["Long Clip Warning"], 0, 99999, PrefDefaults.LongClipWarningSeconds);
+            ConstantSettings.MaxParallelTasks =
+                UtilsCommon.checkRange((int)propTable["Max Parallel Tasks"], 0, 128, PrefDefaults.MaxParallelTasks);
+
+            // Single call writes entire Prefs object as JSON
+            PrefIO.Write();
         }
 
         // ── HELPERS ─────────────────────────────────────────────────────────
 
-        private string convertToTokens(string format)
+        /// <summary>
+        /// Get string value from propTable; return "" for blank/null.
+        /// Token conversion is no longer needed — JSON handles escaping natively.
+        /// </summary>
+        private string getStr(string key)
         {
-            return format.Replace("\t", "${tab}").Replace("\r", "${cr}").Replace("\n", "${lf}");
+            string val = (string)propTable[key];
+            return (val ?? "").Trim();
         }
 
-        private string convertOut(string pref)
+        /// <summary>
+        /// Get string value; if blank, fall back to the PropertySpec default.
+        /// </summary>
+        private string getStrRequired(string key)
         {
-            string value = (string)propTable[pref];
-            return (value ?? "").Trim() == "" ? "none" : value;
-        }
-
-        private string preventBlank(string pref)
-        {
-            string value = (string)propTable[pref];
-            if ((value ?? "").Trim() == "")
+            string val = getStr(key);
+            if (val.Length == 0)
             {
                 for (int i = 0; i < propTable.Properties.Count; i++)
-                {
-                    if (propTable.Properties[i].Name == pref)
-                        return propTable.Properties[i].DefaultValue.ToString();
-                }
+                    if (propTable.Properties[i].Name == key)
+                        return propTable.Properties[i].DefaultValue?.ToString() ?? "";
             }
-            return value;
+            return val;
         }
 
         private string checkValidEncoding(string encoding, string def)
