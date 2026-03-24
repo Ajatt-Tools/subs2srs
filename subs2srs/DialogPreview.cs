@@ -291,13 +291,13 @@ namespace subs2srs
             var cssProvider = Gtk.CssProvider.New();
             cssProvider.LoadFromString(
                 // Normal state
-                ".preview-row-active  { background-color: #FAEBD7; color: #1A1A1A; }" +
+                ".preview-row-active  { background-color: #FFFFF5; color: #1A1A1A; }" +
                 ".preview-row-inactive { background-color: #FFB6C1; color: #1A1A1A; }" +
                 ".preview-row-active  label { color: inherit; }" +
                 ".preview-row-inactive label { color: inherit; }" +
                 // Selected state — darker shade + visible outline
                 "listview > row:selected .preview-row-active  " +
-                    "{ background-color: #D2B48C; outline: 2px solid #3584E4; outline-offset: -2px; }" +
+                    "{ background-color: #F0F0E5; outline: 2px solid #3584E4; outline-offset: -2px; }" +
                 "listview > row:selected .preview-row-inactive " +
                     "{ background-color: #E8849A; outline: 2px solid #3584E4; outline-offset: -2px; }" +
                 "listview > row:selected .preview-row-active  label { color: inherit; }" +
