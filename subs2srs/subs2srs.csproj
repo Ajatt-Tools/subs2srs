@@ -13,7 +13,7 @@
     <Company>Christopher Brochtrup</Company>
     <Copyright>Copyright © 2009-2016 Christopher Brochtrup. GTK4 port © 2026 fkzys</Copyright>
     <Description>subs2srs GTK4/.NET 10 port — generate Anki cards from media with subtitles</Description>
-    <PackageProjectUrl>https://gitlab.com/fkzys/subs2srs-gtk3</PackageProjectUrl>
+    <PackageProjectUrl>https://gitlab.com/fkzys/subs2srs</PackageProjectUrl>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <Version>0.2.0</Version>
   </PropertyGroup>

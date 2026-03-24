@@ -1,13 +1,13 @@
-# subs2srs (GTK3 port)
+# subs2srs (GTK4 port)
 
-[![CI](https://github.com/rpPH4kQocMjkm2Ve/subs2srs-gtk3/actions/workflows/ci.yml/badge.svg)](https://github.com/rpPH4kQocMjkm2Ve/subs2srs-gtk3/actions/workflows/ci.yml)
+[![CI](https://github.com/rpPH4kQocMjkm2Ve/subs2srs/actions/workflows/ci.yml/badge.svg)](https://github.com/rpPH4kQocMjkm2Ve/subs2srs/actions/workflows/ci.yml)
 
 ![screenshot](assets/screenshot.png)
 
 A tool that creates [Anki](https://apps.ankiweb.net/) flashcards from movies
 and TV shows with subtitles, for language learning.
 
-This is a **GTK3 / .NET 10** rewrite of the UI layer.
+This is a **GTK4 / .NET 10** rewrite of the UI layer.
 The processing core (subtitle parsing, ffmpeg calls, SRS generation)
 is carried over from the original with minimal changes.
 
@@ -21,15 +21,15 @@ is carried over from the original with minimal changes.
 
 | Area | Old (erjiang fork) | This port |
 |---|---|---|
-| UI toolkit | WinForms on Mono | **GTK3** via GtkSharp |
+| UI toolkit | WinForms on Mono | **GTK4** via GirCore |
 | Runtime | Mono | **.NET 10+** |
 | System.Drawing | Required everywhere | **Removed** — `SrsColor`, `FontInfo` used instead |
 | Serialization | `BinaryFormatter` | **System.Text.Json** (`ObjectCloner`) |
 | Preferences format | Custom `key = value` text with regex updates | **JSON** (`preferences.json`) |
 | Progress dialogs | `BackgroundWorker` + modal `DialogProgress` | **`async/await`** + `IProgressReporter` |
-| PropertyGrid (Preferences) | WinForms `PropertyGrid` | **`TreeView`** with editable cells |
+| PropertyGrid (Preferences) | WinForms `PropertyGrid` | **`ListView`** with editable cells |
 | Preview dialog | `BackgroundWorker` (deadlocked on Wayland) | **`Task.Run` + `async`** |
-| Font/Color pickers | WinForms dialogs | **`FontButton` / `ColorButton`** (native GTK) |
+| Font/Color pickers | WinForms dialogs | **`FontDialogButton` / `ColorDialogButton`** (native GTK4) |
 | VobSub support | Built-in | **Optional** (compile with `EnableVobSub=true`) |
 | MS fonts | Required fontconfig workaround | **Not needed** |
 | Build system | mcs / xbuild | **`dotnet publish`** via Makefile |
@@ -46,7 +46,7 @@ is carried over from the original with minimal changes.
 
 **Runtime:**
 - [.NET 10+](https://dotnet.microsoft.com/) runtime
-- [GTK 3](https://gtk.org/)
+- [GTK 4](https://gtk.org/)
 - [ffmpeg](https://ffmpeg.org/)
 - [mp3gain](https://mp3gain.sourceforge.net/) *(only if using audio normalization)*
 - [mkvtoolnix](https://mkvtoolnix.download/) (`mkvextract`, `mkvinfo`) *(only for MKV track extraction)*
@@ -73,19 +73,19 @@ make test
 ### AUR
 
 ```sh
-yay -S subs2srs-gtk3-git
+yay -S subs2srs
 ```
 
 ### gitpkg
 ```sh
-gitpkg install subs2srs-gtk3
+gitpkg install subs2srs
 ```
 
 ### Manual
 
 ```sh
-git clone https://gitlab.com/fkzys/subs2srs-gtk3.git
-cd subs2srs-gtk3
+git clone https://gitlab.com/fkzys/subs2srs.git
+cd subs2srs
 sudo make install
 ```
 

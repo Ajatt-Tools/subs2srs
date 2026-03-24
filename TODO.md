@@ -24,5 +24,9 @@
 - [x] **`Process` → async with `CancellationToken`**
   Done. `runProcessWithProgress()` uses `WaitForExitAsync(token)`.
 
-- [ ] **GTK4 migration**
-  GtkSharp for GTK4 is not yet stable. Revisit when upstream is ready.
+- [x] **GTK4 migration**
+  Done. Migrated from GtkSharp (GTK3) to GirCore.Gtk-4.0 0.7.0 (GTK4).
+  ComboBoxText → DropDown, TreeView/ListStore → ListView/ListStore,
+  FontButton/ColorButton → FontDialogButton/ColorDialogButton,
+  FileChooserDialog → FileDialog (async), Image+Pixbuf → Picture,
+  PackStart/PackEnd → Append, Application.Invoke → GLib.Functions.IdleAdd.
