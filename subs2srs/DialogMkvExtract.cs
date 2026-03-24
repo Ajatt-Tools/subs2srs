@@ -7,138 +7,206 @@ using System.IO;
 using SysPath = System.IO.Path;
 using System.Threading;
 using System.Threading.Tasks;
-using Gtk;
 
 namespace subs2srs
 {
-    public class DialogMkvExtract : Dialog
+    /// <summary>
+    /// MKV Extract tool dialog — GTK4/Gir.Core port.
+    /// Replaces GTK3 Dialog with a modal Gtk.Window + nested GLib.MainLoop.
+    /// </summary>
+    public class DialogMkvExtract : Gtk.Window
     {
         private List<string> _selectedFiles = new();
-        private Entry _txtFiles;
-        private Label _lblFileCount;
-        private ComboBoxText _comboTrackType;
-        private Entry _txtOutDir;
-        private Button _btnExtract;
-        private Label _lblProgress;
-        private ProgressBar _progressEpisode;
-        private ProgressBar _progressTrack;
+        private Gtk.Entry _txtFiles;
+        private Gtk.Label _lblFileCount;
+        private Gtk.DropDown _comboTrackType;
+        private Gtk.StringList _trackTypeModel;
+        private Gtk.Entry _txtOutDir;
+        private Gtk.Button _btnExtract;
+        private Gtk.Label _lblProgress;
+        private Gtk.ProgressBar _progressEpisode;
+        private Gtk.ProgressBar _progressTrack;
         private CancellationTokenSource _cts;
-        private bool _destroyed;
+        private bool _closed;
 
-        public DialogMkvExtract(Window parent) : base(
-            "MKV Extract Tool", parent, DialogFlags.Modal,
-            "Close", ResponseType.Close)
+        // Nested main loop for synchronous Run()
+        private GLib.MainLoop _loop;
+
+        public DialogMkvExtract(Gtk.Window parent) : base()
         {
+            SetTitle("MKV Extract Tool");
             SetDefaultSize(580, 350);
-            Destroyed += (s, e) => { _destroyed = true; _cts?.Cancel(); };
+            SetModal(true);
+            if (parent != null)
+                SetTransientFor(parent);
+
+            OnCloseRequest += OnDialogCloseRequest;
             BuildUI();
+        }
+
+        /// <summary>
+        /// Show the dialog modally using a nested GLib main loop.
+        /// </summary>
+        public int Run()
+        {
+            _loop = GLib.MainLoop.New(null, false);
+
+            Show();
+            _loop.Run();
+
+            return 0;
+        }
+
+        private bool OnDialogCloseRequest(Gtk.Window sender, EventArgs args)
+        {
+            _closed = true;
+            _cts?.Cancel();
+            if (_loop != null && _loop.IsRunning())
+                _loop.Quit();
+            return false; // allow default close
         }
 
         private void BuildUI()
         {
-            var vbox = new Box(Orientation.Vertical, 8) { BorderWidth = 10 };
+            var vbox = Gtk.Box.New(Gtk.Orientation.Vertical, 8);
+            vbox.SetMarginTop(10);
+            vbox.SetMarginBottom(10);
+            vbox.SetMarginStart(10);
+            vbox.SetMarginEnd(10);
 
             // Help text
-            vbox.PackStart(new Label(
-                "Use this tool to extract all subtitle and/or audio tracks from MKV files.")
-                { Halign = Align.Center }, false, false, 0);
-            vbox.PackStart(new Separator(Orientation.Horizontal), false, false, 2);
+            var helpLabel = Gtk.Label.New(
+                "Use this tool to extract all subtitle and/or audio tracks from MKV files.");
+            helpLabel.SetHalign(Gtk.Align.Center);
+            vbox.Append(helpLabel);
+            vbox.Append(Gtk.Separator.New(Gtk.Orientation.Horizontal));
 
             // MKV files
-            vbox.PackStart(new Label("Select one or more .mkv files:")
-                { Halign = Align.Start }, false, false, 0);
+            var lblSelect = Gtk.Label.New("Select one or more .mkv files:");
+            lblSelect.SetHalign(Gtk.Align.Start);
+            vbox.Append(lblSelect);
 
-            var fileRow = new Box(Orientation.Horizontal, 6);
-            var btnFiles = new Button("Files...");
-            btnFiles.Clicked += OnSelectFiles;
-            fileRow.PackStart(btnFiles, false, false, 0);
-            _txtFiles = new Entry { Hexpand = true, IsEditable = false };
-            fileRow.PackStart(_txtFiles, true, true, 0);
-            vbox.PackStart(fileRow, false, false, 0);
+            var fileRow = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
+            var btnFiles = Gtk.Button.NewWithLabel("Files...");
+            btnFiles.OnClicked += OnSelectFiles;
+            fileRow.Append(btnFiles);
+            _txtFiles = Gtk.Entry.New();
+            _txtFiles.SetHexpand(true);
+            _txtFiles.SetEditable(false);
+            fileRow.Append(_txtFiles);
+            vbox.Append(fileRow);
 
-            _lblFileCount = new Label("") { Halign = Align.End };
-            vbox.PackStart(_lblFileCount, false, false, 0);
+            _lblFileCount = Gtk.Label.New("");
+            _lblFileCount.SetHalign(Gtk.Align.End);
+            vbox.Append(_lblFileCount);
 
             // Track type
-            vbox.PackStart(new Label("Tracks to extract:") { Halign = Align.Start },
-                false, false, 0);
-            _comboTrackType = new ComboBoxText();
-            _comboTrackType.AppendText("All subtitle tracks");
-            _comboTrackType.AppendText("All audio tracks");
-            _comboTrackType.AppendText("All subtitle and audio tracks");
-            _comboTrackType.Active = 0;
-            vbox.PackStart(_comboTrackType, false, false, 0);
+            var lblTracks = Gtk.Label.New("Tracks to extract:");
+            lblTracks.SetHalign(Gtk.Align.Start);
+            vbox.Append(lblTracks);
+            _trackTypeModel = Gtk.StringList.New(new[]
+            {
+                "All subtitle tracks",
+                "All audio tracks",
+                "All subtitle and audio tracks"
+            });
+            _comboTrackType = Gtk.DropDown.New(_trackTypeModel, null);
+            _comboTrackType.SetSelected(0);
+            vbox.Append(_comboTrackType);
 
             // Output directory
-            vbox.PackStart(new Label("Directory where the extracted tracks will be placed:")
-                { Halign = Align.Start }, false, false, 0);
+            var lblOutDir = Gtk.Label.New(
+                "Directory where the extracted tracks will be placed:");
+            lblOutDir.SetHalign(Gtk.Align.Start);
+            vbox.Append(lblOutDir);
 
-            var outRow = new Box(Orientation.Horizontal, 6);
-            var btnOut = new Button("Output...");
-            btnOut.Clicked += OnSelectOutDir;
-            outRow.PackStart(btnOut, false, false, 0);
-            _txtOutDir = new Entry
-            {
-                Hexpand = true,
-                Text = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
-            };
-            outRow.PackStart(_txtOutDir, true, true, 0);
-            vbox.PackStart(outRow, false, false, 0);
+            var outRow = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
+            var btnOut = Gtk.Button.NewWithLabel("Output...");
+            btnOut.OnClicked += OnSelectOutDir;
+            outRow.Append(btnOut);
+            _txtOutDir = Gtk.Entry.New();
+            _txtOutDir.SetHexpand(true);
+            _txtOutDir.SetText(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
+            outRow.Append(_txtOutDir);
+            vbox.Append(outRow);
 
             // Progress (hidden until extraction starts)
-            _lblProgress = new Label("") { Halign = Align.Start, NoShowAll = true };
-            vbox.PackStart(_lblProgress, false, false, 0);
+            _lblProgress = Gtk.Label.New("");
+            _lblProgress.SetHalign(Gtk.Align.Start);
+            _lblProgress.SetVisible(false);
+            vbox.Append(_lblProgress);
 
-            _progressEpisode = new ProgressBar { ShowText = true, NoShowAll = true };
-            vbox.PackStart(_progressEpisode, false, false, 0);
+            _progressEpisode = Gtk.ProgressBar.New();
+            _progressEpisode.SetShowText(true);
+            _progressEpisode.SetVisible(false);
+            vbox.Append(_progressEpisode);
 
-            _progressTrack = new ProgressBar { ShowText = true, NoShowAll = true };
-            vbox.PackStart(_progressTrack, false, false, 0);
+            _progressTrack = Gtk.ProgressBar.New();
+            _progressTrack.SetShowText(true);
+            _progressTrack.SetVisible(false);
+            vbox.Append(_progressTrack);
 
             // Extract/Stop button
-            _btnExtract = new Button("Extract") { Halign = Align.Center, WidthRequest = 120 };
-            _btnExtract.Clicked += OnExtractClicked;
-            vbox.PackStart(_btnExtract, false, false, 4);
+            _btnExtract = Gtk.Button.NewWithLabel("Extract");
+            _btnExtract.SetHalign(Gtk.Align.Center);
+            _btnExtract.SetSizeRequest(120, -1);
+            _btnExtract.OnClicked += OnExtractClicked;
+            vbox.Append(_btnExtract);
 
-            ContentArea.PackStart(vbox, true, true, 0);
-            ContentArea.ShowAll();
+            SetChild(vbox);
         }
 
         // ── FILE SELECTION ──────────────────────────────────────────────────
 
-        private void OnSelectFiles(object sender, EventArgs e)
+        private async void OnSelectFiles(Gtk.Button sender, EventArgs e)
         {
-            var dlg = new FileChooserDialog("Select One or More MKV Files", this,
-                FileChooserAction.Open,
-                "Cancel", ResponseType.Cancel, "Open", ResponseType.Accept);
-            dlg.SelectMultiple = true;
+            var dlg = Gtk.FileDialog.New();
+            dlg.SetTitle("Select One or More MKV Files");
 
-            var filter = new FileFilter { Name = "Matroska files (*.mkv)" };
+            var filter = Gtk.FileFilter.New();
+            filter.SetName("Matroska files (*.mkv)");
             filter.AddPattern("*.mkv");
-            dlg.AddFilter(filter);
+            var filters = Gio.ListStore.New(Gtk.FileFilter.GetGType());
+            filters.Append(filter);
+            dlg.SetFilters(filters);
 
-            if (dlg.Run() == (int)ResponseType.Accept)
+            try
             {
+                var fileList = await dlg.OpenMultipleAsync(this);
+                if (fileList == null) return;
+
                 _selectedFiles.Clear();
-                foreach (string f in dlg.Filenames)
+                for (uint i = 0; i < fileList.GetNItems(); i++)
                 {
-                    if (SysPath.GetExtension(f).ToLowerInvariant() == ".mkv")
-                        _selectedFiles.Add(f);
+                    var obj = fileList.GetObject(i);
+                    if (obj == null) continue;
+                    // Wrap the same native GFile handle as FileHelper
+                    var gfile = new Gio.FileHelper(obj.Handle);
+                    string path = gfile.GetPath() ?? "";
+                    if (SysPath.GetExtension(path).ToLowerInvariant() == ".mkv")
+                        _selectedFiles.Add(path);
                 }
                 UpdateFileDisplay();
             }
-            dlg.Destroy();
+            catch { /* user cancelled */ }
         }
 
-        private void OnSelectOutDir(object sender, EventArgs e)
+        private async void OnSelectOutDir(Gtk.Button sender, EventArgs e)
         {
-            var dlg = new FileChooserDialog("Select Output Directory", this,
-                FileChooserAction.SelectFolder,
-                "Cancel", ResponseType.Cancel, "Open", ResponseType.Accept);
+            var dlg = Gtk.FileDialog.New();
+            dlg.SetTitle("Select Output Directory");
 
-            if (dlg.Run() == (int)ResponseType.Accept)
-                _txtOutDir.Text = dlg.Filename;
-            dlg.Destroy();
+            try
+            {
+                var file = await dlg.SelectFolderAsync(this);
+                if (file != null)
+                {
+                    string path = file.GetPath() ?? "";
+                    if (path != "") _txtOutDir.SetText(path);
+                }
+            }
+            catch { /* user cancelled */ }
         }
 
         private void UpdateFileDisplay()
@@ -146,16 +214,16 @@ namespace subs2srs
             var names = new List<string>(_selectedFiles.Count);
             foreach (string f in _selectedFiles)
                 names.Add($"\"{SysPath.GetFileName(f)}\"");
-            _txtFiles.Text = string.Join(", ", names);
+            _txtFiles.SetText(string.Join(", ", names));
 
-            _lblFileCount.Text = _selectedFiles.Count == 1
+            _lblFileCount.SetText(_selectedFiles.Count == 1
                 ? "1 file selected"
-                : $"{_selectedFiles.Count} files selected";
+                : $"{_selectedFiles.Count} files selected");
         }
 
         // ── EXTRACTION ──────────────────────────────────────────────────────
 
-        private async void OnExtractClicked(object sender, EventArgs e)
+        private async void OnExtractClicked(Gtk.Button sender, EventArgs e)
         {
             // Toggle stop
             if (_cts != null)
@@ -171,22 +239,24 @@ namespace subs2srs
                 return;
             }
 
-            string outDir = _txtOutDir.Text.Trim();
+            string outDir = _txtOutDir.GetText().Trim();
             if (!Directory.Exists(outDir))
             {
                 UtilsMsg.showErrMsg("Please enter a valid output directory.");
                 return;
             }
 
-            string trackType = _comboTrackType.ActiveText;
+            // Get track type from dropdown
+            uint trackIdx = _comboTrackType.GetSelected();
+            string trackType = _trackTypeModel.GetString(trackIdx) ?? "All subtitle tracks";
             var files = new List<string>(_selectedFiles);
 
-            _btnExtract.Label = "Stop";
-            _lblProgress.Visible = true;
-            _progressEpisode.Visible = true;
-            _progressTrack.Visible = true;
-            _progressEpisode.Fraction = 0;
-            _progressTrack.Fraction = 0;
+            _btnExtract.SetLabel("Stop");
+            _lblProgress.SetVisible(true);
+            _progressEpisode.SetVisible(true);
+            _progressTrack.SetVisible(true);
+            _progressEpisode.SetFraction(0);
+            _progressTrack.SetFraction(0);
 
             _cts = new CancellationTokenSource();
             var token = _cts.Token;
@@ -195,7 +265,8 @@ namespace subs2srs
 
             try
             {
-                extracted = await Task.Run(() => ExtractTracks(files, trackType, outDir, token));
+                extracted = await Task.Run(() =>
+                    ExtractTracks(files, trackType, outDir, token));
             }
             catch (OperationCanceledException) { }
             catch (Exception ex) { error = ex; }
@@ -203,23 +274,24 @@ namespace subs2srs
             _cts.Dispose();
             _cts = null;
 
-            if (_destroyed) return;
+            if (_closed) return;
 
-            _btnExtract.Label = "Extract";
-            _lblProgress.Visible = false;
-            _progressEpisode.Visible = false;
-            _progressTrack.Visible = false;
+            _btnExtract.SetLabel("Extract");
+            _lblProgress.SetVisible(false);
+            _progressEpisode.SetVisible(false);
+            _progressTrack.SetVisible(false);
 
             if (error != null)
                 UtilsMsg.showErrMsg($"Something went wrong: {error.Message}");
             else if (token.IsCancellationRequested)
-                { /* cancelled */ }
+            { /* cancelled */ }
             else if (extracted == 0)
                 UtilsMsg.showErrMsg(
                     "No tracks were found in the selected files.\n\n"
                     + "Make sure mkvtoolnix is installed (mkvinfo, mkvextract).");
             else
-                UtilsMsg.showInfoMsg($"Extraction complete. {extracted} track(s) extracted.");
+                UtilsMsg.showInfoMsg(
+                    $"Extraction complete. {extracted} track(s) extracted.");
         }
 
         private int ExtractTracks(List<string> files, string trackType,
@@ -249,20 +321,24 @@ namespace subs2srs
                         displayLang = "Unknown";
 
                     string fileName = SysPath.Combine(outDir,
-                        $"{SysPath.GetFileNameWithoutExtension(files[i])} - Track {Convert.ToInt32(track.TrackID):00} - {displayLang}.{track.Extension}");
+                        $"{SysPath.GetFileNameWithoutExtension(files[i])}"
+                        + $" - Track {Convert.ToInt32(track.TrackID):00}"
+                        + $" - {displayLang}.{track.Extension}");
 
                     int curEp = i + 1, maxEp = files.Count;
                     int curTrack = t + 1, maxTrack = tracks.Count;
 
-                    GLib.Idle.Add(() =>
+                    // Update UI from background thread via idle handler
+                    GLib.Functions.IdleAdd(0, () =>
                     {
-                        if (_destroyed) return false;
-                        _lblProgress.Text =
-                            $"Extracting track {curTrack}/{maxTrack} from file {curEp}/{maxEp}...";
-                        _progressEpisode.Fraction = (double)curEp / maxEp;
-                        _progressEpisode.Text = $"File {curEp}/{maxEp}";
-                        _progressTrack.Fraction = (double)curTrack / maxTrack;
-                        _progressTrack.Text = $"Track {curTrack}/{maxTrack}";
+                        if (_closed) return false;
+                        _lblProgress.SetText(
+                            $"Extracting track {curTrack}/{maxTrack}"
+                            + $" from file {curEp}/{maxEp}...");
+                        _progressEpisode.SetFraction((double)curEp / maxEp);
+                        _progressEpisode.SetText($"File {curEp}/{maxEp}");
+                        _progressTrack.SetFraction((double)curTrack / maxTrack);
+                        _progressTrack.SetText($"Track {curTrack}/{maxTrack}");
                         return false;
                     });
 

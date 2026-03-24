@@ -16,40 +16,68 @@
 //  along with subs2srs.  If not, see <http://www.gnu.org/licenses/>.
 //
 //////////////////////////////////////////////////////////////////////////////
+
 using System;
 using System.Collections.Generic;
-using Gtk;
 
 namespace subs2srs
 {
-    public class DialogPref : Dialog
+    /// <summary>
+    /// Preferences dialog — GTK4/Gir.Core port.
+    ///
+    /// GTK4 removed TreeView/TreeStore. This port uses Gtk.ListView
+    /// backed by a Gio.ListStore of PrefItem GObject wrappers.
+    /// Categories are flat bold rows; properties are editable rows beneath them.
+    ///
+    /// Replaces GTK3 Dialog with Gtk.Window + nested GLib.MainLoop for Run().
+    /// </summary>
+    public class DialogPref : Gtk.Window
     {
         private PropertyTable propTable;
-        private TreeStore _store;
-        private TreeView _treeView;
-        private TextView _descView;
+        private Gio.ListStore _store;
+        private List<PrefItem> _items = new();
+        private Gtk.ListView _listView;
+        private Gtk.SingleSelection _selection;
+        private Gtk.Label _descLabel;
 
-        private const int COL_NAME = 0;
-        private const int COL_STR_VAL = 1;
-        private const int COL_BOOL_VAL = 2;
-        private const int COL_IS_BOOL = 3;
-        private const int COL_IS_CATEGORY = 4;
-        private const int COL_DESCRIPTION = 5;
-        private const int COL_PROP_KEY = 6;
-        private const int COL_WEIGHT = 7;
-        private const int COL_IS_INT = 8;
+        // Nested main loop for synchronous Run()
+        private GLib.MainLoop _loop;
+        private int _responseId;
 
-        public DialogPref(Window parent) : base(
-            "Preferences", parent, DialogFlags.Modal,
-            "Cancel", ResponseType.Cancel,
-            "OK", ResponseType.Ok)
+        public DialogPref(Gtk.Window parent) : base()
         {
+            SetTitle("Preferences");
             SetDefaultSize(750, 550);
+            SetModal(true);
+            if (parent != null)
+                SetTransientFor(parent);
 
             PrefIO.read();
             BuildPropTable();
             BuildUI();
-            PopulateTree();
+            PopulateStore();
+        }
+
+        /// <summary>
+        /// Show the dialog modally. Returns 1 for OK, 0 for Cancel/close.
+        /// </summary>
+        public int Run()
+        {
+            _loop = GLib.MainLoop.New(null, false);
+            _responseId = 0;
+
+            OnCloseRequest += OnDialogCloseRequest;
+            Show();
+            _loop.Run();
+
+            return _responseId;
+        }
+
+        private bool OnDialogCloseRequest(Gtk.Window sender, EventArgs args)
+        {
+            if (_loop != null && _loop.IsRunning())
+                _loop.Quit();
+            return false;
         }
 
         // ── PROPERTY TABLE (same data as original) ──────────────────────────
@@ -669,95 +697,209 @@ namespace subs2srs
 
         private void BuildUI()
         {
-            _store = new TreeStore(
-                typeof(string), typeof(string), typeof(bool),
-                typeof(bool), typeof(bool), typeof(string),
-                typeof(string), typeof(int), typeof(bool));
+            var vbox = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
+            vbox.SetMarginTop(8);
+            vbox.SetMarginBottom(8);
+            vbox.SetMarginStart(8);
+            vbox.SetMarginEnd(8);
 
-            _treeView = new TreeView(_store) { HeadersVisible = true };
-            _treeView.Selection.Changed += OnSelectionChanged;
-
-            // Name column
-            var nameR = new CellRendererText();
-            var nameCol = new TreeViewColumn();
-            nameCol.Title = "Property";
-            nameCol.PackStart(nameR, true);
-            nameCol.AddAttribute(nameR, "text", COL_NAME);
-            nameCol.AddAttribute(nameR, "weight", COL_WEIGHT);
-            nameCol.Resizable = true;
-            nameCol.MinWidth = 300;
-            _treeView.AppendColumn(nameCol);
-
-            // Value column — dual renderer: toggle for bools, text for the rest
-            var valCol = new TreeViewColumn { Title = "Value", Resizable = true, MinWidth = 200 };
-
-            var toggleR = new CellRendererToggle { Activatable = true };
-            toggleR.Toggled += OnBoolToggled;
-            valCol.PackStart(toggleR, false);
-            valCol.SetCellDataFunc(toggleR, (TreeViewColumn c, CellRenderer cell, ITreeModel m, TreeIter it) =>
+            // ListView backed by Gio.ListStore of PrefItem
+            _store = Gio.ListStore.New(Gtk.StringObject.GetGType());
+            _selection = Gtk.SingleSelection.New(_store);
+            _selection.OnNotify += (s, e) =>
             {
-                bool isBool = (bool)m.GetValue(it, COL_IS_BOOL);
-                bool isCat = (bool)m.GetValue(it, COL_IS_CATEGORY);
-                var t = (CellRendererToggle)cell;
-                t.Visible = isBool && !isCat;
-                if (isBool && !isCat) t.Active = (bool)m.GetValue(it, COL_BOOL_VAL);
-            });
+                if (e.Pspec.GetName() == "selected") OnSelectionChanged();
+            };
 
-            var textR = new CellRendererText();
-            textR.Edited += OnValueEdited;
-            valCol.PackStart(textR, true);
-            valCol.SetCellDataFunc(textR, (TreeViewColumn c, CellRenderer cell, ITreeModel m, TreeIter it) =>
-            {
-                bool isBool = (bool)m.GetValue(it, COL_IS_BOOL);
-                bool isCat = (bool)m.GetValue(it, COL_IS_CATEGORY);
-                var t = (CellRendererText)cell;
-                t.Visible = !isBool && !isCat;
-                t.Editable = !isBool && !isCat;
-                t.Text = (!isBool && !isCat) ? (string)m.GetValue(it, COL_STR_VAL) : "";
-            });
+            var factory = BuildFactory();
+            _listView = Gtk.ListView.New(_selection, factory);
+            _listView.SetVexpand(true);
 
-            _treeView.AppendColumn(valCol);
-
-            var sw = new ScrolledWindow { ShadowType = ShadowType.In };
-            sw.Add(_treeView);
+            var sw = Gtk.ScrolledWindow.New();
+            sw.SetChild(_listView);
+            sw.SetVexpand(true);
+            vbox.Append(sw);
 
             // Description area
-            _descView = new TextView { Editable = false, WrapMode = WrapMode.Word, HeightRequest = 80 };
-            var descSw = new ScrolledWindow { ShadowType = ShadowType.In };
-            descSw.Add(_descView);
+            var descLbl = Gtk.Label.New("Description:");
+            descLbl.SetHalign(Gtk.Align.Start);
+            vbox.Append(descLbl);
+            _descLabel = Gtk.Label.New("");
+            _descLabel.SetWrap(true);
+            _descLabel.SetHalign(Gtk.Align.Start);
+            _descLabel.SetSizeRequest(-1, 80);
+            var descSw = Gtk.ScrolledWindow.New();
+            descSw.SetChild(_descLabel);
+            descSw.SetSizeRequest(-1, 80);
+            vbox.Append(descSw);
 
             // Tool buttons
-            var btnBox = new Box(Orientation.Horizontal, 6);
+            var btnBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
 
-            var btnResetAll = new Button("Reset All");
-            btnResetAll.Clicked += OnResetAllClicked;
-            btnBox.PackStart(btnResetAll, false, false, 0);
+            var btnResetAll = Gtk.Button.NewWithLabel("Reset All");
+            btnResetAll.OnClicked += OnResetAllClicked;
+            btnBox.Append(btnResetAll);
 
-            var btnResetSel = new Button("Reset Selected");
-            btnResetSel.Clicked += OnResetSelectedClicked;
-            btnBox.PackStart(btnResetSel, false, false, 0);
+            var btnResetSel = Gtk.Button.NewWithLabel("Reset Selected");
+            btnResetSel.OnClicked += OnResetSelectedClicked;
+            btnBox.Append(btnResetSel);
 
-            var btnTokens = new Button("Token List...");
-            btnTokens.Clicked += OnTokenListClicked;
-            btnBox.PackStart(btnTokens, false, false, 0);
+            var btnTokens = Gtk.Button.NewWithLabel("Token List...");
+            btnTokens.OnClicked += OnTokenListClicked;
+            btnBox.Append(btnTokens);
 
-            var vbox = new Box(Orientation.Vertical, 6) { BorderWidth = 8 };
-            vbox.PackStart(sw, true, true, 0);
-            vbox.PackStart(new Label("Description:") { Halign = Align.Start }, false, false, 0);
-            vbox.PackStart(descSw, false, false, 0);
-            vbox.PackStart(btnBox, false, false, 0);
+            vbox.Append(btnBox);
 
-            ContentArea.PackStart(vbox, true, true, 0);
-            ContentArea.ShowAll();
+            // OK / Cancel buttons
+            var actionBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
+            actionBox.SetHalign(Gtk.Align.End);
 
-            this.Response += OnResponse;
+            var btnCancel = Gtk.Button.NewWithLabel("Cancel");
+            btnCancel.OnClicked += (s, e) =>
+            {
+                _responseId = 0;
+                Close();
+            };
+            actionBox.Append(btnCancel);
+
+            var btnOk = Gtk.Button.NewWithLabel("OK");
+            btnOk.OnClicked += (s, e) =>
+            {
+                SavePreferences();
+                _responseId = 1;
+                Close();
+            };
+            actionBox.Append(btnOk);
+
+            vbox.Append(actionBox);
+
+            SetChild(vbox);
         }
 
-        // ── TREE POPULATION ─────────────────────────────────────────────────
-
-        private void PopulateTree()
+        /// <summary>
+        /// Build a SignalListItemFactory that renders each PrefItem row.
+        /// Category rows display bold name only.
+        /// Bool property rows display name + CheckButton.
+        /// String/int property rows display name + editable Entry.
+        /// </summary>
+        private Gtk.SignalListItemFactory BuildFactory()
         {
-            _store.Clear();
+            var factory = Gtk.SignalListItemFactory.New();
+
+            factory.OnSetup += (f, args) =>
+            {
+                var listItem = (Gtk.ListItem)args.Object;
+
+                var box = Gtk.Box.New(Gtk.Orientation.Horizontal, 8);
+
+                // Name label (left side)
+                var lblName = Gtk.Label.New("");
+                lblName.SetHalign(Gtk.Align.Start);
+                lblName.SetHexpand(true);
+                lblName.SetEllipsize(Pango.EllipsizeMode.End);
+                lblName.SetWidthChars(40);
+                box.Append(lblName);
+
+                // Toggle for bool values
+                var chk = Gtk.CheckButton.New();
+                chk.SetVisible(false);
+                box.Append(chk);
+
+                // Entry for string/int values
+                var entry = Gtk.Entry.New();
+                entry.SetVisible(false);
+                entry.SetHexpand(true);
+                entry.SetWidthChars(30);
+                box.Append(entry);
+
+                listItem.SetChild(box);
+            };
+
+            factory.OnBind += (f, args) =>
+            {
+                var listItem = (Gtk.ListItem)args.Object;
+                uint pos = listItem.GetPosition();
+                if (pos >= _items.Count) return;
+
+                var item = _items[(int)pos];
+                var box = (Gtk.Box)listItem.GetChild();
+                if (box == null) return;
+
+                var lblName = (Gtk.Label)box.GetFirstChild();
+                var chk = (Gtk.CheckButton)lblName.GetNextSibling();
+                var entry = (Gtk.Entry)chk.GetNextSibling();
+
+                lblName.SetText(item.Name);
+
+                if (item.IsCategory)
+                {
+                    lblName.SetMarkup($"<b>{GLib.Functions.MarkupEscapeText(item.Name, -1)}</b>");
+                    chk.SetVisible(false);
+                    entry.SetVisible(false);
+                }
+                else if (item.IsBool)
+                {
+                    chk.SetVisible(true);
+                    entry.SetVisible(false);
+                    chk.SetActive(item.BoolValue);
+                    chk.OnToggled += (s, e) =>
+                    {
+                        item.BoolValue = chk.GetActive();
+                        propTable[item.PropKey] = item.BoolValue;
+                    };
+                }
+                else
+                {
+                    chk.SetVisible(false);
+                    entry.SetVisible(true);
+                    entry.SetText(item.StrValue);
+                    entry.OnActivate += (s, e) =>
+                    {
+                        CommitEntryValue(item, entry);
+                    };
+                }
+            };
+
+            factory.OnUnbind += (f, args) =>
+            {
+                var listItem = (Gtk.ListItem)args.Object;
+                uint pos = listItem.GetPosition();
+                if (pos >= _items.Count) return;
+
+                var item = _items[(int)pos];
+                if (item.IsCategory || item.IsBool) return;
+
+                var box = (Gtk.Box)listItem.GetChild();
+                if (box == null) return;
+                var lblName = (Gtk.Label)box.GetFirstChild();
+                var chk = (Gtk.CheckButton)lblName.GetNextSibling();
+                var entry = (Gtk.Entry)chk.GetNextSibling();
+                CommitEntryValue(item, entry);
+            };
+            return factory;
+        }
+        private void CommitEntryValue(PrefItem item, Gtk.Entry entry)
+        {
+            string text = entry.GetText();
+            item.StrValue = text;
+
+            if (item.IsInt)
+            {
+                if (int.TryParse(text, out int val))
+                    propTable[item.PropKey] = val;
+            }
+            else
+            {
+                propTable[item.PropKey] = text;
+            }
+        }
+
+        // ── STORE POPULATION ────────────────────────────────────────────────
+
+        private void PopulateStore()
+        {
+            _store.RemoveAll();
+            _items.Clear();
 
             var categories = new List<string>();
             for (int i = 0; i < propTable.Properties.Count; i++)
@@ -767,117 +909,82 @@ namespace subs2srs
                     categories.Add(cat);
             }
 
-            var catIters = new Dictionary<string, TreeIter>();
             foreach (string cat in categories)
             {
-                catIters[cat] = _store.AppendValues(
-                    cat, "", false, false, true, "", "", (int)Pango.Weight.Bold, false);
-            }
+                _items.Add(PrefItem.CreateCategory(cat));
+                _store.Append(Gtk.StringObject.New(""));
 
-            for (int i = 0; i < propTable.Properties.Count; i++)
-            {
-                var prop = propTable.Properties[i];
-                object val = propTable[prop.Name];
-                bool isBool = val is bool;
-                bool isInt = val is int;
-
-                _store.AppendValues(catIters[prop.Category],
-                    prop.Name,
-                    isBool ? "" : (val?.ToString() ?? ""),
-                    isBool ? (bool)val : false,
-                    isBool,
-                    false,
-                    prop.Description ?? "",
-                    prop.Name,
-                    (int)Pango.Weight.Normal,
-                    isInt);
-            }
-
-            _treeView.ExpandAll();
-        }
-
-        // ── TREEVIEW EVENT HANDLERS ─────────────────────────────────────────
-
-        private void OnSelectionChanged(object sender, EventArgs e)
-        {
-            if (_treeView.Selection.GetSelected(out var model, out var iter))
-                _descView.Buffer.Text = (string)model.GetValue(iter, COL_DESCRIPTION) ?? "";
-            else
-                _descView.Buffer.Text = "";
-        }
-
-        private void OnBoolToggled(object sender, ToggledArgs args)
-        {
-            if (!_store.GetIter(out var iter, new TreePath(args.Path))) return;
-            if ((bool)_store.GetValue(iter, COL_IS_CATEGORY)) return;
-
-            string key = (string)_store.GetValue(iter, COL_PROP_KEY);
-            bool newVal = !(bool)_store.GetValue(iter, COL_BOOL_VAL);
-            _store.SetValue(iter, COL_BOOL_VAL, newVal);
-            propTable[key] = newVal;
-        }
-
-        private void OnValueEdited(object sender, EditedArgs args)
-        {
-            if (!_store.GetIter(out var iter, new TreePath(args.Path))) return;
-            if ((bool)_store.GetValue(iter, COL_IS_CATEGORY)) return;
-
-            string key = (string)_store.GetValue(iter, COL_PROP_KEY);
-            bool isInt = (bool)_store.GetValue(iter, COL_IS_INT);
-
-            if (isInt)
-            {
-                if (int.TryParse(args.NewText, out int val))
+                for (int i = 0; i < propTable.Properties.Count; i++)
                 {
-                    propTable[key] = val;
-                    _store.SetValue(iter, COL_STR_VAL, val.ToString());
+                    var prop = propTable.Properties[i];
+                    if (prop.Category != cat) continue;
+
+                    object val = propTable[prop.Name];
+                    bool isBool = val is bool;
+                    bool isInt = val is int;
+
+                    _items.Add(PrefItem.CreateProperty(
+                        prop.Name,
+                        isBool ? "" : (val?.ToString() ?? ""),
+                        isBool && (bool)val,
+                        isBool, isInt,
+                        prop.Description ?? "",
+                        prop.Name));
+                    _store.Append(Gtk.StringObject.New(""));
                 }
             }
-            else
-            {
-                propTable[key] = args.NewText;
-                _store.SetValue(iter, COL_STR_VAL, args.NewText);
-            }
         }
 
-        // ── BUTTON HANDLERS ─────────────────────────────────────────────────
+        // ── SELECTION HANDLER ───────────────────────────────────────────────
 
-        private void OnResetAllClicked(object sender, EventArgs e)
+        private void OnSelectionChanged()
         {
-            if (!UtilsMsg.showConfirm("Are you sure that you want to reset all preferences to default values?"))
+            uint sel = _selection.GetSelected();
+            if (sel == Gtk.Constants.INVALID_LIST_POSITION || sel >= _items.Count)
+            {
+                _descLabel.SetText("");
+                return;
+            }
+            _descLabel.SetText(_items[(int)sel].Description ?? "");
+        }
+
+        // ── BUTTON HANDLERS ────────────────────────────────────────────────
+
+        private void OnResetAllClicked(Gtk.Button sender, EventArgs e)
+        {
+            if (!UtilsMsg.showConfirm(
+                "Are you sure that you want to reset all preferences to default values?"))
                 return;
 
             for (int i = 0; i < propTable.Properties.Count; i++)
                 propTable[propTable.Properties[i].Name] = propTable.Properties[i].DefaultValue;
 
-            PopulateTree();
+            PopulateStore();
         }
 
-        private void OnResetSelectedClicked(object sender, EventArgs e)
+        private void OnResetSelectedClicked(Gtk.Button sender, EventArgs e)
         {
-            if (!_treeView.Selection.GetSelected(out var model, out var iter)) return;
-            if ((bool)model.GetValue(iter, COL_IS_CATEGORY)) return;
+            uint sel = _selection.GetSelected();
+            if (sel == Gtk.Constants.INVALID_LIST_POSITION || sel >= _items.Count) return;
 
-            string key = (string)model.GetValue(iter, COL_PROP_KEY);
+            var item = _items[(int)sel];
+            if (item.IsCategory) return;
 
             for (int i = 0; i < propTable.Properties.Count; i++)
             {
-                if (propTable.Properties[i].Name == key)
+                if (propTable.Properties[i].Name == item.PropKey)
                 {
                     object def = propTable.Properties[i].DefaultValue;
-                    propTable[key] = def;
-
-                    if (def is bool bv)
-                        _store.SetValue(iter, COL_BOOL_VAL, bv);
-                    else
-                        _store.SetValue(iter, COL_STR_VAL, def?.ToString() ?? "");
-
+                    propTable[item.PropKey] = def;
+                    if (def is bool bv) item.BoolValue = bv;
+                    else item.StrValue = def?.ToString() ?? "";
+                    PopulateStore();
                     break;
                 }
             }
         }
 
-        private void OnTokenListClicked(object sender, EventArgs e)
+        private void OnTokenListClicked(Gtk.Button sender, EventArgs e)
         {
             try
             {
@@ -894,18 +1001,10 @@ namespace subs2srs
             }
         }
 
-        // ── RESPONSE / SAVE ─────────────────────────────────────────────────
-
-        private void OnResponse(object sender, ResponseArgs args)
-        {
-            if (args.ResponseId == ResponseType.Ok)
-                SavePreferences();
-        }
+        // ── SAVE PREFERENCES ───────────────────────────────────────────────
 
         private void SavePreferences()
         {
-            // Validate and write directly to ConstantSettings (delegates to Prefs)
-
             ConstantSettings.MainWindowWidth =
                 UtilsCommon.checkRange((int)propTable["Main Window Width"], 0, 9999, PrefDefaults.MainWindowWidth);
             ConstantSettings.MainWindowHeight =
@@ -947,7 +1046,6 @@ namespace subs2srs
                 UtilsCommon.checkRange((int)propTable["Context Nearby Line Range Trailing"], 0, 99999, PrefDefaults.DefaultContextTrailingRange);
 
             ConstantSettings.DefaultFileBrowserStartDir = getStr("File Browser Start Folder");
-
             ConstantSettings.DefaultOutputDir = getStr("Default Output Directory");
 
             ConstantSettings.DefaultRemoveStyledLinesSubs1 = (bool)propTable["Remove Subs1 Styled Lines"];
@@ -1038,25 +1136,17 @@ namespace subs2srs
             ConstantSettings.MaxParallelTasks =
                 UtilsCommon.checkRange((int)propTable["Max Parallel Tasks"], 0, 128, PrefDefaults.MaxParallelTasks);
 
-            // Single call writes entire Prefs object as JSON
             PrefIO.Write();
         }
 
         // ── HELPERS ─────────────────────────────────────────────────────────
 
-        /// <summary>
-        /// Get string value from propTable; return "" for blank/null.
-        /// Token conversion is no longer needed — JSON handles escaping natively.
-        /// </summary>
         private string getStr(string key)
         {
             string val = (string)propTable[key];
             return (val ?? "").Trim();
         }
 
-        /// <summary>
-        /// Get string value; if blank, fall back to the PropertySpec default.
-        /// </summary>
         private string getStrRequired(string key)
         {
             string val = getStr(key);
@@ -1073,5 +1163,36 @@ namespace subs2srs
         {
             return InfoEncoding.isValidShortEncoding(encoding) ? encoding : def;
         }
+    }
+
+    // ── PrefItem GObject wrapper ────────────────────────────────────────────
+
+    /// <summary>
+    /// GObject wrapper for a single preferences list row.
+    /// Required because Gio.ListStore can only store GObject instances.
+    /// </summary>
+    // ── PrefItem: plain C# data class ────────────────────────────────────────
+
+    public class PrefItem
+    {
+        public string Name { get; set; } = "";
+        public string StrValue { get; set; } = "";
+        public bool BoolValue { get; set; }
+        public bool IsBool { get; set; }
+        public bool IsInt { get; set; }
+        public bool IsCategory { get; set; }
+        public string Description { get; set; } = "";
+        public string PropKey { get; set; } = "";
+
+        public static PrefItem CreateCategory(string name) =>
+            new PrefItem { Name = name, IsCategory = true };
+
+        public static PrefItem CreateProperty(string name, string strValue,
+            bool boolValue, bool isBool, bool isInt, string description, string propKey) =>
+            new PrefItem
+            {
+                Name = name, StrValue = strValue, BoolValue = boolValue,
+                IsBool = isBool, IsInt = isInt, Description = description, PropKey = propKey
+            };
     }
 }

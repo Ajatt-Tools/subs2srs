@@ -21,77 +21,107 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Gtk;
-using Action = System.Action;
 
 namespace subs2srs
 {
-    public class MainWindow : Window
+    /// <summary>
+    /// Main application window — GTK4/Gir.Core port.
+    ///
+    /// Key changes from GTK3:
+    /// - Window(WindowType.Toplevel) → Gtk.ApplicationWindow + SetApplication()
+    /// - Notebook tabs unchanged (GTK4 keeps Gtk.Notebook)
+    /// - ComboBoxText → Gtk.DropDown + Gtk.StringList
+    /// - RadioButton → Gtk.CheckButton + SetGroup()
+    /// - TreeView/ListStore (shift rules) → Gtk.ListView + Gio.ListStore + ShiftRuleItem
+    /// - FileChooserDialog → Gtk.FileDialog (async)
+    /// - PackStart/PackEnd → Append()
+    /// - BorderWidth → margins
+    /// - Application.Invoke / GLib.Idle.Add → GLib.Functions.IdleAdd
+    /// - GLib.Timeout.Add → GLib.Functions.TimeoutAdd
+    /// - AboutDialog → simple Gtk.Window (GTK4 Adw.AboutWindow requires libadwaita)
+    /// </summary>
+    public class MainWindow : Gtk.ApplicationWindow
     {
-        // Main tab
-        private Entry _txtSubs1;
-        private Entry _txtSubs2;
-        private Entry _txtVideo;
-        private Entry _txtOutputDir;
-        private Entry _txtDeckName;
-        private SpinButton _spinEpisodeStart;
-        private ComboBoxText _comboEncodingSubs1;
-        private ComboBoxText _comboEncodingSubs2;
-        private ComboBoxText _comboAudioStream;
-        private RadioButton _radioTimingSubs1;
-        private RadioButton _radioTimingSubs2;
-        private CheckButton _chkTimeShift;
-        private SpinButton _spinTimeShiftSubs1;
-        private TreeView _tvShiftRules;
-        private ListStore _shiftRulesStore;
-        private SpinButton _spinTimeShiftSubs2;
-        private CheckButton _chkSpan;
-        private Entry _txtSpanStart;
-        private Entry _txtSpanEnd;
+        // ── Main tab fields ─────────────────────────────────────────────────
+        private Gtk.Entry _txtSubs1;
+        private Gtk.Entry _txtSubs2;
+        private Gtk.Entry _txtVideo;
+        private Gtk.Entry _txtOutputDir;
+        private Gtk.Entry _txtDeckName;
+        private Gtk.SpinButton _spinEpisodeStart;
+        private Gtk.DropDown _comboEncodingSubs1;
+        private Gtk.StringList _encModel1;
+        private Gtk.DropDown _comboEncodingSubs2;
+        private Gtk.StringList _encModel2;
+        private Gtk.DropDown _comboAudioStream;
+        private Gtk.StringList _audioStreamModel;
+        private Gtk.CheckButton _radioTimingSubs1;
+        private Gtk.CheckButton _radioTimingSubs2;
+        private Gtk.CheckButton _chkTimeShift;
+        private Gtk.SpinButton _spinTimeShiftSubs1;
+        private Gtk.SpinButton _spinTimeShiftSubs2;
+        private Gtk.CheckButton _chkSpan;
+        private Gtk.Entry _txtSpanStart;
+        private Gtk.Entry _txtSpanEnd;
 
-        // Audio tab
-        private CheckButton _chkGenerateAudio;
-        private RadioButton _radioAudioFromVideo;
-        private RadioButton _radioAudioExisting;
-        private Entry _txtAudioFile;
-        private ComboBoxText _comboAudioBitrate;
-        private CheckButton _chkAudioPad;
-        private SpinButton _spinAudioPadStart;
-        private SpinButton _spinAudioPadEnd;
-        private CheckButton _chkNormalize;
+        // Shift rules (replaces TreeView/ListStore)
+        private Gio.ListStore _shiftRulesStore;
+        private Gtk.ListView _shiftRulesListView;
+        private Gtk.SingleSelection _shiftRulesSel;
+        private List<ShiftRuleItem> _shiftItems = new();
 
-        // Snapshot tab
-        private CheckButton _chkGenerateSnapshots;
-        private SpinButton _spinSnapshotWidth;
-        private SpinButton _spinSnapshotHeight;
-        private SpinButton _spinSnapshotCropBottom;
-        private SpinButton _spinSnapshotQuality;
+        // ── Audio tab fields ────────────────────────────────────────────────
+        private Gtk.CheckButton _chkGenerateAudio;
+        private Gtk.CheckButton _radioAudioFromVideo;
+        private Gtk.CheckButton _radioAudioExisting;
+        private Gtk.Entry _txtAudioFile;
+        private Gtk.DropDown _comboAudioBitrate;
+        private Gtk.StringList _audioBitrateModel;
+        private Gtk.CheckButton _chkAudioPad;
+        private Gtk.SpinButton _spinAudioPadStart;
+        private Gtk.SpinButton _spinAudioPadEnd;
+        private Gtk.CheckButton _chkNormalize;
+        private Gtk.Button _btnAudioBrowse; // stored for sensitivity toggle
 
-        // Video tab
-        private CheckButton _chkGenerateVideo;
-        private SpinButton _spinVideoWidth;
-        private SpinButton _spinVideoHeight;
-        private SpinButton _spinVideoCropBottom;
-        private SpinButton _spinVideoBitrateVideo;
-        private ComboBoxText _comboVideoBitrateAudio;
-        private CheckButton _chkVideoPad;
-        private SpinButton _spinVideoPadStart;
-        private SpinButton _spinVideoPadEnd;
-        private CheckButton _chkIPod;
+        // ── Snapshot tab fields ─────────────────────────────────────────────
+        private Gtk.CheckButton _chkGenerateSnapshots;
+        private Gtk.SpinButton _spinSnapshotWidth;
+        private Gtk.SpinButton _spinSnapshotHeight;
+        private Gtk.SpinButton _spinSnapshotCropBottom;
+        private Gtk.SpinButton _spinSnapshotQuality;
 
-        private Button _btnGo;
-        private Button _btnCancel;
-        private ProgressBar _progressBar;
+        // ── Video tab fields ────────────────────────────────────────────────
+        private Gtk.CheckButton _chkGenerateVideo;
+        private Gtk.SpinButton _spinVideoWidth;
+        private Gtk.SpinButton _spinVideoHeight;
+        private Gtk.SpinButton _spinVideoCropBottom;
+        private Gtk.SpinButton _spinVideoBitrateVideo;
+        private Gtk.DropDown _comboVideoBitrateAudio;
+        private Gtk.StringList _videoBitrateModel;
+        private Gtk.CheckButton _chkVideoPad;
+        private Gtk.SpinButton _spinVideoPadStart;
+        private Gtk.SpinButton _spinVideoPadEnd;
+        private Gtk.CheckButton _chkIPod;
+
+        // ── Bottom bar ──────────────────────────────────────────────────────
+        private Gtk.Button _btnGo;
+        private Gtk.Button _btnCancel;
+        private Gtk.ProgressBar _progressBar;
         private GtkProgressReporter? _reporter;
         private List<InfoStream> _audioStreams = new List<InfoStream>();
-        private DialogPreview _preview;
+        private DialogPreview? _preview;
 
-        public MainWindow() : base(WindowType.Toplevel)
+        // Bitrate options shared by audio and video tabs
+        private static readonly string[] BitrateOptions =
+            { "64", "96", "112", "128", "160", "192", "256", "320" };
+
+        public MainWindow(Gtk.Application app) : base()
         {
-            Title = "subs2srs";
+            SetApplication(app);
+            SetTitle("subs2srs");
             SetDefaultSize(700, 650);
-            WindowPosition = WindowPosition.Center;
-            DeleteEvent += (o, args) =>
+
+            OnCloseRequest += (sender, args) =>
             {
                 if (_preview != null)
                 {
@@ -99,566 +129,656 @@ namespace subs2srs
                     _preview = null;
                 }
                 Logger.Instance.flush();
-                Application.Quit();
+                return false; // allow close → app quits when last window closes
             };
 
             BuildUI();
             LoadSettings();
         }
 
+        // ═══════════════════════════════════════════════════════════════════
+        //  BUILD UI
+        // ═══════════════════════════════════════════════════════════════════
+
         private void BuildUI()
         {
-            var mainVBox = new Box(Orientation.Vertical, 5) { BorderWidth = 8 };
+            var mainVBox = Gtk.Box.New(Gtk.Orientation.Vertical, 5);
+            mainVBox.SetMarginTop(8);
+            mainVBox.SetMarginBottom(8);
+            mainVBox.SetMarginStart(8);
+            mainVBox.SetMarginEnd(8);
 
-            var notebook = new Notebook();
-            notebook.AppendPage(BuildMainTab(), new Label("Main"));
-            notebook.AppendPage(BuildAudioTab(), new Label("Audio"));
-            notebook.AppendPage(BuildSnapshotTab(), new Label("Snapshots"));
-            notebook.AppendPage(BuildVideoTab(), new Label("Video Clips"));
-            notebook.AppendPage(BuildToolsTab(), new Label("Tools"));
-            mainVBox.PackStart(notebook, true, true, 0);
+            var notebook = Gtk.Notebook.New();
+            notebook.AppendPage(BuildMainTab(), Gtk.Label.New("Main"));
+            notebook.AppendPage(BuildAudioTab(), Gtk.Label.New("Audio"));
+            notebook.AppendPage(BuildSnapshotTab(), Gtk.Label.New("Snapshots"));
+            notebook.AppendPage(BuildVideoTab(), Gtk.Label.New("Video Clips"));
+            notebook.AppendPage(BuildToolsTab(), Gtk.Label.New("Tools"));
+            notebook.SetVexpand(true);
+            mainVBox.Append(notebook);
 
-            _progressBar = new ProgressBar { Fraction = 0.0, ShowText = true, Text = "Ready" };
-            mainVBox.PackStart(_progressBar, false, false, 0);
+            _progressBar = Gtk.ProgressBar.New();
+            _progressBar.SetFraction(0.0);
+            _progressBar.SetShowText(true);
+            _progressBar.SetText("Ready");
+            mainVBox.Append(_progressBar);
 
-            var bottomHBox = new Box(Orientation.Horizontal, 5);
-            var btnPreview = new Button("Preview...");
-            btnPreview.Clicked += (s, e) =>
+            // Bottom buttons
+            var bottomHBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 5);
+
+            var btnPref = Gtk.Button.NewWithLabel("Preferences...");
+            btnPref.OnClicked += (s, e) =>
+            {
+                var dlg = new DialogPref(this);
+                dlg.Run();
+                dlg.Close();
+                PrefIO.read();
+                SetDefaultSize(ConstantSettings.MainWindowWidth,
+                    ConstantSettings.MainWindowHeight);
+            };
+            bottomHBox.Append(btnPref);
+
+            var btnSaveProject = Gtk.Button.NewWithLabel("Save Project");
+            btnSaveProject.OnClicked += OnSaveProject;
+            bottomHBox.Append(btnSaveProject);
+
+            var btnLoadProject = Gtk.Button.NewWithLabel("Load Project");
+            btnLoadProject.OnClicked += OnLoadProject;
+            bottomHBox.Append(btnLoadProject);
+
+            var btnPreview = Gtk.Button.NewWithLabel("Preview...");
+            btnPreview.OnClicked += (s, e) =>
             {
                 SaveSettings();
                 if (_preview == null || _preview.IsDestroyed)
                 {
                     _preview = new DialogPreview();
                     _preview.RefreshSettings += (s2, e2) => SaveSettings();
-                    _preview.GoRequested += (s2, e2) => OnGoClicked(null, null);
+                    _preview.GoRequested += (s2, e2) => OnGoClicked(null, EventArgs.Empty);
                 }
                 _preview.StartPreview();
             };
+            bottomHBox.Append(btnPreview);
 
-            var btnAbout = new Button("About");
-            btnAbout.Clicked += (s, e) =>
+            var btnAbout = Gtk.Button.NewWithLabel("About");
+            btnAbout.OnClicked += OnAboutClicked;
+            bottomHBox.Append(btnAbout);
+
+            // Spacer to push Go/Cancel to the right
+            var spacer = Gtk.Box.New(Gtk.Orientation.Horizontal, 0);
+            spacer.SetHexpand(true);
+            bottomHBox.Append(spacer);
+
+            _btnCancel = Gtk.Button.NewWithLabel("Cancel");
+            _btnCancel.SetSizeRequest(100, -1);
+            _btnCancel.SetSensitive(false);
+            _btnCancel.OnClicked += (s, e) =>
             {
-                var dlg = new AboutDialog
-                {
-                    ProgramName = UtilsAssembly.Title,
-                    Version = UtilsAssembly.Version,
-                    Comments = UtilsAssembly.Product,
-                    Authors = new[] { "Original author: Christopher Brochtrup" },
-                    Website = "https://gitlab.com/fkzys/subs2srs-gtk3",
-                    WebsiteLabel = "Source Code (GTK3 port)",
-                    Copyright = UtilsAssembly.Copyright,
-                    License = "GNU General Public License v3",
-                    TransientFor = this
-                };
-                dlg.Run();
-                dlg.Destroy();
+                if (_reporter != null) _reporter.Cancel = true;
             };
+            bottomHBox.Append(_btnCancel);
 
-            var btnPref = new Button("Preferences...");
-            btnPref.Clicked += (s, e) =>
-            {
-                var dlg = new DialogPref(this);
-                dlg.Run();
-                dlg.Destroy();
-                PrefIO.read();
-                SetDefaultSize(ConstantSettings.MainWindowWidth, ConstantSettings.MainWindowHeight);
-            };
-            bottomHBox.PackStart(btnPref, false, false, 0);
+            _btnGo = Gtk.Button.NewWithLabel("Go!");
+            _btnGo.SetSizeRequest(100, -1);
+            _btnGo.OnClicked += OnGoClicked;
+            bottomHBox.Append(_btnGo);
 
-            var btnSaveProject = new Button("Save Project");
-            btnSaveProject.Clicked += OnSaveProject;
-            bottomHBox.PackStart(btnSaveProject, false, false, 0);
-
-            var btnLoadProject = new Button("Load Project");
-            btnLoadProject.Clicked += OnLoadProject;
-            bottomHBox.PackStart(btnLoadProject, false, false, 0);
-
-            _btnGo = new Button("Go!") { WidthRequest = 100 };
-            _btnGo.Clicked += OnGoClicked;
-
-            _btnCancel = new Button("Cancel") { WidthRequest = 100, Sensitive = false };
-            _btnCancel.Clicked += (s, e) => { if (_reporter != null) _reporter.Cancel = true; };
-
-            bottomHBox.PackStart(btnPreview, false, false, 0);
-            bottomHBox.PackStart(btnAbout, false, false, 0);
-            bottomHBox.PackEnd(_btnGo, false, false, 0);
-            bottomHBox.PackEnd(_btnCancel, false, false, 0);
-
-            mainVBox.PackStart(bottomHBox, false, false, 0);
-            Add(mainVBox);
+            mainVBox.Append(bottomHBox);
+            SetChild(mainVBox);
         }
 
-        // ── TOOLS TAB ─────────────────────────────────────────────────────────
+        // ── TOOLS TAB ───────────────────────────────────────────────────────
 
-        private Widget BuildToolsTab()
+        private Gtk.Widget BuildToolsTab()
         {
-            var vbox = new Box(Orientation.Vertical, 12) { BorderWidth = 10 };
+            var vbox = Gtk.Box.New(Gtk.Orientation.Vertical, 12);
+            vbox.SetMarginTop(10);
+            vbox.SetMarginBottom(10);
+            vbox.SetMarginStart(10);
+            vbox.SetMarginEnd(10);
 
             // Extract Audio
-            var extractFrame = new Frame("Extract Audio from Media");
-            var extractBox = new Box(Orientation.Vertical, 6) { BorderWidth = 8 };
-            extractBox.PackStart(new Label("Extract audio clips from media files using subtitle timings.")
-                { Halign = Align.Start }, false, false, 0);
-            var btnExtractAudio = new Button("Extract Audio...") { Halign = Align.Start };
-            btnExtractAudio.Clicked += (s, e) =>
+            var extractFrame = Gtk.Frame.New("Extract Audio from Media");
+            var extractBox = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
+            extractBox.SetMarginTop(8); extractBox.SetMarginBottom(8);
+            extractBox.SetMarginStart(8); extractBox.SetMarginEnd(8);
+            var lblExtract = Gtk.Label.New(
+                "Extract audio clips from media files using subtitle timings.");
+            lblExtract.SetHalign(Gtk.Align.Start);
+            extractBox.Append(lblExtract);
+            var btnExtractAudio = Gtk.Button.NewWithLabel("Extract Audio...");
+            btnExtractAudio.SetHalign(Gtk.Align.Start);
+            btnExtractAudio.OnClicked += (s, e) =>
             {
                 SaveSettings();
                 var dlg = new DialogExtractAudioFromMedia(this)
                 {
-                    MediaFilePattern = _txtVideo.Text,
-                    OutputDir = _txtOutputDir.Text,
-                    DeckName = _txtDeckName.Text,
+                    MediaFilePattern = _txtVideo.GetText(),
+                    OutputDir = _txtOutputDir.GetText(),
+                    DeckName = _txtDeckName.GetText(),
                     EpisodeStartNumber = (int)_spinEpisodeStart.Value,
                     Bitrate = Settings.Instance.AudioClips.Bitrate
                 };
                 dlg.Run();
-                dlg.Destroy();
+                dlg.Close();
             };
-            extractBox.PackStart(btnExtractAudio, false, false, 0);
-            extractFrame.Add(extractBox);
-            vbox.PackStart(extractFrame, false, false, 0);
+            extractBox.Append(btnExtractAudio);
+            extractFrame.SetChild(extractBox);
+            vbox.Append(extractFrame);
 
             // Dueling Subtitles
-            var duelingFrame = new Frame("Dueling Subtitles");
-            var duelingBox = new Box(Orientation.Vertical, 6) { BorderWidth = 8 };
-            duelingBox.PackStart(new Label("Create dual-language subtitle files.")
-                { Halign = Align.Start }, false, false, 0);
-            var btnDueling = new Button("Dueling Subs...") { Halign = Align.Start };
-            btnDueling.Clicked += (s, e) =>
+            var duelingFrame = Gtk.Frame.New("Dueling Subtitles");
+            var duelingBox = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
+            duelingBox.SetMarginTop(8); duelingBox.SetMarginBottom(8);
+            duelingBox.SetMarginStart(8); duelingBox.SetMarginEnd(8);
+            var lblDueling = Gtk.Label.New("Create dual-language subtitle files.");
+            lblDueling.SetHalign(Gtk.Align.Start);
+            duelingBox.Append(lblDueling);
+            var btnDueling = Gtk.Button.NewWithLabel("Dueling Subs...");
+            btnDueling.SetHalign(Gtk.Align.Start);
+            btnDueling.OnClicked += (s, e) =>
             {
                 SaveSettings();
                 var dlg = new DialogDuelingSubtitles(this);
                 dlg.Run();
-                dlg.Destroy();
+                dlg.Close();
             };
-            duelingBox.PackStart(btnDueling, false, false, 0);
-            duelingFrame.Add(duelingBox);
-            vbox.PackStart(duelingFrame, false, false, 0);
+            duelingBox.Append(btnDueling);
+            duelingFrame.SetChild(duelingBox);
+            vbox.Append(duelingFrame);
 
             // Advanced Subtitle Options
-            var advFrame = new Frame("Advanced Subtitle Options");
-            var advBox = new Box(Orientation.Vertical, 6) { BorderWidth = 8 };
-            advBox.PackStart(new Label("Configure filtering, joining, context lines and other subtitle options.")
-                { Halign = Align.Start }, false, false, 0);
-            var btnAdvanced = new Button("Advanced...") { Halign = Align.Start };
-            btnAdvanced.Clicked += (s, e) =>
+            var advFrame = Gtk.Frame.New("Advanced Subtitle Options");
+            var advBox = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
+            advBox.SetMarginTop(8); advBox.SetMarginBottom(8);
+            advBox.SetMarginStart(8); advBox.SetMarginEnd(8);
+            var lblAdv = Gtk.Label.New(
+                "Configure filtering, joining, context lines and other subtitle options.");
+            lblAdv.SetHalign(Gtk.Align.Start);
+            advBox.Append(lblAdv);
+            var btnAdvanced = Gtk.Button.NewWithLabel("Advanced...");
+            btnAdvanced.SetHalign(Gtk.Align.Start);
+            btnAdvanced.OnClicked += (s, e) =>
             {
                 SaveSettings();
                 var dlg = new DialogAdvancedSubtitleOptions(this)
                 {
-                    Subs1FilePattern = _txtSubs1.Text,
-                    Subs2FilePattern = _txtSubs2.Text,
-                    Subs1Encoding = _comboEncodingSubs1.ActiveText ?? "",
-                    Subs2Encoding = _comboEncodingSubs2.ActiveText ?? ""
+                    Subs1FilePattern = _txtSubs1.GetText(),
+                    Subs2FilePattern = _txtSubs2.GetText(),
+                    Subs1Encoding = GetSelectedEncodingLong(_comboEncodingSubs1, _encModel1),
+                    Subs2Encoding = GetSelectedEncodingLong(_comboEncodingSubs2, _encModel2)
                 };
-                if (dlg.Run() == (int)ResponseType.Ok)
+                if (dlg.Run() == 1) // OK
                     dlg.SaveToSettings();
-                dlg.Destroy();
+                dlg.Close();
             };
-            advBox.PackStart(btnAdvanced, false, false, 0);
-            advFrame.Add(advBox);
-            vbox.PackStart(advFrame, false, false, 0);
+            advBox.Append(btnAdvanced);
+            advFrame.SetChild(advBox);
+            vbox.Append(advFrame);
 
             // MKV Extract
-            var mkvFrame = new Frame("MKV Extract");
-            var mkvBox = new Box(Orientation.Vertical, 6) { BorderWidth = 8 };
-            mkvBox.PackStart(new Label("Extract subtitle and audio tracks from MKV files.")
-                { Halign = Align.Start }, false, false, 0);
-            var btnMkvExtract = new Button("MKV Extract...") { Halign = Align.Start };
-            btnMkvExtract.Clicked += (s, e) =>
+            var mkvFrame = Gtk.Frame.New("MKV Extract");
+            var mkvBox = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
+            mkvBox.SetMarginTop(8); mkvBox.SetMarginBottom(8);
+            mkvBox.SetMarginStart(8); mkvBox.SetMarginEnd(8);
+            var lblMkv = Gtk.Label.New(
+                "Extract subtitle and audio tracks from MKV files.");
+            lblMkv.SetHalign(Gtk.Align.Start);
+            mkvBox.Append(lblMkv);
+            var btnMkvExtract = Gtk.Button.NewWithLabel("MKV Extract...");
+            btnMkvExtract.SetHalign(Gtk.Align.Start);
+            btnMkvExtract.OnClicked += (s, e) =>
             {
                 var dlg = new DialogMkvExtract(this);
                 dlg.Run();
-                dlg.Destroy();
+                dlg.Close();
             };
-            mkvBox.PackStart(btnMkvExtract, false, false, 0);
-            mkvFrame.Add(mkvBox);
-            vbox.PackStart(mkvFrame, false, false, 0);
+            mkvBox.Append(btnMkvExtract);
+            mkvFrame.SetChild(mkvBox);
+            vbox.Append(mkvFrame);
 
             return vbox;
         }
 
-        // ── MAIN TAB ─────────────────────────────────────────────────────────
+        // ── MAIN TAB ────────────────────────────────────────────────────────
 
-        private Widget BuildMainTab()
+        private Gtk.Widget BuildMainTab()
         {
-            var vbox = new Box(Orientation.Vertical, 8) { BorderWidth = 10 };
+            var vbox = Gtk.Box.New(Gtk.Orientation.Vertical, 8);
+            vbox.SetMarginTop(10); vbox.SetMarginBottom(10);
+            vbox.SetMarginStart(10); vbox.SetMarginEnd(10);
 
-            // Files grid
-            var grid = new Grid { RowSpacing = 6, ColumnSpacing = 6 };
+            var grid = Gtk.Grid.New();
+            grid.SetRowSpacing(6);
+            grid.SetColumnSpacing(6);
             int row = 0;
 
             // Subs1
-            grid.Attach(new Label("Subtitle 1:") { Halign = Align.End }, 0, row, 1, 1);
-            _txtSubs1 = new Entry { Hexpand = true };
-            _txtSubs1.Changed += OnSubs1Changed;
+            AttachLabel(grid, "Subtitle 1:", 0, row);
+            _txtSubs1 = Gtk.Entry.New();
+            _txtSubs1.SetHexpand(true);
             grid.Attach(_txtSubs1, 1, row, 1, 1);
-            var btnSubs1 = new Button("Browse...");
-            btnSubs1.Clicked += (s, e) => { var f = SelectFile("Select Subtitle 1"); if (f != "") _txtSubs1.Text = f; };
+            var btnSubs1 = Gtk.Button.NewWithLabel("Browse...");
+            btnSubs1.OnClicked += (s, e) =>
+                SelectFileAsync("Select Subtitle 1", f => _txtSubs1.SetText(f));
             grid.Attach(btnSubs1, 2, row, 1, 1);
             row++;
 
             // Encoding Subs1
-            grid.Attach(new Label("Subs1 Encoding:") { Halign = Align.End }, 0, row, 1, 1);
-            _comboEncodingSubs1 = BuildEncodingCombo();
+            AttachLabel(grid, "Subs1 Encoding:", 0, row);
+            (_comboEncodingSubs1, _encModel1) = BuildEncodingDropDown();
             grid.Attach(_comboEncodingSubs1, 1, row, 2, 1);
             row++;
 
             // Subs2
-            grid.Attach(new Label("Subtitle 2:") { Halign = Align.End }, 0, row, 1, 1);
-            _txtSubs2 = new Entry { Hexpand = true };
+            AttachLabel(grid, "Subtitle 2:", 0, row);
+            _txtSubs2 = Gtk.Entry.New();
+            _txtSubs2.SetHexpand(true);
             grid.Attach(_txtSubs2, 1, row, 1, 1);
-            var btnSubs2 = new Button("Browse...");
-            btnSubs2.Clicked += (s, e) => { var f = SelectFile("Select Subtitle 2"); if (f != "") _txtSubs2.Text = f; };
+            var btnSubs2 = Gtk.Button.NewWithLabel("Browse...");
+            btnSubs2.OnClicked += (s, e) =>
+                SelectFileAsync("Select Subtitle 2", f => _txtSubs2.SetText(f));
             grid.Attach(btnSubs2, 2, row, 1, 1);
             row++;
 
             // Encoding Subs2
-            grid.Attach(new Label("Subs2 Encoding:") { Halign = Align.End }, 0, row, 1, 1);
-            _comboEncodingSubs2 = BuildEncodingCombo();
+            AttachLabel(grid, "Subs2 Encoding:", 0, row);
+            (_comboEncodingSubs2, _encModel2) = BuildEncodingDropDown();
             grid.Attach(_comboEncodingSubs2, 1, row, 2, 1);
             row++;
 
             // Video
-            grid.Attach(new Label("Video:") { Halign = Align.End }, 0, row, 1, 1);
-            _txtVideo = new Entry { Hexpand = true };
-            _txtVideo.Changed += OnVideoChanged;
+            AttachLabel(grid, "Video:", 0, row);
+            _txtVideo = Gtk.Entry.New();
+            _txtVideo.SetHexpand(true);
+            _txtVideo.OnChanged += OnVideoChanged;
             grid.Attach(_txtVideo, 1, row, 1, 1);
-            var btnVideo = new Button("Browse...");
-            btnVideo.Clicked += (s, e) => { var f = SelectFile("Select Video"); if (f != "") _txtVideo.Text = f; };
+            var btnVideo = Gtk.Button.NewWithLabel("Browse...");
+            btnVideo.OnClicked += (s, e) =>
+                SelectFileAsync("Select Video", f => _txtVideo.SetText(f));
             grid.Attach(btnVideo, 2, row, 1, 1);
             row++;
 
-            // Audio stream
-            grid.Attach(new Label("Audio Stream:") { Halign = Align.End }, 0, row, 1, 1);
-            _comboAudioStream = new ComboBoxText();
-            _comboAudioStream.AppendText("0 - (Default)");
-            _comboAudioStream.Active = 0;
+            // Audio Stream
+            AttachLabel(grid, "Audio Stream:", 0, row);
+            _audioStreamModel = Gtk.StringList.New(new[] { "0 - (Default)" });
+            _comboAudioStream = Gtk.DropDown.New(_audioStreamModel, null);
+            _comboAudioStream.SetSelected(0);
             grid.Attach(_comboAudioStream, 1, row, 2, 1);
             row++;
 
             // Output dir
-            grid.Attach(new Label("Output Dir:") { Halign = Align.End }, 0, row, 1, 1);
-            _txtOutputDir = new Entry { Hexpand = true };
+            AttachLabel(grid, "Output Dir:", 0, row);
+            _txtOutputDir = Gtk.Entry.New();
+            _txtOutputDir.SetHexpand(true);
             grid.Attach(_txtOutputDir, 1, row, 1, 1);
-            var btnOut = new Button("Browse...");
-            btnOut.Clicked += (s, e) => { var f = SelectFolder("Select Output Directory"); if (f != "") _txtOutputDir.Text = f; };
+            var btnOut = Gtk.Button.NewWithLabel("Browse...");
+            btnOut.OnClicked += (s, e) =>
+                SelectFolderAsync("Select Output Directory",
+                    f => _txtOutputDir.SetText(f));
             grid.Attach(btnOut, 2, row, 1, 1);
             row++;
 
             // Deck name
-            grid.Attach(new Label("Deck Name:") { Halign = Align.End }, 0, row, 1, 1);
-            _txtDeckName = new Entry { Hexpand = true };
+            AttachLabel(grid, "Deck Name:", 0, row);
+            _txtDeckName = Gtk.Entry.New();
+            _txtDeckName.SetHexpand(true);
             grid.Attach(_txtDeckName, 1, row, 2, 1);
             row++;
 
             // Episode start
-            grid.Attach(new Label("Episode Start #:") { Halign = Align.End }, 0, row, 1, 1);
-            _spinEpisodeStart = new SpinButton(1, 9999, 1) { Value = 1 };
+            AttachLabel(grid, "Episode Start #:", 0, row);
+            _spinEpisodeStart = Gtk.SpinButton.NewWithRange(1, 9999, 1);
+            _spinEpisodeStart.Value = 1;
             grid.Attach(_spinEpisodeStart, 1, row, 1, 1);
             row++;
 
-            vbox.PackStart(grid, false, false, 0);
-            vbox.PackStart(new Separator(Orientation.Horizontal), false, false, 4);
+            vbox.Append(grid);
+            vbox.Append(Gtk.Separator.New(Gtk.Orientation.Horizontal));
 
-            // Timing
-            var timingFrame = new Frame("Use Timings From");
-            var timingBox = new Box(Orientation.Horizontal, 10) { BorderWidth = 6 };
-            _radioTimingSubs1 = new RadioButton("Subs 1");
-            _radioTimingSubs2 = new RadioButton(_radioTimingSubs1, "Subs 2");
-            timingBox.PackStart(_radioTimingSubs1, false, false, 0);
-            timingBox.PackStart(_radioTimingSubs2, false, false, 0);
-            timingFrame.Add(timingBox);
-            vbox.PackStart(timingFrame, false, false, 0);
+            // Timing — radio group via SetGroup
+            var timingFrame = Gtk.Frame.New("Use Timings From");
+            var timingBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 10);
+            timingBox.SetMarginTop(6); timingBox.SetMarginBottom(6);
+            timingBox.SetMarginStart(6); timingBox.SetMarginEnd(6);
+            _radioTimingSubs1 = Gtk.CheckButton.NewWithLabel("Subs 1");
+            _radioTimingSubs2 = Gtk.CheckButton.NewWithLabel("Subs 2");
+            _radioTimingSubs2.SetGroup(_radioTimingSubs1);
+            _radioTimingSubs1.SetActive(true);
+            timingBox.Append(_radioTimingSubs1);
+            timingBox.Append(_radioTimingSubs2);
+            timingFrame.SetChild(timingBox);
+            vbox.Append(timingFrame);
 
             // Time shift
-            _chkTimeShift = new CheckButton("Time Shift");
-            var timeShiftBox = new Box(Orientation.Vertical, 6);
+            _chkTimeShift = Gtk.CheckButton.NewWithLabel("Time Shift");
+            var timeShiftBox = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
 
-            var globalShiftRow = new Box(Orientation.Horizontal, 6);
-            globalShiftRow.PackStart(_chkTimeShift, false, false, 0);
-            globalShiftRow.PackStart(new Label("Subs1 (ms):"), false, false, 0);
-            _spinTimeShiftSubs1 = new SpinButton(-99999, 99999, 1) { Value = 0 };
-            globalShiftRow.PackStart(_spinTimeShiftSubs1, false, false, 0);
-            globalShiftRow.PackStart(new Label("Subs2 (ms):"), false, false, 0);
-            _spinTimeShiftSubs2 = new SpinButton(-99999, 99999, 1) { Value = 0 };
-            globalShiftRow.PackStart(_spinTimeShiftSubs2, false, false, 0);
-            timeShiftBox.PackStart(globalShiftRow, false, false, 0);
+            var globalShiftRow = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
+            globalShiftRow.Append(_chkTimeShift);
+            globalShiftRow.Append(Gtk.Label.New("Subs1 (ms):"));
+            _spinTimeShiftSubs1 = Gtk.SpinButton.NewWithRange(-99999, 99999, 1);
+            _spinTimeShiftSubs1.Value = 0;
+            globalShiftRow.Append(_spinTimeShiftSubs1);
+            globalShiftRow.Append(Gtk.Label.New("Subs2 (ms):"));
+            _spinTimeShiftSubs2 = Gtk.SpinButton.NewWithRange(-99999, 99999, 1);
+            _spinTimeShiftSubs2.Value = 0;
+            globalShiftRow.Append(_spinTimeShiftSubs2);
+            timeShiftBox.Append(globalShiftRow);
 
-            // Per-episode cascading shift rules
-            var rulesFrame = new Frame("Per-Episode Shift Rules (cascading)");
-            var rulesVBox = new Box(Orientation.Vertical, 4) { BorderWidth = 4 };
+            // Per-episode shift rules — ListView + Gio.ListStore
+            var rulesFrame = Gtk.Frame.New("Per-Episode Shift Rules (cascading)");
+            var rulesVBox = Gtk.Box.New(Gtk.Orientation.Vertical, 4);
+            rulesVBox.SetMarginTop(4); rulesVBox.SetMarginBottom(4);
+            rulesVBox.SetMarginStart(4); rulesVBox.SetMarginEnd(4);
 
-            // Store columns: FromEpisode (int), Subs1Shift (int), Subs2Shift (int)
-            _shiftRulesStore = new ListStore(typeof(int), typeof(int), typeof(int));
-            _tvShiftRules = new TreeView(_shiftRulesStore) { HeadersVisible = true };
+            _shiftRulesStore = Gio.ListStore.New(Gtk.StringObject.GetGType());
+            _shiftRulesSel = Gtk.SingleSelection.New(_shiftRulesStore);
 
-            // Column 0: From Episode
-            var epRenderer = new CellRendererText { Editable = true };
-            epRenderer.Edited += OnShiftRuleCellEdited;
-            var epCol = new TreeViewColumn("From Episode", epRenderer);
-            epCol.SetCellDataFunc(epRenderer, (TreeViewColumn col, CellRenderer cell, ITreeModel model, TreeIter iter) =>
+            var rulesFactory = Gtk.SignalListItemFactory.New();
+            rulesFactory.OnSetup += (f, args) =>
             {
-                ((CellRendererText)cell).Text = ((int)model.GetValue(iter, 0)).ToString();
-            });
-            epCol.MinWidth = 120;
-            epCol.Expand = true;
-            _tvShiftRules.AppendColumn(epCol);
-
-            // Column 1: Subs1 Shift (ms)
-            var s1Renderer = new CellRendererText { Editable = true };
-            s1Renderer.Edited += OnShiftRuleCellEdited;
-            var s1Col = new TreeViewColumn("Subs1 Shift (ms)", s1Renderer);
-            s1Col.SetCellDataFunc(s1Renderer, (TreeViewColumn col, CellRenderer cell, ITreeModel model, TreeIter iter) =>
+                var li = (Gtk.ListItem)args.Object;
+                var box = Gtk.Box.New(Gtk.Orientation.Horizontal, 8);
+                var e1 = Gtk.Entry.New(); e1.SetWidthChars(10); box.Append(e1);
+                var e2 = Gtk.Entry.New(); e2.SetWidthChars(12); box.Append(e2);
+                var e3 = Gtk.Entry.New(); e3.SetWidthChars(12); box.Append(e3);
+                li.SetChild(box);
+            };
+            rulesFactory.OnBind += (f, args) =>
             {
-                ((CellRendererText)cell).Text = ((int)model.GetValue(iter, 1)).ToString();
-            });
-            s1Col.MinWidth = 140;
-            s1Col.Expand = true;
-            _tvShiftRules.AppendColumn(s1Col);
+                var li = (Gtk.ListItem)args.Object;
+                uint pos = li.GetPosition();
+                if (pos >= _shiftItems.Count) return;
+                var item = _shiftItems[(int)pos];
+                var box = (Gtk.Box)li.GetChild();
+                if (box == null) return;
+                var e1 = (Gtk.Entry)box.GetFirstChild();
+                var e2 = (Gtk.Entry)e1.GetNextSibling();
+                var e3 = (Gtk.Entry)e2.GetNextSibling();
+                e1.SetText(item.FromEpisode.ToString());
+                e2.SetText(item.Subs1Shift.ToString());
+                e3.SetText(item.Subs2Shift.ToString());
+                e1.OnActivate += (s, ev) =>
+                { if (int.TryParse(e1.GetText(), out int v)) item.FromEpisode = Math.Max(1, v); };
+                e2.OnActivate += (s, ev) =>
+                { if (int.TryParse(e2.GetText(), out int v)) item.Subs1Shift = v; };
+                e3.OnActivate += (s, ev) =>
+                { if (int.TryParse(e3.GetText(), out int v)) item.Subs2Shift = v; };
+            };
 
-            // Column 2: Subs2 Shift (ms)
-            var s2Renderer = new CellRendererText { Editable = true };
-            s2Renderer.Edited += OnShiftRuleCellEdited;
-            var s2Col = new TreeViewColumn("Subs2 Shift (ms)", s2Renderer);
-            s2Col.SetCellDataFunc(s2Renderer, (TreeViewColumn col, CellRenderer cell, ITreeModel model, TreeIter iter) =>
-            {
-                ((CellRendererText)cell).Text = ((int)model.GetValue(iter, 2)).ToString();
-            });
-            s2Col.MinWidth = 140;
-            s2Col.Expand = true;
-            _tvShiftRules.AppendColumn(s2Col);
+            _shiftRulesListView = Gtk.ListView.New(_shiftRulesSel, rulesFactory);
+            var rulesSw = Gtk.ScrolledWindow.New();
+            rulesSw.SetChild(_shiftRulesListView);
+            rulesSw.SetSizeRequest(-1, 120);
+            rulesVBox.Append(rulesSw);
 
-            var rulesSw = new ScrolledWindow { ShadowType = ShadowType.In, HeightRequest = 120 };
-            rulesSw.Add(_tvShiftRules);
-            rulesVBox.PackStart(rulesSw, true, true, 0);
+            // Header labels for shift rules columns
+            var rulesHeader = Gtk.Box.New(Gtk.Orientation.Horizontal, 8);
+            var lh1 = Gtk.Label.New("From Episode"); lh1.SetWidthChars(10);
+            var lh2 = Gtk.Label.New("Subs1 Shift (ms)"); lh2.SetWidthChars(12);
+            var lh3 = Gtk.Label.New("Subs2 Shift (ms)"); lh3.SetWidthChars(12);
+            rulesHeader.Append(lh1); rulesHeader.Append(lh2); rulesHeader.Append(lh3);
+            // Insert header before scrolled window
+            var rulesWithHeader = Gtk.Box.New(Gtk.Orientation.Vertical, 2);
+            rulesWithHeader.Append(rulesHeader);
+            rulesWithHeader.Append(rulesSw);
+            rulesVBox.Append(rulesWithHeader);
 
-            var rulesBtnBox = new Box(Orientation.Horizontal, 4);
-            var btnAddRule = new Button("Add Rule");
-            btnAddRule.Clicked += (s, e) =>
+            var rulesBtnBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 4);
+            var btnAddRule = Gtk.Button.NewWithLabel("Add Rule");
+            btnAddRule.OnClicked += (s, e) =>
             {
                 int nextEp = 1;
-                if (_shiftRulesStore.IterNChildren() > 0)
-                {
-                    _shiftRulesStore.GetIter(out var last,
-                        new TreePath(new[] { _shiftRulesStore.IterNChildren() - 1 }));
-                    nextEp = (int)_shiftRulesStore.GetValue(last, 0) + 1;
-                }
-                var newIter = _shiftRulesStore.AppendValues(nextEp, 0, 0);
-                // Select and scroll to the new row
-                _tvShiftRules.Selection.SelectIter(newIter);
-                _tvShiftRules.ScrollToCell(
-                    _shiftRulesStore.GetPath(newIter), null, false, 0, 0);
+                if (_shiftItems.Count > 0)
+                    nextEp = _shiftItems[_shiftItems.Count - 1].FromEpisode + 1;
+                var newItem = ShiftRuleItem.Create(nextEp, 0, 0);
+                _shiftItems.Add(newItem);
+                _shiftRulesStore.Append(Gtk.StringObject.New(""));
+                _shiftRulesSel.SetSelected(_shiftRulesStore.GetNItems() - 1);
             };
-            rulesBtnBox.PackStart(btnAddRule, false, false, 0);
+            rulesBtnBox.Append(btnAddRule);
 
-            var btnRemoveRule = new Button("Remove Selected");
-            btnRemoveRule.Clicked += (s, e) =>
+            var btnRemoveRule = Gtk.Button.NewWithLabel("Remove Selected");
+            btnRemoveRule.OnClicked += (s, e) =>
             {
-                if (_tvShiftRules.Selection.GetSelected(out var iter))
-                    _shiftRulesStore.Remove(ref iter);
+                uint sel = _shiftRulesSel.GetSelected();
+                if (sel != Gtk.Constants.INVALID_LIST_POSITION && sel < _shiftItems.Count)
+                {
+                    _shiftItems.RemoveAt((int)sel);
+                    _shiftRulesStore.Remove(sel);
+                }
             };
-            rulesBtnBox.PackStart(btnRemoveRule, false, false, 0);
-            rulesVBox.PackStart(rulesBtnBox, false, false, 0);
+            rulesBtnBox.Append(btnRemoveRule);
+            rulesVBox.Append(rulesBtnBox);
 
-            rulesFrame.Add(rulesVBox);
-            timeShiftBox.PackStart(rulesFrame, false, false, 0);
-            vbox.PackStart(timeShiftBox, false, false, 0);
+            rulesFrame.SetChild(rulesVBox);
+            timeShiftBox.Append(rulesFrame);
+            vbox.Append(timeShiftBox);
 
             // Span
-            _chkSpan = new CheckButton("Span (h:mm:ss)");
-            var spanBox = new Box(Orientation.Horizontal, 6);
-            spanBox.PackStart(_chkSpan, false, false, 0);
-            spanBox.PackStart(new Label("Start:"), false, false, 0);
-            _txtSpanStart = new Entry { Text = "0:01:30", WidthChars = 8 };
-            spanBox.PackStart(_txtSpanStart, false, false, 0);
-            spanBox.PackStart(new Label("End:"), false, false, 0);
-            _txtSpanEnd = new Entry { Text = "0:22:30", WidthChars = 8 };
-            spanBox.PackStart(_txtSpanEnd, false, false, 0);
-            vbox.PackStart(spanBox, false, false, 0);
+            _chkSpan = Gtk.CheckButton.NewWithLabel("Span (h:mm:ss)");
+            var spanBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
+            spanBox.Append(_chkSpan);
+            spanBox.Append(Gtk.Label.New("Start:"));
+            _txtSpanStart = Gtk.Entry.New();
+            _txtSpanStart.SetText("0:01:30");
+            _txtSpanStart.SetWidthChars(8);
+            spanBox.Append(_txtSpanStart);
+            spanBox.Append(Gtk.Label.New("End:"));
+            _txtSpanEnd = Gtk.Entry.New();
+            _txtSpanEnd.SetText("0:22:30");
+            _txtSpanEnd.SetWidthChars(8);
+            spanBox.Append(_txtSpanEnd);
+            vbox.Append(spanBox);
 
             return vbox;
         }
 
-        private ComboBoxText BuildEncodingCombo()
+        // ── AUDIO TAB ───────────────────────────────────────────────────────
+
+        private Gtk.Widget BuildAudioTab()
         {
-            var combo = new ComboBoxText();
-            var encodings = InfoEncoding.getEncodings();
-            foreach (InfoEncoding enc in encodings)
-                combo.AppendText(enc.LongName);
-            int idx = 0;
-            foreach (InfoEncoding enc in encodings)
-            {
-                if (enc.ShortName == "utf-8") { combo.Active = idx; break; }
-                idx++;
-            }
-            return combo;
-        }
+            var vbox = Gtk.Box.New(Gtk.Orientation.Vertical, 8);
+            vbox.SetMarginTop(10); vbox.SetMarginBottom(10);
+            vbox.SetMarginStart(10); vbox.SetMarginEnd(10);
 
-        // ── AUDIO TAB ────────────────────────────────────────────────────────
-
-        private Widget BuildAudioTab()
-        {
-            var vbox = new Box(Orientation.Vertical, 8) { BorderWidth = 10 };
-
-            _chkGenerateAudio = new CheckButton("Generate Audio Clips") { Active = true };
-            vbox.PackStart(_chkGenerateAudio, false, false, 0);
-            vbox.PackStart(new Separator(Orientation.Horizontal), false, false, 2);
+            _chkGenerateAudio = Gtk.CheckButton.NewWithLabel("Generate Audio Clips");
+            _chkGenerateAudio.SetActive(true);
+            vbox.Append(_chkGenerateAudio);
+            vbox.Append(Gtk.Separator.New(Gtk.Orientation.Horizontal));
 
             // Source
-            var sourceFrame = new Frame("Source");
-            var sourceBox = new Box(Orientation.Vertical, 4) { BorderWidth = 6 };
-            _radioAudioFromVideo = new RadioButton("Extract from video, bitrate:");
-            _radioAudioExisting = new RadioButton(_radioAudioFromVideo, "Use existing audio file:");
-            var bitrateBox = new Box(Orientation.Horizontal, 6);
-            bitrateBox.PackStart(_radioAudioFromVideo, false, false, 0);
-            _comboAudioBitrate = new ComboBoxText();
-            foreach (var b in new[] { "64", "96", "112", "128", "160", "192", "256", "320" })
-                _comboAudioBitrate.AppendText(b);
-            _comboAudioBitrate.Active = 3; // 128
-            bitrateBox.PackStart(_comboAudioBitrate, false, false, 0);
-            bitrateBox.PackStart(new Label("kbps"), false, false, 0);
-            sourceBox.PackStart(bitrateBox, false, false, 0);
+            var sourceFrame = Gtk.Frame.New("Source");
+            var sourceBox = Gtk.Box.New(Gtk.Orientation.Vertical, 4);
+            sourceBox.SetMarginTop(6); sourceBox.SetMarginBottom(6);
+            sourceBox.SetMarginStart(6); sourceBox.SetMarginEnd(6);
 
-            var existingBox = new Box(Orientation.Horizontal, 6);
-            existingBox.PackStart(_radioAudioExisting, false, false, 0);
-            _txtAudioFile = new Entry { Hexpand = true, Sensitive = false };
-            existingBox.PackStart(_txtAudioFile, true, true, 0);
-            var btnAudio = new Button("Browse...");
-            btnAudio.Sensitive = false;
-            btnAudio.Clicked += (s, e) => { var f = SelectFile("Select Audio File"); if (f != "") _txtAudioFile.Text = f; };
-            existingBox.PackStart(btnAudio, false, false, 0);
-            sourceBox.PackStart(existingBox, false, false, 0);
+            _radioAudioFromVideo = Gtk.CheckButton.NewWithLabel(
+                "Extract from video, bitrate:");
+            _radioAudioExisting = Gtk.CheckButton.NewWithLabel(
+                "Use existing audio file:");
+            _radioAudioExisting.SetGroup(_radioAudioFromVideo);
+            _radioAudioFromVideo.SetActive(true);
 
-            _radioAudioFromVideo.Toggled += (s, e) => {
-                _comboAudioBitrate.Sensitive = _radioAudioFromVideo.Active;
-                _txtAudioFile.Sensitive = !_radioAudioFromVideo.Active;
-                btnAudio.Sensitive = !_radioAudioFromVideo.Active;
+            var bitrateBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
+            bitrateBox.Append(_radioAudioFromVideo);
+            _audioBitrateModel = Gtk.StringList.New(BitrateOptions);
+            _comboAudioBitrate = Gtk.DropDown.New(_audioBitrateModel, null);
+            _comboAudioBitrate.SetSelected(3); // 128
+            bitrateBox.Append(_comboAudioBitrate);
+            bitrateBox.Append(Gtk.Label.New("kbps"));
+            sourceBox.Append(bitrateBox);
+
+            var existingBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
+            existingBox.Append(_radioAudioExisting);
+            _txtAudioFile = Gtk.Entry.New();
+            _txtAudioFile.SetHexpand(true);
+            _txtAudioFile.SetSensitive(false);
+            existingBox.Append(_txtAudioFile);
+            _btnAudioBrowse = Gtk.Button.NewWithLabel("Browse...");
+            _btnAudioBrowse.SetSensitive(false);
+            _btnAudioBrowse.OnClicked += (s, e) =>
+                SelectFileAsync("Select Audio File",
+                    f => _txtAudioFile.SetText(f));
+            existingBox.Append(_btnAudioBrowse);
+            sourceBox.Append(existingBox);
+
+            _radioAudioFromVideo.OnToggled += (s, e) =>
+            {
+                bool fromVideo = _radioAudioFromVideo.GetActive();
+                _comboAudioBitrate.SetSensitive(fromVideo);
+                _txtAudioFile.SetSensitive(!fromVideo);
+                _btnAudioBrowse.SetSensitive(!fromVideo);
             };
 
-            sourceFrame.Add(sourceBox);
-            vbox.PackStart(sourceFrame, false, false, 0);
+            sourceFrame.SetChild(sourceBox);
+            vbox.Append(sourceFrame);
 
             // Pad timings
-            _chkAudioPad = new CheckButton("Pad Timings");
-            var padBox = new Box(Orientation.Horizontal, 6);
-            padBox.PackStart(_chkAudioPad, false, false, 0);
-            padBox.PackStart(new Label("Start (ms):"), false, false, 0);
-            _spinAudioPadStart = new SpinButton(0, 9999, 50) { Value = 250 };
-            padBox.PackStart(_spinAudioPadStart, false, false, 0);
-            padBox.PackStart(new Label("End (ms):"), false, false, 0);
-            _spinAudioPadEnd = new SpinButton(0, 9999, 50) { Value = 250 };
-            padBox.PackStart(_spinAudioPadEnd, false, false, 0);
-            vbox.PackStart(padBox, false, false, 0);
+            _chkAudioPad = Gtk.CheckButton.NewWithLabel("Pad Timings");
+            var padBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
+            padBox.Append(_chkAudioPad);
+            padBox.Append(Gtk.Label.New("Start (ms):"));
+            _spinAudioPadStart = Gtk.SpinButton.NewWithRange(0, 9999, 50);
+            _spinAudioPadStart.Value = 250;
+            padBox.Append(_spinAudioPadStart);
+            padBox.Append(Gtk.Label.New("End (ms):"));
+            _spinAudioPadEnd = Gtk.SpinButton.NewWithRange(0, 9999, 50);
+            _spinAudioPadEnd.Value = 250;
+            padBox.Append(_spinAudioPadEnd);
+            vbox.Append(padBox);
 
-            _chkNormalize = new CheckButton("Normalize audio (requires mp3gain)");
-            vbox.PackStart(_chkNormalize, false, false, 0);
+            _chkNormalize = Gtk.CheckButton.NewWithLabel(
+                "Normalize audio (requires mp3gain)");
+            vbox.Append(_chkNormalize);
 
             return vbox;
         }
 
-        // ── SNAPSHOT TAB ─────────────────────────────────────────────────────
+        // ── SNAPSHOT TAB ────────────────────────────────────────────────────
 
-        private Widget BuildSnapshotTab()
+        private Gtk.Widget BuildSnapshotTab()
         {
-            var vbox = new Box(Orientation.Vertical, 8) { BorderWidth = 10 };
+            var vbox = Gtk.Box.New(Gtk.Orientation.Vertical, 8);
+            vbox.SetMarginTop(10); vbox.SetMarginBottom(10);
+            vbox.SetMarginStart(10); vbox.SetMarginEnd(10);
 
-            _chkGenerateSnapshots = new CheckButton("Generate Snapshots") { Active = true };
-            vbox.PackStart(_chkGenerateSnapshots, false, false, 0);
-            vbox.PackStart(new Separator(Orientation.Horizontal), false, false, 2);
+            _chkGenerateSnapshots = Gtk.CheckButton.NewWithLabel("Generate Snapshots");
+            _chkGenerateSnapshots.SetActive(true);
+            vbox.Append(_chkGenerateSnapshots);
+            vbox.Append(Gtk.Separator.New(Gtk.Orientation.Horizontal));
 
-            var grid = new Grid { RowSpacing = 6, ColumnSpacing = 6 };
-            grid.Attach(new Label("Width:") { Halign = Align.End }, 0, 0, 1, 1);
-            _spinSnapshotWidth = new SpinButton(16, 3840, 16) { Value = 240 };
+            var grid = Gtk.Grid.New();
+            grid.SetRowSpacing(6); grid.SetColumnSpacing(6);
+
+            AttachLabel(grid, "Width:", 0, 0);
+            _spinSnapshotWidth = Gtk.SpinButton.NewWithRange(16, 3840, 16);
+            _spinSnapshotWidth.Value = 240;
             grid.Attach(_spinSnapshotWidth, 1, 0, 1, 1);
-            grid.Attach(new Label("px"), 2, 0, 1, 1);
+            grid.Attach(Gtk.Label.New("px"), 2, 0, 1, 1);
 
-            grid.Attach(new Label("Height:") { Halign = Align.End }, 0, 1, 1, 1);
-            _spinSnapshotHeight = new SpinButton(16, 2160, 2) { Value = 160 };
+            AttachLabel(grid, "Height:", 0, 1);
+            _spinSnapshotHeight = Gtk.SpinButton.NewWithRange(16, 2160, 2);
+            _spinSnapshotHeight.Value = 160;
             grid.Attach(_spinSnapshotHeight, 1, 1, 1, 1);
-            grid.Attach(new Label("px"), 2, 1, 1, 1);
+            grid.Attach(Gtk.Label.New("px"), 2, 1, 1, 1);
 
-            grid.Attach(new Label("Crop Bottom:") { Halign = Align.End }, 0, 2, 1, 1);
-            _spinSnapshotCropBottom = new SpinButton(0, 2160, 2) { Value = 0 };
+            AttachLabel(grid, "Crop Bottom:", 0, 2);
+            _spinSnapshotCropBottom = Gtk.SpinButton.NewWithRange(0, 2160, 2);
+            _spinSnapshotCropBottom.Value = 0;
             grid.Attach(_spinSnapshotCropBottom, 1, 2, 1, 1);
-            grid.Attach(new Label("px"), 2, 2, 1, 1);
+            grid.Attach(Gtk.Label.New("px"), 2, 2, 1, 1);
 
-            grid.Attach(new Label("JPEG Quality:") { Halign = Align.End }, 0, 3, 1, 1);
-            _spinSnapshotQuality = new SpinButton(1, 31, 1) { Value = 3 };
+            AttachLabel(grid, "JPEG Quality:", 0, 3);
+            _spinSnapshotQuality = Gtk.SpinButton.NewWithRange(1, 31, 1);
+            _spinSnapshotQuality.Value = 3;
             grid.Attach(_spinSnapshotQuality, 1, 3, 1, 1);
-            grid.Attach(new Label("(1 = best, 5 = good, 15 = low)") { Halign = Align.Start }, 2, 3, 1, 1);
+            var lblQual = Gtk.Label.New("(1 = best, 5 = good, 15 = low)");
+            lblQual.SetHalign(Gtk.Align.Start);
+            grid.Attach(lblQual, 2, 3, 1, 1);
 
-            vbox.PackStart(grid, false, false, 0);
+            vbox.Append(grid);
             return vbox;
         }
 
-        // ── VIDEO CLIP TAB ───────────────────────────────────────────────────
+        // ── VIDEO CLIP TAB ──────────────────────────────────────────────────
 
-        private Widget BuildVideoTab()
+        private Gtk.Widget BuildVideoTab()
         {
-            var vbox = new Box(Orientation.Vertical, 8) { BorderWidth = 10 };
+            var vbox = Gtk.Box.New(Gtk.Orientation.Vertical, 8);
+            vbox.SetMarginTop(10); vbox.SetMarginBottom(10);
+            vbox.SetMarginStart(10); vbox.SetMarginEnd(10);
 
-            _chkGenerateVideo = new CheckButton("Generate Video Clips") { Active = false };
-            vbox.PackStart(_chkGenerateVideo, false, false, 0);
-            vbox.PackStart(new Separator(Orientation.Horizontal), false, false, 2);
+            _chkGenerateVideo = Gtk.CheckButton.NewWithLabel("Generate Video Clips");
+            vbox.Append(_chkGenerateVideo);
+            vbox.Append(Gtk.Separator.New(Gtk.Orientation.Horizontal));
 
-            var grid = new Grid { RowSpacing = 6, ColumnSpacing = 6 };
+            var grid = Gtk.Grid.New();
+            grid.SetRowSpacing(6); grid.SetColumnSpacing(6);
             int row = 0;
 
-            grid.Attach(new Label("Width:") { Halign = Align.End }, 0, row, 1, 1);
-            _spinVideoWidth = new SpinButton(16, 3840, 16) { Value = 240 };
+            AttachLabel(grid, "Width:", 0, row);
+            _spinVideoWidth = Gtk.SpinButton.NewWithRange(16, 3840, 16);
+            _spinVideoWidth.Value = 240;
             grid.Attach(_spinVideoWidth, 1, row, 1, 1);
-            grid.Attach(new Label("px"), 2, row, 1, 1);
+            grid.Attach(Gtk.Label.New("px"), 2, row, 1, 1);
             row++;
 
-            grid.Attach(new Label("Height:") { Halign = Align.End }, 0, row, 1, 1);
-            _spinVideoHeight = new SpinButton(16, 2160, 2) { Value = 160 };
+            AttachLabel(grid, "Height:", 0, row);
+            _spinVideoHeight = Gtk.SpinButton.NewWithRange(16, 2160, 2);
+            _spinVideoHeight.Value = 160;
             grid.Attach(_spinVideoHeight, 1, row, 1, 1);
-            grid.Attach(new Label("px"), 2, row, 1, 1);
+            grid.Attach(Gtk.Label.New("px"), 2, row, 1, 1);
             row++;
 
-            grid.Attach(new Label("Crop Bottom:") { Halign = Align.End }, 0, row, 1, 1);
-            _spinVideoCropBottom = new SpinButton(0, 2160, 2) { Value = 0 };
+            AttachLabel(grid, "Crop Bottom:", 0, row);
+            _spinVideoCropBottom = Gtk.SpinButton.NewWithRange(0, 2160, 2);
+            _spinVideoCropBottom.Value = 0;
             grid.Attach(_spinVideoCropBottom, 1, row, 1, 1);
-            grid.Attach(new Label("px"), 2, row, 1, 1);
+            grid.Attach(Gtk.Label.New("px"), 2, row, 1, 1);
             row++;
 
-            grid.Attach(new Label("Video Bitrate:") { Halign = Align.End }, 0, row, 1, 1);
-            _spinVideoBitrateVideo = new SpinButton(100, 10000, 100) { Value = 800 };
+            AttachLabel(grid, "Video Bitrate:", 0, row);
+            _spinVideoBitrateVideo = Gtk.SpinButton.NewWithRange(100, 10000, 100);
+            _spinVideoBitrateVideo.Value = 800;
             grid.Attach(_spinVideoBitrateVideo, 1, row, 1, 1);
-            grid.Attach(new Label("kb/s"), 2, row, 1, 1);
+            grid.Attach(Gtk.Label.New("kb/s"), 2, row, 1, 1);
             row++;
 
-            grid.Attach(new Label("Audio Bitrate:") { Halign = Align.End }, 0, row, 1, 1);
-            _comboVideoBitrateAudio = new ComboBoxText();
-            foreach (var b in new[] { "64", "96", "112", "128", "160", "192", "256", "320" })
-                _comboVideoBitrateAudio.AppendText(b);
-            _comboVideoBitrateAudio.Active = 3; // 128
+            AttachLabel(grid, "Audio Bitrate:", 0, row);
+            _videoBitrateModel = Gtk.StringList.New(BitrateOptions);
+            _comboVideoBitrateAudio = Gtk.DropDown.New(_videoBitrateModel, null);
+            _comboVideoBitrateAudio.SetSelected(3); // 128
             grid.Attach(_comboVideoBitrateAudio, 1, row, 1, 1);
-            grid.Attach(new Label("kb/s"), 2, row, 1, 1);
+            grid.Attach(Gtk.Label.New("kb/s"), 2, row, 1, 1);
             row++;
 
-            vbox.PackStart(grid, false, false, 0);
+            vbox.Append(grid);
 
             // Pad
-            _chkVideoPad = new CheckButton("Pad Timings");
-            var padBox = new Box(Orientation.Horizontal, 6);
-            padBox.PackStart(_chkVideoPad, false, false, 0);
-            padBox.PackStart(new Label("Start (ms):"), false, false, 0);
-            _spinVideoPadStart = new SpinButton(0, 9999, 50) { Value = 250 };
-            padBox.PackStart(_spinVideoPadStart, false, false, 0);
-            padBox.PackStart(new Label("End (ms):"), false, false, 0);
-            _spinVideoPadEnd = new SpinButton(0, 9999, 50) { Value = 250 };
-            padBox.PackStart(_spinVideoPadEnd, false, false, 0);
-            vbox.PackStart(padBox, false, false, 0);
+            _chkVideoPad = Gtk.CheckButton.NewWithLabel("Pad Timings");
+            var padBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
+            padBox.Append(_chkVideoPad);
+            padBox.Append(Gtk.Label.New("Start (ms):"));
+            _spinVideoPadStart = Gtk.SpinButton.NewWithRange(0, 9999, 50);
+            _spinVideoPadStart.Value = 250;
+            padBox.Append(_spinVideoPadStart);
+            padBox.Append(Gtk.Label.New("End (ms):"));
+            _spinVideoPadEnd = Gtk.SpinButton.NewWithRange(0, 9999, 50);
+            _spinVideoPadEnd.Value = 250;
+            padBox.Append(_spinVideoPadEnd);
+            vbox.Append(padBox);
 
-            _chkIPod = new CheckButton("iPod/iPhone support");
-            vbox.PackStart(_chkIPod, false, false, 0);
+            _chkIPod = Gtk.CheckButton.NewWithLabel("iPod/iPhone support");
+            vbox.Append(_chkIPod);
 
             return vbox;
         }
 
-        // ── SETTINGS ─────────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
+        //  SETTINGS
+        // ═══════════════════════════════════════════════════════════════════
 
         private void LoadSettings()
         {
@@ -667,42 +787,38 @@ namespace subs2srs
             PopulateUIFromSettings();
         }
 
-        /// <summary>
-        /// Populate every UI widget from <see cref="Settings.Instance"/>.
-        /// Called on startup (after reset) and after loading a project file.
-        /// </summary>
         private void PopulateUIFromSettings()
         {
             var s = Settings.Instance;
 
-            // ── Main tab ──────────────────────────────────────────────────
-            _txtDeckName.Text = s.DeckName != "" ? s.DeckName : "MyDeck";
-            // Fallback chain: project OutputDir > preference default > ~/Documents
-            _txtOutputDir.Text = s.OutputDir != ""
+            // ── Main tab
+            _txtDeckName.SetText(s.DeckName != "" ? s.DeckName : "MyDeck");
+            _txtOutputDir.SetText(s.OutputDir != ""
                 ? s.OutputDir
                 : ConstantSettings.DefaultOutputDir != ""
                     ? ConstantSettings.DefaultOutputDir
-                    : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                    : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
             _spinEpisodeStart.Value = s.EpisodeStartNumber;
 
-            _txtSubs1.Text = s.Subs[0].FilePattern;
-            _txtSubs2.Text = s.Subs[1].FilePattern;
-            _txtVideo.Text = s.VideoClips.FilePattern;
+            _txtSubs1.SetText(s.Subs[0].FilePattern);
+            _txtSubs2.SetText(s.Subs[1].FilePattern);
+            _txtVideo.SetText(s.VideoClips.FilePattern);
 
-            SetEncodingCombo(_comboEncodingSubs1, s.Subs[0].Encoding);
-            SetEncodingCombo(_comboEncodingSubs2, s.Subs[1].Encoding);
+            SetEncodingDropDown(_comboEncodingSubs1, _encModel1, s.Subs[0].Encoding);
+            SetEncodingDropDown(_comboEncodingSubs2, _encModel2, s.Subs[1].Encoding);
 
             if (s.Subs[1].TimingsEnabled)
-                _radioTimingSubs2.Active = true;
+                _radioTimingSubs2.SetActive(true);
             else
-                _radioTimingSubs1.Active = true;
+                _radioTimingSubs1.SetActive(true);
 
-            _chkTimeShift.Active = s.TimeShiftEnabled;
+            _chkTimeShift.SetActive(s.TimeShiftEnabled);
             _spinTimeShiftSubs1.Value = s.Subs[0].TimeShift;
             _spinTimeShiftSubs2.Value = s.Subs[1].TimeShift;
 
             // Per-episode shift rules
-            _shiftRulesStore.Clear();
+            _shiftRulesStore.RemoveAll();
+            _shiftItems.Clear();
             if (s.Subs[0].TimeShiftRules?.Count > 0)
             {
                 for (int i = 0; i < s.Subs[0].TimeShiftRules.Count; i++)
@@ -711,69 +827,66 @@ namespace subs2srs
                     int s1 = s.Subs[0].TimeShiftRules[i].ShiftMs;
                     int s2 = (s.Subs[1].TimeShiftRules?.Count > i)
                         ? s.Subs[1].TimeShiftRules[i].ShiftMs : 0;
-                    _shiftRulesStore.AppendValues(fromEp, s1, s2);
+                    _shiftItems.Add(ShiftRuleItem.Create(fromEp, s1, s2));
+                    _shiftRulesStore.Append(Gtk.StringObject.New(""));
                 }
             }
 
-            _chkSpan.Active = s.SpanEnabled;
-            _txtSpanStart.Text = s.SpanStart.ToString(@"h\:mm\:ss");
-            _txtSpanEnd.Text = s.SpanEnd.ToString(@"h\:mm\:ss");
+            _chkSpan.SetActive(s.SpanEnabled);
+            _txtSpanStart.SetText(s.SpanStart.ToString(@"h\:mm\:ss"));
+            _txtSpanEnd.SetText(s.SpanEnd.ToString(@"h\:mm\:ss"));
 
-            // ── Audio tab ─────────────────────────────────────────────────
-            _chkGenerateAudio.Active = s.AudioClips.Enabled;
+            // ── Audio tab
+            _chkGenerateAudio.SetActive(s.AudioClips.Enabled);
             if (s.AudioClips.UseExistingAudio)
-                _radioAudioExisting.Active = true;
+                _radioAudioExisting.SetActive(true);
             else
-                _radioAudioFromVideo.Active = true;
-            _txtAudioFile.Text = s.AudioClips.FilePattern;
-            SetBitrateCombo(_comboAudioBitrate, s.AudioClips.Bitrate);
-            _chkAudioPad.Active = s.AudioClips.PadEnabled;
+                _radioAudioFromVideo.SetActive(true);
+            _txtAudioFile.SetText(s.AudioClips.FilePattern);
+            SetBitrateDropDown(_comboAudioBitrate, _audioBitrateModel, s.AudioClips.Bitrate);
+            _chkAudioPad.SetActive(s.AudioClips.PadEnabled);
             _spinAudioPadStart.Value = s.AudioClips.PadStart;
             _spinAudioPadEnd.Value = s.AudioClips.PadEnd;
-            _chkNormalize.Active = s.AudioClips.Normalize;
+            _chkNormalize.SetActive(s.AudioClips.Normalize);
 
-            // ── Snapshot tab ──────────────────────────────────────────────
-            _chkGenerateSnapshots.Active = s.Snapshots.Enabled;
+            // ── Snapshot tab
+            _chkGenerateSnapshots.SetActive(s.Snapshots.Enabled);
             _spinSnapshotWidth.Value = s.Snapshots.Size.Width > 0 ? s.Snapshots.Size.Width : 240;
             _spinSnapshotHeight.Value = s.Snapshots.Size.Height > 0 ? s.Snapshots.Size.Height : 160;
             _spinSnapshotCropBottom.Value = s.Snapshots.Crop.Bottom;
             _spinSnapshotQuality.Value = s.Snapshots.Quality > 0 ? s.Snapshots.Quality : 3;
 
-            // ── Video tab ─────────────────────────────────────────────────
-            _chkGenerateVideo.Active = s.VideoClips.Enabled;
+            // ── Video tab
+            _chkGenerateVideo.SetActive(s.VideoClips.Enabled);
             _spinVideoWidth.Value = s.VideoClips.Size.Width > 0 ? s.VideoClips.Size.Width : 240;
             _spinVideoHeight.Value = s.VideoClips.Size.Height > 0 ? s.VideoClips.Size.Height : 160;
             _spinVideoCropBottom.Value = s.VideoClips.Crop.Bottom;
             _spinVideoBitrateVideo.Value = s.VideoClips.BitrateVideo > 0 ? s.VideoClips.BitrateVideo : 800;
-            SetBitrateCombo(_comboVideoBitrateAudio, s.VideoClips.BitrateAudio);
-            _chkVideoPad.Active = s.VideoClips.PadEnabled;
+            SetBitrateDropDown(_comboVideoBitrateAudio, _videoBitrateModel, s.VideoClips.BitrateAudio);
+            _chkVideoPad.SetActive(s.VideoClips.PadEnabled);
             _spinVideoPadStart.Value = s.VideoClips.PadStart;
             _spinVideoPadEnd.Value = s.VideoClips.PadEnd;
-            _chkIPod.Active = s.VideoClips.IPodSupport;
+            _chkIPod.SetActive(s.VideoClips.IPodSupport);
 
             SetDefaultSize(ConstantSettings.MainWindowWidth, ConstantSettings.MainWindowHeight);
             UpdateTitle();
         }
 
-        /// <summary>
-        /// Update the window title to reflect the current project file name.
-        /// </summary>
         private void UpdateTitle()
         {
             var projectPath = Settings.Instance.ProjectPath;
             if (!string.IsNullOrEmpty(projectPath))
-                Title = $"subs2srs — {System.IO.Path.GetFileNameWithoutExtension(projectPath)}";
+                SetTitle($"subs2srs — {System.IO.Path.GetFileNameWithoutExtension(projectPath)}");
             else
-                Title = "subs2srs";
+                SetTitle("subs2srs");
         }
 
         private void SaveSettings()
         {
             try
             {
-                Settings.Instance.DeckName = _txtDeckName.Text.Trim();
-                Settings.Instance.OutputDir = _txtOutputDir.Text.Trim();
-                // Remember as default output dir for future sessions
+                Settings.Instance.DeckName = _txtDeckName.GetText().Trim();
+                Settings.Instance.OutputDir = _txtOutputDir.GetText().Trim();
                 string newOutputDir = Settings.Instance.OutputDir;
                 if (newOutputDir.Length > 0 && newOutputDir != ConstantSettings.DefaultOutputDir)
                 {
@@ -783,16 +896,16 @@ namespace subs2srs
                 Settings.Instance.EpisodeStartNumber = (int)_spinEpisodeStart.Value;
 
                 // Subs
-                Settings.Instance.Subs[0].FilePattern = _txtSubs1.Text.Trim();
-                Settings.Instance.Subs[0].Encoding = GetSelectedEncoding(_comboEncodingSubs1);
-                Settings.Instance.Subs[0].TimingsEnabled = _radioTimingSubs1.Active;
+                Settings.Instance.Subs[0].FilePattern = _txtSubs1.GetText().Trim();
+                Settings.Instance.Subs[0].Encoding = GetSelectedEncodingShort(_comboEncodingSubs1, _encModel1);
+                Settings.Instance.Subs[0].TimingsEnabled = _radioTimingSubs1.GetActive();
                 Settings.Instance.Subs[0].TimeShift = (int)_spinTimeShiftSubs1.Value;
                 Settings.Instance.Subs[0].Files = UtilsSubs.getSubsFiles(
                     Settings.Instance.Subs[0].FilePattern).ToArray();
 
-                Settings.Instance.Subs[1].FilePattern = _txtSubs2.Text.Trim();
-                Settings.Instance.Subs[1].Encoding = GetSelectedEncoding(_comboEncodingSubs2);
-                Settings.Instance.Subs[1].TimingsEnabled = _radioTimingSubs2.Active;
+                Settings.Instance.Subs[1].FilePattern = _txtSubs2.GetText().Trim();
+                Settings.Instance.Subs[1].Encoding = GetSelectedEncodingShort(_comboEncodingSubs2, _encModel2);
+                Settings.Instance.Subs[1].TimingsEnabled = _radioTimingSubs2.GetActive();
                 Settings.Instance.Subs[1].TimeShift = (int)_spinTimeShiftSubs2.Value;
                 if (Settings.Instance.Subs[1].FilePattern.Length > 0)
                     Settings.Instance.Subs[1].Files = UtilsSubs.getSubsFiles(
@@ -800,141 +913,96 @@ namespace subs2srs
                 else
                     Settings.Instance.Subs[1].Files = Array.Empty<string>();
 
-                Settings.Instance.TimeShiftEnabled = _chkTimeShift.Active;
+                Settings.Instance.TimeShiftEnabled = _chkTimeShift.GetActive();
 
                 // Per-episode shift rules
                 Settings.Instance.Subs[0].TimeShiftRules.Clear();
                 Settings.Instance.Subs[1].TimeShiftRules.Clear();
-                if (_shiftRulesStore.GetIterFirst(out var ruleIter))
+                for (int i = 0; i < _shiftItems.Count; i++)
                 {
-                    do
-                    {
-                        int fromEp = (int)_shiftRulesStore.GetValue(ruleIter, 0);
-                        int s1Shift = (int)_shiftRulesStore.GetValue(ruleIter, 1);
-                        int s2Shift = (int)_shiftRulesStore.GetValue(ruleIter, 2);
-                        Settings.Instance.Subs[0].TimeShiftRules.Add(new TimeShiftRule(fromEp, s1Shift));
-                        Settings.Instance.Subs[1].TimeShiftRules.Add(new TimeShiftRule(fromEp, s2Shift));
-                    } while (_shiftRulesStore.IterNext(ref ruleIter));
-
-                    // Ensure sorted by FromEpisode
-                    Settings.Instance.Subs[0].TimeShiftRules.Sort((a, b) => a.FromEpisode.CompareTo(b.FromEpisode));
-                    Settings.Instance.Subs[1].TimeShiftRules.Sort((a, b) => a.FromEpisode.CompareTo(b.FromEpisode));
+                    var rule = _shiftItems[i];
+                    Settings.Instance.Subs[0].TimeShiftRules.Add(
+                        new TimeShiftRule(rule.FromEpisode, rule.Subs1Shift));
+                    Settings.Instance.Subs[1].TimeShiftRules.Add(
+                        new TimeShiftRule(rule.FromEpisode, rule.Subs2Shift));
                 }
+                Settings.Instance.Subs[0].TimeShiftRules.Sort(
+                    (a, b) => a.FromEpisode.CompareTo(b.FromEpisode));
+                Settings.Instance.Subs[1].TimeShiftRules.Sort(
+                    (a, b) => a.FromEpisode.CompareTo(b.FromEpisode));
 
-                Settings.Instance.SpanEnabled = _chkSpan.Active;
-                if (_chkSpan.Active)
+                Settings.Instance.SpanEnabled = _chkSpan.GetActive();
+                if (_chkSpan.GetActive())
                 {
-                    Settings.Instance.SpanStart = UtilsSubs.stringToTime(_txtSpanStart.Text.Trim());
-                    Settings.Instance.SpanEnd = UtilsSubs.stringToTime(_txtSpanEnd.Text.Trim());
+                    Settings.Instance.SpanStart = UtilsSubs.stringToTime(
+                        _txtSpanStart.GetText().Trim());
+                    Settings.Instance.SpanEnd = UtilsSubs.stringToTime(
+                        _txtSpanEnd.GetText().Trim());
                 }
 
                 // Video
-                Settings.Instance.VideoClips.FilePattern = _txtVideo.Text.Trim();
+                Settings.Instance.VideoClips.FilePattern = _txtVideo.GetText().Trim();
                 Settings.Instance.VideoClips.Files = UtilsCommon.getNonHiddenFiles(
                     Settings.Instance.VideoClips.FilePattern);
 
-                // Audio stream — store actual ffmpeg stream number, not combo index
-                if (_comboAudioStream.Active >= 0 && _comboAudioStream.Active < _audioStreams.Count)
-                {
-                    Settings.Instance.VideoClips.AudioStream = _audioStreams[_comboAudioStream.Active];
-                }
+                // Audio stream
+                int streamIdx = (int)_comboAudioStream.GetSelected();
+                if (streamIdx >= 0 && streamIdx < _audioStreams.Count)
+                    Settings.Instance.VideoClips.AudioStream = _audioStreams[streamIdx];
                 else
-                {
-                    Settings.Instance.VideoClips.AudioStream = new InfoStream("0:a:0", "0", "", "");
-                }
+                    Settings.Instance.VideoClips.AudioStream =
+                        new InfoStream("0:a:0", "0", "", "");
 
                 // Audio
-                Settings.Instance.AudioClips.Enabled = _chkGenerateAudio.Active;
-                Settings.Instance.AudioClips.UseAudioFromVideo = _radioAudioFromVideo.Active;
-                Settings.Instance.AudioClips.UseExistingAudio = _radioAudioExisting.Active;
-                Settings.Instance.AudioClips.Bitrate = GetSelectedBitrate(_comboAudioBitrate, 128);
-                Settings.Instance.AudioClips.PadEnabled = _chkAudioPad.Active;
+                Settings.Instance.AudioClips.Enabled = _chkGenerateAudio.GetActive();
+                Settings.Instance.AudioClips.UseAudioFromVideo = _radioAudioFromVideo.GetActive();
+                Settings.Instance.AudioClips.UseExistingAudio = _radioAudioExisting.GetActive();
+                Settings.Instance.AudioClips.Bitrate = GetSelectedBitrate(
+                    _comboAudioBitrate, _audioBitrateModel, 128);
+                Settings.Instance.AudioClips.PadEnabled = _chkAudioPad.GetActive();
                 Settings.Instance.AudioClips.PadStart = (int)_spinAudioPadStart.Value;
                 Settings.Instance.AudioClips.PadEnd = (int)_spinAudioPadEnd.Value;
-                Settings.Instance.AudioClips.Normalize = _chkNormalize.Active;
-
-                Settings.Instance.AudioClips.FilePattern = _txtAudioFile.Text.Trim();
+                Settings.Instance.AudioClips.Normalize = _chkNormalize.GetActive();
+                Settings.Instance.AudioClips.FilePattern = _txtAudioFile.GetText().Trim();
                 Settings.Instance.AudioClips.Files = UtilsCommon.getNonHiddenFiles(
                     Settings.Instance.AudioClips.FilePattern);
 
                 // Snapshots
-                Settings.Instance.Snapshots.Enabled = _chkGenerateSnapshots.Active;
+                Settings.Instance.Snapshots.Enabled = _chkGenerateSnapshots.GetActive();
                 Settings.Instance.Snapshots.Size.Width = (int)_spinSnapshotWidth.Value;
                 Settings.Instance.Snapshots.Size.Height = (int)_spinSnapshotHeight.Value;
                 Settings.Instance.Snapshots.Crop.Bottom = (int)_spinSnapshotCropBottom.Value;
                 Settings.Instance.Snapshots.Quality = (int)_spinSnapshotQuality.Value;
 
                 // Video clips
-                Settings.Instance.VideoClips.Enabled = _chkGenerateVideo.Active;
+                Settings.Instance.VideoClips.Enabled = _chkGenerateVideo.GetActive();
                 Settings.Instance.VideoClips.Size.Width = (int)_spinVideoWidth.Value;
                 Settings.Instance.VideoClips.Size.Height = (int)_spinVideoHeight.Value;
                 Settings.Instance.VideoClips.Crop.Bottom = (int)_spinVideoCropBottom.Value;
                 Settings.Instance.VideoClips.BitrateVideo = (int)_spinVideoBitrateVideo.Value;
-                Settings.Instance.VideoClips.BitrateAudio = GetSelectedBitrate(_comboVideoBitrateAudio, 128);
-                Settings.Instance.VideoClips.PadEnabled = _chkVideoPad.Active;
+                Settings.Instance.VideoClips.BitrateAudio = GetSelectedBitrate(
+                    _comboVideoBitrateAudio, _videoBitrateModel, 128);
+                Settings.Instance.VideoClips.PadEnabled = _chkVideoPad.GetActive();
                 Settings.Instance.VideoClips.PadStart = (int)_spinVideoPadStart.Value;
                 Settings.Instance.VideoClips.PadEnd = (int)_spinVideoPadEnd.Value;
-                Settings.Instance.VideoClips.IPodSupport = _chkIPod.Active;
+                Settings.Instance.VideoClips.IPodSupport = _chkIPod.GetActive();
             }
             catch (Exception e1)
             {
-                UtilsMsg.showErrMsg("Something went wrong while gathering interface data:\n" + e1);
+                UtilsMsg.showErrMsg(
+                    "Something went wrong while gathering interface data:\n" + e1);
             }
         }
 
-        private string GetSelectedEncoding(ComboBoxText combo)
-        {
-            var encodings = InfoEncoding.getEncodings();
-            int idx = combo.Active;
-            int i = 0;
-            foreach (InfoEncoding enc in encodings)
-            {
-                if (i == idx) return enc.ShortName;
-                i++;
-            }
-            return "utf-8";
-        }
+        // ═══════════════════════════════════════════════════════════════════
+        //  EVENT HANDLERS
+        // ═══════════════════════════════════════════════════════════════════
 
-        private void SetEncodingCombo(ComboBoxText combo, string shortName)
+        private async void OnVideoChanged(Gtk.Editable sender, EventArgs e)
         {
-            int i = 0;
-            foreach (InfoEncoding enc in InfoEncoding.getEncodings())
-            {
-                if (enc.ShortName == shortName) { combo.Active = i; return; }
-                i++;
-            }
-            combo.Active = 0;
-        }
-
-        private int GetSelectedBitrate(ComboBoxText combo, int defaultVal)
-        {
-            if (int.TryParse(combo.ActiveText, out int val)) return val;
-            return defaultVal;
-        }
-
-        private void SetBitrateCombo(ComboBoxText combo, int bitrate)
-        {
-            string target = bitrate.ToString();
-            for (int i = 0; i < 8; i++) // 8 items in combo
-            {
-                combo.Active = i;
-                if (combo.ActiveText == target) return;
-            }
-            combo.Active = 3; // fallback: 128
-        }
-
-        // ── EVENT HANDLERS ───────────────────────────────────────────────────
-
-        private void OnSubs1Changed(object? sender, EventArgs e)
-        {
-        }
-
-        private async void OnVideoChanged(object? sender, EventArgs e)
-        {
-            string pattern = _txtVideo.Text.Trim();
+            string pattern = _txtVideo.GetText().Trim();
             if (string.IsNullOrEmpty(pattern)) return;
 
-            // Run file lookup and ffprobe off the UI thread
             var (streams, fallback) = await Task.Run(() =>
             {
                 string file = null;
@@ -945,10 +1013,8 @@ namespace subs2srs
                     var files = UtilsCommon.getNonHiddenFiles(pattern);
                     if (files.Length > 0) file = files[0];
                 }
-
                 if (file == null)
                     return (new List<InfoStream>(), true);
-
                 var s = UtilsVideo.getAvailableAudioStreams(file);
                 return (s, false);
             });
@@ -956,36 +1022,34 @@ namespace subs2srs
             if (fallback) return;
 
             _audioStreams = streams;
-            _comboAudioStream.RemoveAll();
-
+            var items = new List<string>();
             if (_audioStreams.Count > 0)
-            {
-                foreach (var s in _audioStreams)
-                    _comboAudioStream.AppendText(s.ToString());
-            }
+                foreach (var s in _audioStreams) items.Add(s.ToString());
             else
             {
                 _audioStreams.Add(new InfoStream("0:a:0", "0", "", "Default"));
-                _comboAudioStream.AppendText("0 - (Default)");
+                items.Add("0 - (Default)");
             }
-            _comboAudioStream.Active = 0;
+            _audioStreamModel = Gtk.StringList.New(items.ToArray());
+            _comboAudioStream.SetModel(_audioStreamModel);
+            _comboAudioStream.SetSelected(0);
         }
 
         private async void OnGoClicked(object? sender, EventArgs e)
         {
-            if (!_btnGo.Sensitive) return;
+            if (!_btnGo.GetSensitive()) return;
 
-            if (string.IsNullOrWhiteSpace(_txtSubs1.Text))
+            if (string.IsNullOrWhiteSpace(_txtSubs1.GetText()))
             {
                 UtilsMsg.showErrMsg("Please provide at least Subtitle 1.");
                 return;
             }
-            if (string.IsNullOrWhiteSpace(_txtOutputDir.Text))
+            if (string.IsNullOrWhiteSpace(_txtOutputDir.GetText()))
             {
                 UtilsMsg.showErrMsg("Please provide Output Directory.");
                 return;
             }
-            if (string.IsNullOrWhiteSpace(_txtDeckName.Text))
+            if (string.IsNullOrWhiteSpace(_txtDeckName.GetText()))
             {
                 UtilsMsg.showErrMsg("Please provide Deck Name.");
                 return;
@@ -993,21 +1057,19 @@ namespace subs2srs
 
             SaveSettings();
 
-            // Validate audio stream consistency across episodes
             bool needsAudioFromVideo =
-              (Settings.Instance.AudioClips.Enabled && Settings.Instance.AudioClips.UseAudioFromVideo)
-              || Settings.Instance.VideoClips.Enabled;
+                (Settings.Instance.AudioClips.Enabled
+                    && Settings.Instance.AudioClips.UseAudioFromVideo)
+                || Settings.Instance.VideoClips.Enabled;
 
             if (needsAudioFromVideo
                 && Settings.Instance.VideoClips.Files?.Length > 1)
             {
-                int streamIdx = _comboAudioStream.Active >= 0 ? _comboAudioStream.Active : 0;
+                int streamIdx = (int)_comboAudioStream.GetSelected();
+                if (streamIdx < 0) streamIdx = 0;
                 var files = Settings.Instance.VideoClips.Files;
-
-                // Probe off the UI thread to avoid blocking
                 string warning = await Task.Run(() =>
                     UtilsVideo.validateAudioStreamConsistency(files, streamIdx));
-
                 if (warning != null)
                 {
                     if (!UtilsMsg.showConfirm(warning))
@@ -1015,8 +1077,8 @@ namespace subs2srs
                 }
             }
 
-            _btnGo.Sensitive = false;
-            _btnCancel.Sensitive = true;
+            _btnGo.SetSensitive(false);
+            _btnCancel.SetSensitive(true);
 
             _reporter = new GtkProgressReporter(_progressBar);
             var processor = new SubsProcessor();
@@ -1033,66 +1095,80 @@ namespace subs2srs
 
             _reporter.Stop();
 
-            _btnGo.Sensitive = true;
-            _btnCancel.Sensitive = false;
+            _btnGo.SetSensitive(true);
+            _btnCancel.SetSensitive(false);
             if (_reporter != null)
             {
-                _progressBar.Text = _reporter.Cancel ? "Cancelled" : "Finished!";
-                _progressBar.Fraction = _reporter.Cancel ? 0.0 : 1.0;
+                _progressBar.SetText(_reporter.Cancel ? "Cancelled" : "Finished!");
+                _progressBar.SetFraction(_reporter.Cancel ? 0.0 : 1.0);
             }
         }
 
-        private void OnShiftRuleCellEdited(object sender, EditedArgs args)
+        private void OnAboutClicked(Gtk.Button sender, EventArgs e)
         {
-            if (!_shiftRulesStore.GetIter(out var iter, new TreePath(args.Path)))
-                return;
-            if (!int.TryParse(args.NewText.Trim(), out int val))
-                return;
+            var dlg = Gtk.Window.New();
+            dlg.SetTitle("About subs2srs");
+            dlg.SetDefaultSize(400, 300);
+            dlg.SetModal(true);
+            dlg.SetTransientFor(this);
 
-            // Find which column this renderer belongs to
-            int col = -1;
-            for (int c = 0; c < _tvShiftRules.Columns.Length; c++)
-            {
-                if (_tvShiftRules.Columns[c].Cells[0] == sender)
-                { col = c; break; }
-            }
+            var box = Gtk.Box.New(Gtk.Orientation.Vertical, 8);
+            box.SetMarginTop(20); box.SetMarginBottom(20);
+            box.SetMarginStart(20); box.SetMarginEnd(20);
 
-            if (col < 0) return;
+            box.Append(Gtk.Label.New(UtilsAssembly.Title));
+            box.Append(Gtk.Label.New($"Version {UtilsAssembly.Version}"));
+            box.Append(Gtk.Label.New(UtilsAssembly.Product));
+            box.Append(Gtk.Label.New("Original author: Christopher Brochtrup"));
+            box.Append(Gtk.Label.New(UtilsAssembly.Copyright));
+            box.Append(Gtk.Label.New("GNU General Public License v3"));
 
-            // Episode number must be >= 1
-            if (col == 0 && val < 1) val = 1;
+            // Source code link
+            var linkLabel = Gtk.Label.New(null);
+            linkLabel.SetMarkup(
+                "<a href=\"https://gitlab.com/fkzys/subs2srs\">"
+                + "https://gitlab.com/fkzys/subs2srs</a>");
+            linkLabel.SetUseMarkup(true);
+            box.Append(linkLabel);
 
-            _shiftRulesStore.SetValue(iter, col, val);
+            var btn = Gtk.Button.NewWithLabel("OK");
+            btn.SetHalign(Gtk.Align.Center);
+            btn.OnClicked += (s2, e2) => dlg.Close();
+            box.Append(btn);
+
+            dlg.SetChild(box);
+            dlg.Show();
         }
 
-        private void OnSaveProject(object? sender, EventArgs e)
+        // ── SAVE / LOAD PROJECT ─────────────────────────────────────────────
+
+        private async void OnSaveProject(Gtk.Button sender, EventArgs e)
         {
             SaveSettings();
 
-            var dlg = new FileChooserDialog(
-                "Save Project", this, FileChooserAction.Save,
-                "Cancel", ResponseType.Cancel,
-                "Save", ResponseType.Accept);
+            var dlg = Gtk.FileDialog.New();
+            dlg.SetTitle("Save Project");
 
-            var filter = new FileFilter { Name = "subs2srs Project (*.s2s.json)" };
+            var filter = Gtk.FileFilter.New();
+            filter.SetName("subs2srs Project (*.s2s.json)");
             filter.AddPattern("*.s2s.json");
-            dlg.AddFilter(filter);
-            dlg.DoOverwriteConfirmation = true;
+            var filters = Gio.ListStore.New(Gtk.FileFilter.GetGType());
+            filters.Append(filter);
+            dlg.SetFilters(filters);
 
-            // Pre-fill filename from current project path or deck name
-            if (!string.IsNullOrEmpty(Settings.Instance.ProjectPath))
-                dlg.SetFilename(Settings.Instance.ProjectPath);
-            else if (!string.IsNullOrEmpty(Settings.Instance.DeckName))
-                dlg.CurrentName = Settings.Instance.DeckName + ".s2s.json";
-            else
-                dlg.CurrentName = "project.s2s.json";
+            string initName = !string.IsNullOrEmpty(Settings.Instance.DeckName)
+                ? Settings.Instance.DeckName + ".s2s.json"
+                : "project.s2s.json";
+            dlg.SetInitialName(initName);
 
-            if (dlg.Run() == (int)ResponseType.Accept)
+            try
             {
-                string path = dlg.Filename;
+                var file = await dlg.SaveAsync(this);
+                if (file == null) return;
+                string path = file.GetPath() ?? "";
+                if (path == "") return;
                 if (!path.EndsWith(".s2s.json", StringComparison.OrdinalIgnoreCase))
                     path += ".s2s.json";
-
                 try
                 {
                     ProjectIO.Save(path, Settings.Instance);
@@ -1104,31 +1180,35 @@ namespace subs2srs
                     UtilsMsg.showErrMsg($"Failed to save project:\n{ex.Message}");
                 }
             }
-
-            dlg.Destroy();
+            catch { /* user cancelled */ }
         }
 
-        private void OnLoadProject(object? sender, EventArgs e)
+        private async void OnLoadProject(Gtk.Button sender, EventArgs e)
         {
-            var dlg = new FileChooserDialog(
-                "Load Project", this, FileChooserAction.Open,
-                "Cancel", ResponseType.Cancel,
-                "Open", ResponseType.Accept);
+            var dlg = Gtk.FileDialog.New();
+            dlg.SetTitle("Load Project");
 
-            var filter = new FileFilter { Name = "subs2srs Project (*.s2s.json)" };
+            var filter = Gtk.FileFilter.New();
+            filter.SetName("subs2srs Project (*.s2s.json)");
             filter.AddPattern("*.s2s.json");
-            dlg.AddFilter(filter);
-
-            var allFilter = new FileFilter { Name = "All files" };
+            var allFilter = Gtk.FileFilter.New();
+            allFilter.SetName("All files");
             allFilter.AddPattern("*");
-            dlg.AddFilter(allFilter);
+            var filters = Gio.ListStore.New(Gtk.FileFilter.GetGType());
+            filters.Append(filter);
+            filters.Append(allFilter);
+            dlg.SetFilters(filters);
 
-            if (dlg.Run() == (int)ResponseType.Accept)
+            try
             {
+                var file = await dlg.OpenAsync(this);
+                if (file == null) return;
+                string path = file.GetPath() ?? "";
+                if (path == "") return;
                 try
                 {
-                    ProjectIO.Load(dlg.Filename);
-                    Settings.Instance.ProjectPath = dlg.Filename;
+                    ProjectIO.Load(path);
+                    Settings.Instance.ProjectPath = path;
                     PopulateUIFromSettings();
                 }
                 catch (Exception ex)
@@ -1136,39 +1216,135 @@ namespace subs2srs
                     UtilsMsg.showErrMsg($"Failed to load project:\n{ex.Message}");
                 }
             }
-
-            dlg.Destroy();
+            catch { /* user cancelled */ }
         }
 
-        // ── FILE DIALOGS ─────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
+        //  HELPERS
+        // ═══════════════════════════════════════════════════════════════════
 
-        private string SelectFile(string title)
+        /// <summary>Attach a right-aligned label to a grid cell.</summary>
+        private void AttachLabel(Gtk.Grid grid, string text, int col, int row)
         {
-            var dlg = new FileChooserDialog(title, this, FileChooserAction.Open,
-                "Cancel", ResponseType.Cancel, "Open", ResponseType.Accept);
-            string result = string.Empty;
-            if (dlg.Run() == (int)ResponseType.Accept)
-                result = dlg.Filename;
-            dlg.Destroy();
-            return result;
+            var lbl = Gtk.Label.New(text);
+            lbl.SetHalign(Gtk.Align.End);
+            grid.Attach(lbl, col, row, 1, 1);
         }
 
-        private string SelectFolder(string title)
+        private (Gtk.DropDown, Gtk.StringList) BuildEncodingDropDown()
         {
-            var dlg = new FileChooserDialog(title, this, FileChooserAction.SelectFolder,
-                "Cancel", ResponseType.Cancel, "Open", ResponseType.Accept);
-            string result = string.Empty;
-            if (dlg.Run() == (int)ResponseType.Accept)
-                result = dlg.Filename;
-            dlg.Destroy();
-            return result;
+            var encodings = InfoEncoding.getEncodings();
+            var names = new List<string>();
+            int selIdx = 0, idx = 0;
+            foreach (var enc in encodings)
+            {
+                names.Add(enc.LongName);
+                if (enc.ShortName == "utf-8") selIdx = idx;
+                idx++;
+            }
+            var model = Gtk.StringList.New(names.ToArray());
+            var dd = Gtk.DropDown.New(model, null);
+            dd.SetSelected((uint)selIdx);
+            return (dd, model);
         }
 
-        // ── PROGRESS REPORTER ────────────────────────────────────────────────
+        private string GetSelectedEncodingShort(Gtk.DropDown dd, Gtk.StringList model)
+        {
+            uint sel = dd.GetSelected();
+            var encodings = InfoEncoding.getEncodings();
+            int i = 0;
+            foreach (var enc in encodings)
+            {
+                if (i == (int)sel) return enc.ShortName;
+                i++;
+            }
+            return "utf-8";
+        }
+
+        private string GetSelectedEncodingLong(Gtk.DropDown dd, Gtk.StringList model)
+        {
+            uint sel = dd.GetSelected();
+            if (sel < model.GetNItems())
+                return model.GetString(sel) ?? "";
+            return "";
+        }
+
+        private void SetEncodingDropDown(Gtk.DropDown dd, Gtk.StringList model,
+            string shortName)
+        {
+            int i = 0;
+            foreach (var enc in InfoEncoding.getEncodings())
+            {
+                if (enc.ShortName == shortName) { dd.SetSelected((uint)i); return; }
+                i++;
+            }
+            dd.SetSelected(0);
+        }
+
+        private int GetSelectedBitrate(Gtk.DropDown dd, Gtk.StringList model,
+            int defaultVal)
+        {
+            uint sel = dd.GetSelected();
+            if (sel < model.GetNItems())
+            {
+                string text = model.GetString(sel);
+                if (int.TryParse(text, out int val)) return val;
+            }
+            return defaultVal;
+        }
+
+        private void SetBitrateDropDown(Gtk.DropDown dd, Gtk.StringList model,
+            int bitrate)
+        {
+            string target = bitrate.ToString();
+            for (uint i = 0; i < model.GetNItems(); i++)
+            {
+                if (model.GetString(i) == target) { dd.SetSelected(i); return; }
+            }
+            dd.SetSelected(3); // fallback: 128
+        }
+
+        // ── FILE DIALOGS (GTK4 async) ───────────────────────────────────────
+
+        private async void SelectFileAsync(string title, System.Action<string> onSelected)
+        {
+            var dlg = Gtk.FileDialog.New();
+            dlg.SetTitle(title);
+            try
+            {
+                var file = await dlg.OpenAsync(this);
+                if (file != null)
+                {
+                    string path = file.GetPath() ?? "";
+                    if (path != "") onSelected(path);
+                }
+            }
+            catch { }
+        }
+
+        private async void SelectFolderAsync(string title, System.Action<string> onSelected)
+        {
+            var dlg = Gtk.FileDialog.New();
+            dlg.SetTitle(title);
+            try
+            {
+                var file = await dlg.SelectFolderAsync(this);
+                if (file != null)
+                {
+                    string path = file.GetPath() ?? "";
+                    if (path != "") onSelected(path);
+                }
+            }
+            catch { }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  PROGRESS REPORTER
+        // ═══════════════════════════════════════════════════════════════════
 
         private class GtkProgressReporter : IProgressReporter
         {
-            private readonly ProgressBar _bar;
+            private readonly Gtk.ProgressBar _bar;
             private readonly CancellationTokenSource _cts = new();
             private bool _cancel;
             public int StepsTotal { get; set; }
@@ -1187,10 +1363,10 @@ namespace subs2srs
 
             public CancellationToken Token => _cts.Token;
 
-            public GtkProgressReporter(ProgressBar bar)
+            public GtkProgressReporter(Gtk.ProgressBar bar)
             {
                 _bar = bar;
-                GLib.Timeout.Add(50, OnPoll);
+                GLib.Functions.TimeoutAdd(0, 50, OnPoll);
             }
 
             public void Stop()
@@ -1213,20 +1389,30 @@ namespace subs2srs
                 }
                 if (dirty)
                 {
-                    if (text != null) _bar.Text = text;
-                    if (frac >= 0) _bar.Fraction = frac;
+                    if (text != null) _bar.SetText(text);
+                    if (frac >= 0) _bar.SetFraction(frac);
                 }
                 return _active;
             }
 
             public void NextStep(int step, string description)
             {
-                lock (_sync) { _text = $"[{step}/{StepsTotal}] {description}"; _fraction = 0.0; _dirty = true; }
+                lock (_sync)
+                {
+                    _text = $"[{step}/{StepsTotal}] {description}";
+                    _fraction = 0.0;
+                    _dirty = true;
+                }
             }
 
             public void UpdateProgress(int percent, string text)
             {
-                lock (_sync) { _text = text; _fraction = Math.Max(0, Math.Min(1, percent / 100.0)); _dirty = true; }
+                lock (_sync)
+                {
+                    _text = text;
+                    _fraction = Math.Max(0, Math.Min(1, percent / 100.0));
+                    _dirty = true;
+                }
             }
 
             public void UpdateProgress(string text)
@@ -1236,7 +1422,22 @@ namespace subs2srs
 
             public void EnableDetail(bool enable) { }
             public void SetDuration(TimeSpan duration) { }
-            public void OnFFmpegOutput(object sender, System.Diagnostics.DataReceivedEventArgs e) { }
+            public void OnFFmpegOutput(object sender,
+                System.Diagnostics.DataReceivedEventArgs e) { }
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  ShiftRuleItem — plain data holder for per-episode shift rules list
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public class ShiftRuleItem
+    {
+        public int FromEpisode { get; set; } = 1;
+        public int Subs1Shift { get; set; }
+        public int Subs2Shift { get; set; }
+
+        public static ShiftRuleItem Create(int fromEp, int s1, int s2) =>
+            new ShiftRuleItem { FromEpisode = fromEp, Subs1Shift = s1, Subs2Shift = s2 };
     }
 }

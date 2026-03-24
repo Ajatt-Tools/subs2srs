@@ -20,12 +20,16 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using Gtk;
 using SysPath = System.IO.Path;
 
 namespace subs2srs
 {
-    public class DialogAdvancedSubtitleOptions : Dialog
+    /// <summary>
+    /// Advanced subtitle filtering, context, actors, language options.
+    /// GTK4: Dialog → Window, RadioButton → grouped CheckButton,
+    /// TreeView+ListStore kept (still available in GTK4), ComboBoxText → DropDown.
+    /// </summary>
+    public class DialogAdvancedSubtitleOptions : Gtk.Window
     {
         private string _subs1FilePattern = "";
         private string _subs2FilePattern = "";
@@ -33,135 +37,182 @@ namespace subs2srs
         private string _subs2Encoding = "";
 
         // Subs1
-        private Entry _txtS1Include, _txtS1Exclude;
-        private CheckButton _chkS1Styled, _chkS1NoCounter, _chkS1DupLines;
-        private CheckButton _chkS1ExclFewer, _chkS1ExclShorter, _chkS1ExclLonger;
-        private SpinButton _spinS1Fewer, _spinS1Shorter, _spinS1Longer;
-        private CheckButton _chkS1Join;
-        private Entry _txtS1JoinChars;
+        private Gtk.Entry _txtS1Include, _txtS1Exclude;
+        private Gtk.CheckButton _chkS1Styled, _chkS1NoCounter, _chkS1DupLines;
+        private Gtk.CheckButton _chkS1ExclFewer, _chkS1ExclShorter, _chkS1ExclLonger;
+        private Gtk.SpinButton _spinS1Fewer, _spinS1Shorter, _spinS1Longer;
+        private Gtk.CheckButton _chkS1Join;
+        private Gtk.Entry _txtS1JoinChars;
 
         // Subs2
-        private Entry _txtS2Include, _txtS2Exclude;
-        private CheckButton _chkS2Styled, _chkS2NoCounter, _chkS2DupLines;
-        private CheckButton _chkS2ExclFewer, _chkS2ExclShorter, _chkS2ExclLonger;
-        private SpinButton _spinS2Fewer, _spinS2Shorter, _spinS2Longer;
-        private CheckButton _chkS2Join;
-        private Entry _txtS2JoinChars;
+        private Gtk.Entry _txtS2Include, _txtS2Exclude;
+        private Gtk.CheckButton _chkS2Styled, _chkS2NoCounter, _chkS2DupLines;
+        private Gtk.CheckButton _chkS2ExclFewer, _chkS2ExclShorter, _chkS2ExclLonger;
+        private Gtk.SpinButton _spinS2Fewer, _spinS2Shorter, _spinS2Longer;
+        private Gtk.CheckButton _chkS2Join;
+        private Gtk.Entry _txtS2JoinChars;
 
         // Context
-        private SpinButton _spinCtxLeading, _spinCtxTrailing;
-        private CheckButton _chkLeadAudio, _chkLeadSnap, _chkLeadVideo;
-        private CheckButton _chkTrailAudio, _chkTrailSnap, _chkTrailVideo;
-        private SpinButton _spinLeadRange, _spinTrailRange;
+        private Gtk.SpinButton _spinCtxLeading, _spinCtxTrailing;
+        private Gtk.CheckButton _chkLeadAudio, _chkLeadSnap, _chkLeadVideo;
+        private Gtk.CheckButton _chkTrailAudio, _chkTrailSnap, _chkTrailVideo;
+        private Gtk.SpinButton _spinLeadRange, _spinTrailRange;
 
-        // Actors
-        private RadioButton _radioActorS1, _radioActorS2;
-        private TreeView _tvActors;
-        private ListStore _actorStore;
+        // Actors — using grouped CheckButtons instead of RadioButton
+        private Gtk.CheckButton _radioActorS1, _radioActorS2;
+        private Gtk.ListView _lvActors;
+        private Gio.ListStore _actorStore;
+        // We'll use a simple list of (bool selected, string name) via string encoding
+        // Actually simpler: parallel lists
+        private List<bool> _actorSelected = new();
+        private List<string> _actorNames = new();
 
         // Language
-        private CheckButton _chkKanjiOnly;
+        private Gtk.CheckButton _chkKanjiOnly;
+
+        // Dialog result
+        private bool? _result;
+        private GLib.MainLoop _loop;
 
         public string Subs1FilePattern { set => _subs1FilePattern = value; }
         public string Subs2FilePattern { set => _subs2FilePattern = value; }
         public string Subs1Encoding { set => _subs1Encoding = value; }
         public string Subs2Encoding { set => _subs2Encoding = value; }
 
-        public DialogAdvancedSubtitleOptions(Window parent) : base(
-            "Advanced Subtitle Options", parent, DialogFlags.Modal,
-            "Cancel", ResponseType.Cancel, "OK", ResponseType.Ok)
+        public DialogAdvancedSubtitleOptions(Gtk.Window parent)
         {
+            SetTitle("Advanced Subtitle Options");
             SetDefaultSize(650, 550);
+            SetModal(true);
+            if (parent != null) SetTransientFor(parent);
+
             BuildUI();
             LoadFromSettings();
         }
 
+        public bool RunDialog()
+        {
+            _result = null;
+            _loop = GLib.MainLoop.New(null, false);
+            OnCloseRequest += (s, e) =>
+            {
+                if (_result == null) _result = false;
+                _loop.Quit();
+                return false;
+            };
+            Show();
+            _loop.Run();
+            return _result ?? false;
+        }
+
+        // Alias expected by MainWindow (1 = OK, 0 = Cancel)
+        public int Run() => RunDialog() ? 1 : 0;
+
         private void BuildUI()
         {
-            var notebook = new Notebook();
-            notebook.AppendPage(BuildSubsPage(1), new Label("Subs1 Filtering"));
-            notebook.AppendPage(BuildSubsPage(2), new Label("Subs2 Filtering"));
-            notebook.AppendPage(BuildContextPage(), new Label("Context"));
-            notebook.AppendPage(BuildActorsPage(), new Label("Actors"));
-            notebook.AppendPage(BuildLangPage(), new Label("Language"));
-            ContentArea.PackStart(notebook, true, true, 0);
-            ContentArea.ShowAll();
+            var outerBox = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
+
+            var notebook = Gtk.Notebook.New();
+            notebook.AppendPage(BuildSubsPage(1), Gtk.Label.New("Subs1 Filtering"));
+            notebook.AppendPage(BuildSubsPage(2), Gtk.Label.New("Subs2 Filtering"));
+            notebook.AppendPage(BuildContextPage(), Gtk.Label.New("Context"));
+            notebook.AppendPage(BuildActorsPage(), Gtk.Label.New("Actors"));
+            notebook.AppendPage(BuildLangPage(), Gtk.Label.New("Language"));
+            outerBox.Append(notebook);
+
+            // OK / Cancel
+            var btnRow = Gtk.Box.New(Gtk.Orientation.Horizontal, 8);
+            btnRow.SetHalign(Gtk.Align.End);
+            btnRow.SetMarginTop(6); btnRow.SetMarginEnd(8); btnRow.SetMarginBottom(8);
+
+            var btnCancel = Gtk.Button.NewWithLabel("Cancel");
+            btnCancel.OnClicked += (s, e) => { _result = false; Close(); };
+            btnRow.Append(btnCancel);
+
+            var btnOk = Gtk.Button.NewWithLabel("OK");
+            btnOk.OnClicked += (s, e) => { _result = true; Close(); };
+            btnRow.Append(btnOk);
+
+            outerBox.Append(btnRow);
+            SetChild(outerBox);
         }
 
         // ── SUBS FILTERING ─────────────────────────────────────────────────
 
-        private Widget BuildSubsPage(int num)
+        private Gtk.Widget BuildSubsPage(int num)
         {
-            var vbox = new Box(Orientation.Vertical, 6) { BorderWidth = 8 };
-            var grid = new Grid { RowSpacing = 6, ColumnSpacing = 6 };
+            var vbox = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
+            vbox.SetMarginTop(8); vbox.SetMarginBottom(8);
+            vbox.SetMarginStart(8); vbox.SetMarginEnd(8);
+
+            var grid = Gtk.Grid.New();
+            grid.SetRowSpacing(6); grid.SetColumnSpacing(6);
             int r = 0;
 
             // Include
-            grid.Attach(new Label("Include only (;):") { Halign = Align.End }, 0, r, 1, 1);
-            var txtInc = new Entry { Hexpand = true };
+            var lblInc = Gtk.Label.New("Include only (;):"); lblInc.SetHalign(Gtk.Align.End);
+            grid.Attach(lblInc, 0, r, 1, 1);
+            var txtInc = Gtk.Entry.New(); txtInc.SetHexpand(true);
             grid.Attach(txtInc, 1, r, 1, 1);
-            var btnIncFile = new Button("From File...");
-            btnIncFile.Clicked += (s, e) => { var t = LoadSemiFile(); if (t != null) txtInc.Text = t; };
+            var btnIncFile = Gtk.Button.NewWithLabel("From File...");
+            btnIncFile.OnClicked += (s, e) => LoadSemiFileInto(txtInc);
             grid.Attach(btnIncFile, 2, r, 1, 1);
             r++;
 
             // Exclude
-            grid.Attach(new Label("Exclude (;):") { Halign = Align.End }, 0, r, 1, 1);
-            var txtExc = new Entry { Hexpand = true };
+            var lblExc = Gtk.Label.New("Exclude (;):"); lblExc.SetHalign(Gtk.Align.End);
+            grid.Attach(lblExc, 0, r, 1, 1);
+            var txtExc = Gtk.Entry.New(); txtExc.SetHexpand(true);
             grid.Attach(txtExc, 1, r, 1, 1);
-            var btnExcFile = new Button("From File...");
-            btnExcFile.Clicked += (s, e) => { var t = LoadSemiFile(); if (t != null) txtExc.Text = t; };
+            var btnExcFile = Gtk.Button.NewWithLabel("From File...");
+            btnExcFile.OnClicked += (s, e) => LoadSemiFileInto(txtExc);
             grid.Attach(btnExcFile, 2, r, 1, 1);
             r++;
 
-            vbox.PackStart(grid, false, false, 0);
-            vbox.PackStart(new Separator(Orientation.Horizontal), false, false, 2);
+            vbox.Append(grid);
+            vbox.Append(Gtk.Separator.New(Gtk.Orientation.Horizontal));
 
-            var chkStyled = new CheckButton("Remove styled lines (lines starting with '{')");
-            var chkNoCounter = new CheckButton("Remove lines with no counterpart");
-            var chkDup = new CheckButton("Exclude duplicate lines");
-            vbox.PackStart(chkStyled, false, false, 0);
-            vbox.PackStart(chkNoCounter, false, false, 0);
-            vbox.PackStart(chkDup, false, false, 0);
+            var chkStyled = Gtk.CheckButton.NewWithLabel("Remove styled lines (lines starting with '{')");
+            var chkNoCounter = Gtk.CheckButton.NewWithLabel("Remove lines with no counterpart");
+            var chkDup = Gtk.CheckButton.NewWithLabel("Exclude duplicate lines");
+            vbox.Append(chkStyled);
+            vbox.Append(chkNoCounter);
+            vbox.Append(chkDup);
 
             // Fewer chars
-            var chkFewer = new CheckButton("Exclude lines fewer than");
-            var spinFewer = new SpinButton(1, 999, 1) { Value = 8 };
-            var hbFewer = new Box(Orientation.Horizontal, 4);
-            hbFewer.PackStart(chkFewer, false, false, 0);
-            hbFewer.PackStart(spinFewer, false, false, 0);
-            hbFewer.PackStart(new Label("chars"), false, false, 0);
-            chkFewer.Toggled += (s, e) => spinFewer.Sensitive = chkFewer.Active;
-            vbox.PackStart(hbFewer, false, false, 0);
+            var chkFewer = Gtk.CheckButton.NewWithLabel("Exclude lines fewer than");
+            var spinFewer = Gtk.SpinButton.NewWithRange(1, 999, 1); spinFewer.SetValue(8);
+            var hbFewer = Gtk.Box.New(Gtk.Orientation.Horizontal, 4);
+            hbFewer.Append(chkFewer); hbFewer.Append(spinFewer);
+            hbFewer.Append(Gtk.Label.New("chars"));
+            chkFewer.OnToggled += (s, e) => spinFewer.SetSensitive(chkFewer.GetActive());
+            vbox.Append(hbFewer);
 
             // Shorter than
-            var chkShorter = new CheckButton("Exclude lines shorter than");
-            var spinShorter = new SpinButton(1, 99999, 100) { Value = 800 };
-            var hbShorter = new Box(Orientation.Horizontal, 4);
-            hbShorter.PackStart(chkShorter, false, false, 0);
-            hbShorter.PackStart(spinShorter, false, false, 0);
-            hbShorter.PackStart(new Label("ms"), false, false, 0);
-            chkShorter.Toggled += (s, e) => spinShorter.Sensitive = chkShorter.Active;
-            vbox.PackStart(hbShorter, false, false, 0);
+            var chkShorter = Gtk.CheckButton.NewWithLabel("Exclude lines shorter than");
+            var spinShorter = Gtk.SpinButton.NewWithRange(1, 99999, 100); spinShorter.SetValue(800);
+            var hbShorter = Gtk.Box.New(Gtk.Orientation.Horizontal, 4);
+            hbShorter.Append(chkShorter); hbShorter.Append(spinShorter);
+            hbShorter.Append(Gtk.Label.New("ms"));
+            chkShorter.OnToggled += (s, e) => spinShorter.SetSensitive(chkShorter.GetActive());
+            vbox.Append(hbShorter);
 
             // Longer than
-            var chkLonger = new CheckButton("Exclude lines longer than");
-            var spinLonger = new SpinButton(1, 99999, 100) { Value = 5000 };
-            var hbLonger = new Box(Orientation.Horizontal, 4);
-            hbLonger.PackStart(chkLonger, false, false, 0);
-            hbLonger.PackStart(spinLonger, false, false, 0);
-            hbLonger.PackStart(new Label("ms"), false, false, 0);
-            chkLonger.Toggled += (s, e) => spinLonger.Sensitive = chkLonger.Active;
-            vbox.PackStart(hbLonger, false, false, 0);
+            var chkLonger = Gtk.CheckButton.NewWithLabel("Exclude lines longer than");
+            var spinLonger = Gtk.SpinButton.NewWithRange(1, 99999, 100); spinLonger.SetValue(5000);
+            var hbLonger = Gtk.Box.New(Gtk.Orientation.Horizontal, 4);
+            hbLonger.Append(chkLonger); hbLonger.Append(spinLonger);
+            hbLonger.Append(Gtk.Label.New("ms"));
+            chkLonger.OnToggled += (s, e) => spinLonger.SetSensitive(chkLonger.GetActive());
+            vbox.Append(hbLonger);
 
             // Join sentences
-            var chkJoin = new CheckButton("Join sentences ending with:");
-            var txtJoin = new Entry { Text = ",、→", WidthChars = 12 };
-            var hbJoin = new Box(Orientation.Horizontal, 4);
-            hbJoin.PackStart(chkJoin, false, false, 0);
-            hbJoin.PackStart(txtJoin, false, false, 0);
-            chkJoin.Toggled += (s, e) => txtJoin.Sensitive = chkJoin.Active;
-            vbox.PackStart(hbJoin, false, false, 0);
+            var chkJoin = Gtk.CheckButton.NewWithLabel("Join sentences ending with:");
+            var txtJoin = Gtk.Entry.New(); txtJoin.SetText(",、→"); txtJoin.SetWidthChars(12);
+            var hbJoin = Gtk.Box.New(Gtk.Orientation.Horizontal, 4);
+            hbJoin.Append(chkJoin); hbJoin.Append(txtJoin);
+            chkJoin.OnToggled += (s, e) => txtJoin.SetSensitive(chkJoin.GetActive());
+            vbox.Append(hbJoin);
 
             // Store refs
             if (num == 1)
@@ -188,108 +239,139 @@ namespace subs2srs
 
         // ── CONTEXT ─────────────────────────────────────────────────────────
 
-        private Widget BuildContextPage()
+        private Gtk.Widget BuildContextPage()
         {
-            var vbox = new Box(Orientation.Vertical, 6) { BorderWidth = 8 };
-            var grid = new Grid { RowSpacing = 6, ColumnSpacing = 8 };
+            var vbox = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
+            vbox.SetMarginTop(8); vbox.SetMarginBottom(8);
+            vbox.SetMarginStart(8); vbox.SetMarginEnd(8);
+
+            var grid = Gtk.Grid.New();
+            grid.SetRowSpacing(6); grid.SetColumnSpacing(8);
             int r = 0;
 
-            grid.Attach(new Label("Leading context lines:") { Halign = Align.End }, 0, r, 1, 1);
-            _spinCtxLeading = new SpinButton(0, 10, 1) { Value = 0 };
+            var lbl1 = Gtk.Label.New("Leading context lines:"); lbl1.SetHalign(Gtk.Align.End);
+            grid.Attach(lbl1, 0, r, 1, 1);
+            _spinCtxLeading = Gtk.SpinButton.NewWithRange(0, 10, 1); _spinCtxLeading.SetValue(0);
             grid.Attach(_spinCtxLeading, 1, r, 1, 1);
             r++;
 
-            _chkLeadAudio = new CheckButton("Include audio clips");
+            _chkLeadAudio = Gtk.CheckButton.NewWithLabel("Include audio clips");
             grid.Attach(_chkLeadAudio, 1, r, 2, 1); r++;
-            _chkLeadSnap = new CheckButton("Include snapshots");
+            _chkLeadSnap = Gtk.CheckButton.NewWithLabel("Include snapshots");
             grid.Attach(_chkLeadSnap, 1, r, 2, 1); r++;
-            _chkLeadVideo = new CheckButton("Include video clips");
+            _chkLeadVideo = Gtk.CheckButton.NewWithLabel("Include video clips");
             grid.Attach(_chkLeadVideo, 1, r, 2, 1); r++;
 
-            grid.Attach(new Label("Leading range (sec):") { Halign = Align.End }, 0, r, 1, 1);
-            _spinLeadRange = new SpinButton(0, 120, 1) { Value = 15 };
+            var lbl2 = Gtk.Label.New("Leading range (sec):"); lbl2.SetHalign(Gtk.Align.End);
+            grid.Attach(lbl2, 0, r, 1, 1);
+            _spinLeadRange = Gtk.SpinButton.NewWithRange(0, 120, 1); _spinLeadRange.SetValue(15);
             grid.Attach(_spinLeadRange, 1, r, 1, 1);
             r++;
 
-            grid.Attach(new Separator(Orientation.Horizontal), 0, r, 3, 1); r++;
+            grid.Attach(Gtk.Separator.New(Gtk.Orientation.Horizontal), 0, r, 3, 1); r++;
 
-            grid.Attach(new Label("Trailing context lines:") { Halign = Align.End }, 0, r, 1, 1);
-            _spinCtxTrailing = new SpinButton(0, 10, 1) { Value = 0 };
+            var lbl3 = Gtk.Label.New("Trailing context lines:"); lbl3.SetHalign(Gtk.Align.End);
+            grid.Attach(lbl3, 0, r, 1, 1);
+            _spinCtxTrailing = Gtk.SpinButton.NewWithRange(0, 10, 1); _spinCtxTrailing.SetValue(0);
             grid.Attach(_spinCtxTrailing, 1, r, 1, 1);
             r++;
 
-            _chkTrailAudio = new CheckButton("Include audio clips");
+            _chkTrailAudio = Gtk.CheckButton.NewWithLabel("Include audio clips");
             grid.Attach(_chkTrailAudio, 1, r, 2, 1); r++;
-            _chkTrailSnap = new CheckButton("Include snapshots");
+            _chkTrailSnap = Gtk.CheckButton.NewWithLabel("Include snapshots");
             grid.Attach(_chkTrailSnap, 1, r, 2, 1); r++;
-            _chkTrailVideo = new CheckButton("Include video clips");
+            _chkTrailVideo = Gtk.CheckButton.NewWithLabel("Include video clips");
             grid.Attach(_chkTrailVideo, 1, r, 2, 1); r++;
 
-            grid.Attach(new Label("Trailing range (sec):") { Halign = Align.End }, 0, r, 1, 1);
-            _spinTrailRange = new SpinButton(0, 120, 1) { Value = 15 };
+            var lbl4 = Gtk.Label.New("Trailing range (sec):"); lbl4.SetHalign(Gtk.Align.End);
+            grid.Attach(lbl4, 0, r, 1, 1);
+            _spinTrailRange = Gtk.SpinButton.NewWithRange(0, 120, 1); _spinTrailRange.SetValue(15);
             grid.Attach(_spinTrailRange, 1, r, 1, 1);
 
-            vbox.PackStart(grid, false, false, 0);
+            vbox.Append(grid);
             return vbox;
         }
 
         // ── ACTORS ──────────────────────────────────────────────────────────
 
-        private Widget BuildActorsPage()
+        private Gtk.Widget BuildActorsPage()
         {
-            var vbox = new Box(Orientation.Vertical, 6) { BorderWidth = 8 };
+            var vbox = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
+            vbox.SetMarginTop(8); vbox.SetMarginBottom(8);
+            vbox.SetMarginStart(8); vbox.SetMarginEnd(8);
 
-            var hbRadio = new Box(Orientation.Horizontal, 8);
-            _radioActorS1 = new RadioButton("From Subs1");
-            _radioActorS2 = new RadioButton(_radioActorS1, "From Subs2");
-            hbRadio.PackStart(_radioActorS1, false, false, 0);
-            hbRadio.PackStart(_radioActorS2, false, false, 0);
-            _radioActorS1.Toggled += (s, e) => _actorStore.Clear();
-            vbox.PackStart(hbRadio, false, false, 0);
+            var hbRadio = Gtk.Box.New(Gtk.Orientation.Horizontal, 8);
+            _radioActorS1 = Gtk.CheckButton.NewWithLabel("From Subs1");
+            _radioActorS2 = Gtk.CheckButton.NewWithLabel("From Subs2");
+            _radioActorS2.SetGroup(_radioActorS1);
+            _radioActorS1.SetActive(true);
+            hbRadio.Append(_radioActorS1);
+            hbRadio.Append(_radioActorS2);
+            vbox.Append(hbRadio);
 
-            var btnCheck = new Button("Check for Actors");
-            btnCheck.Clicked += OnActorCheck;
-            vbox.PackStart(btnCheck, false, false, 0);
+            var btnCheck = Gtk.Button.NewWithLabel("Check for Actors");
+            btnCheck.OnClicked += OnActorCheck;
+            vbox.Append(btnCheck);
 
-            _actorStore = new ListStore(typeof(bool), typeof(string));
-            _tvActors = new TreeView(_actorStore);
-            var togR = new CellRendererToggle { Activatable = true };
-            togR.Toggled += (s, e) =>
+            // Simple list using Gtk.StringList + Gtk.ListView for actor names
+            // For toggle functionality we use a simple list box approach
+            _actorStore = Gio.ListStore.New(Gtk.StringObject.GetGType());
+
+            var factory = Gtk.SignalListItemFactory.New();
+            factory.OnSetup += (f, args) =>
             {
-                if (_actorStore.GetIter(out var it, new Gtk.TreePath(e.Path)))
-                {
-                    bool cur = (bool)_actorStore.GetValue(it, 0);
-                    _actorStore.SetValue(it, 0, !cur);
-                }
+                var li = (Gtk.ListItem)args.Object;
+                var chk = Gtk.CheckButton.NewWithLabel("");
+                li.SetChild(chk);
             };
-            _tvActors.AppendColumn("Select", togR, "active", 0);
-            _tvActors.AppendColumn("Actor", new CellRendererText(), "text", 1);
-            var sw = new ScrolledWindow { ShadowType = ShadowType.In, HeightRequest = 200 };
-            sw.Add(_tvActors);
-            vbox.PackStart(sw, true, true, 0);
+            factory.OnBind += (f, args) =>
+            {
+                var li = (Gtk.ListItem)args.Object;
+                var chk = (Gtk.CheckButton)li.GetChild();
+                var strObj = (Gtk.StringObject)li.GetItem();
+                int idx = (int)li.GetPosition();
+                chk.SetLabel(strObj.GetString());
+                if (idx < _actorSelected.Count)
+                    chk.SetActive(_actorSelected[idx]);
+                chk.OnToggled += (s2, e2) =>
+                {
+                    int pos = (int)li.GetPosition();
+                    if (pos < _actorSelected.Count)
+                        _actorSelected[pos] = chk.GetActive();
+                };
+            };
 
-            var hbBtn = new Box(Orientation.Horizontal, 4);
-            var btnAll = new Button("All");
-            btnAll.Clicked += (s, e) => SetAllActors(true);
-            var btnNone = new Button("None");
-            btnNone.Clicked += (s, e) => SetAllActors(false);
-            var btnInv = new Button("Invert");
-            btnInv.Clicked += (s, e) => InvertActors();
-            hbBtn.PackStart(btnAll, false, false, 0);
-            hbBtn.PackStart(btnNone, false, false, 0);
-            hbBtn.PackStart(btnInv, false, false, 0);
-            vbox.PackStart(hbBtn, false, false, 0);
+            var sel = Gtk.NoSelection.New(_actorStore);
+            _lvActors = Gtk.ListView.New(sel, factory);
+            _lvActors.SetVexpand(true);
+
+            var sw = Gtk.ScrolledWindow.New();
+            sw.SetSizeRequest(-1, 200);
+            sw.SetChild(_lvActors);
+            vbox.Append(sw);
+
+            var hbBtn = Gtk.Box.New(Gtk.Orientation.Horizontal, 4);
+            var btnAll = Gtk.Button.NewWithLabel("All");
+            btnAll.OnClicked += (s, e) => SetAllActors(true);
+            var btnNone = Gtk.Button.NewWithLabel("None");
+            btnNone.OnClicked += (s, e) => SetAllActors(false);
+            var btnInv = Gtk.Button.NewWithLabel("Invert");
+            btnInv.OnClicked += (s, e) => InvertActors();
+            hbBtn.Append(btnAll); hbBtn.Append(btnNone); hbBtn.Append(btnInv);
+            vbox.Append(hbBtn);
 
             return vbox;
         }
 
         // ── LANGUAGE ────────────────────────────────────────────────────────
 
-        private Widget BuildLangPage()
+        private Gtk.Widget BuildLangPage()
         {
-            var vbox = new Box(Orientation.Vertical, 6) { BorderWidth = 8 };
-            _chkKanjiOnly = new CheckButton("Japanese: Kanji lines only");
-            vbox.PackStart(_chkKanjiOnly, false, false, 0);
+            var vbox = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
+            vbox.SetMarginTop(8); vbox.SetMarginBottom(8);
+            vbox.SetMarginStart(8); vbox.SetMarginEnd(8);
+            _chkKanjiOnly = Gtk.CheckButton.NewWithLabel("Japanese: Kanji lines only");
+            vbox.Append(_chkKanjiOnly);
             return vbox;
         }
 
@@ -299,131 +381,132 @@ namespace subs2srs
         {
             var s = Settings.Instance;
 
-            _txtS1Include.Text = UtilsCommon.makeSemiString(s.Subs[0].IncludedWords);
-            _txtS1Exclude.Text = UtilsCommon.makeSemiString(s.Subs[0].ExcludedWords);
-            _chkS1Styled.Active = s.Subs[0].RemoveStyledLines;
-            _chkS1NoCounter.Active = s.Subs[0].RemoveNoCounterpart;
-            _chkS1DupLines.Active = s.Subs[0].ExcludeDuplicateLinesEnabled;
-            _chkS1ExclFewer.Active = s.Subs[0].ExcludeFewerEnabled;
-            _spinS1Fewer.Value = s.Subs[0].ExcludeFewerCount;
-            _chkS1ExclShorter.Active = s.Subs[0].ExcludeShorterThanTimeEnabled;
-            _spinS1Shorter.Value = s.Subs[0].ExcludeShorterThanTime;
-            _chkS1ExclLonger.Active = s.Subs[0].ExcludeLongerThanTimeEnabled;
-            _spinS1Longer.Value = s.Subs[0].ExcludeLongerThanTime;
-            _chkS1Join.Active = s.Subs[0].JoinSentencesEnabled;
-            _txtS1JoinChars.Text = s.Subs[0].JoinSentencesCharList ?? "";
+            _txtS1Include.SetText(UtilsCommon.makeSemiString(s.Subs[0].IncludedWords));
+            _txtS1Exclude.SetText(UtilsCommon.makeSemiString(s.Subs[0].ExcludedWords));
+            _chkS1Styled.SetActive(s.Subs[0].RemoveStyledLines);
+            _chkS1NoCounter.SetActive(s.Subs[0].RemoveNoCounterpart);
+            _chkS1DupLines.SetActive(s.Subs[0].ExcludeDuplicateLinesEnabled);
+            _chkS1ExclFewer.SetActive(s.Subs[0].ExcludeFewerEnabled);
+            _spinS1Fewer.SetValue(s.Subs[0].ExcludeFewerCount);
+            _chkS1ExclShorter.SetActive(s.Subs[0].ExcludeShorterThanTimeEnabled);
+            _spinS1Shorter.SetValue(s.Subs[0].ExcludeShorterThanTime);
+            _chkS1ExclLonger.SetActive(s.Subs[0].ExcludeLongerThanTimeEnabled);
+            _spinS1Longer.SetValue(s.Subs[0].ExcludeLongerThanTime);
+            _chkS1Join.SetActive(s.Subs[0].JoinSentencesEnabled);
+            _txtS1JoinChars.SetText(s.Subs[0].JoinSentencesCharList ?? "");
 
-            _txtS2Include.Text = UtilsCommon.makeSemiString(s.Subs[1].IncludedWords);
-            _txtS2Exclude.Text = UtilsCommon.makeSemiString(s.Subs[1].ExcludedWords);
-            _chkS2Styled.Active = s.Subs[1].RemoveStyledLines;
-            _chkS2NoCounter.Active = s.Subs[1].RemoveNoCounterpart;
-            _chkS2DupLines.Active = s.Subs[1].ExcludeDuplicateLinesEnabled;
-            _chkS2ExclFewer.Active = s.Subs[1].ExcludeFewerEnabled;
-            _spinS2Fewer.Value = s.Subs[1].ExcludeFewerCount;
-            _chkS2ExclShorter.Active = s.Subs[1].ExcludeShorterThanTimeEnabled;
-            _spinS2Shorter.Value = s.Subs[1].ExcludeShorterThanTime;
-            _chkS2ExclLonger.Active = s.Subs[1].ExcludeLongerThanTimeEnabled;
-            _spinS2Longer.Value = s.Subs[1].ExcludeLongerThanTime;
-            _chkS2Join.Active = s.Subs[1].JoinSentencesEnabled;
-            _txtS2JoinChars.Text = s.Subs[1].JoinSentencesCharList ?? "";
+            _txtS2Include.SetText(UtilsCommon.makeSemiString(s.Subs[1].IncludedWords));
+            _txtS2Exclude.SetText(UtilsCommon.makeSemiString(s.Subs[1].ExcludedWords));
+            _chkS2Styled.SetActive(s.Subs[1].RemoveStyledLines);
+            _chkS2NoCounter.SetActive(s.Subs[1].RemoveNoCounterpart);
+            _chkS2DupLines.SetActive(s.Subs[1].ExcludeDuplicateLinesEnabled);
+            _chkS2ExclFewer.SetActive(s.Subs[1].ExcludeFewerEnabled);
+            _spinS2Fewer.SetValue(s.Subs[1].ExcludeFewerCount);
+            _chkS2ExclShorter.SetActive(s.Subs[1].ExcludeShorterThanTimeEnabled);
+            _spinS2Shorter.SetValue(s.Subs[1].ExcludeShorterThanTime);
+            _chkS2ExclLonger.SetActive(s.Subs[1].ExcludeLongerThanTimeEnabled);
+            _spinS2Longer.SetValue(s.Subs[1].ExcludeLongerThanTime);
+            _chkS2Join.SetActive(s.Subs[1].JoinSentencesEnabled);
+            _txtS2JoinChars.SetText(s.Subs[1].JoinSentencesCharList ?? "");
 
-            _spinCtxLeading.Value = s.ContextLeadingCount;
-            _chkLeadAudio.Active = s.ContextLeadingIncludeAudioClips;
-            _chkLeadSnap.Active = s.ContextLeadingIncludeSnapshots;
-            _chkLeadVideo.Active = s.ContextLeadingIncludeVideoClips;
-            _spinLeadRange.Value = s.ContextLeadingRange;
+            _spinCtxLeading.SetValue(s.ContextLeadingCount);
+            _chkLeadAudio.SetActive(s.ContextLeadingIncludeAudioClips);
+            _chkLeadSnap.SetActive(s.ContextLeadingIncludeSnapshots);
+            _chkLeadVideo.SetActive(s.ContextLeadingIncludeVideoClips);
+            _spinLeadRange.SetValue(s.ContextLeadingRange);
 
-            _spinCtxTrailing.Value = s.ContextTrailingCount;
-            _chkTrailAudio.Active = s.ContextTrailingIncludeAudioClips;
-            _chkTrailSnap.Active = s.ContextTrailingIncludeSnapshots;
-            _chkTrailVideo.Active = s.ContextTrailingIncludeVideoClips;
-            _spinTrailRange.Value = s.ContextTrailingRange;
+            _spinCtxTrailing.SetValue(s.ContextTrailingCount);
+            _chkTrailAudio.SetActive(s.ContextTrailingIncludeAudioClips);
+            _chkTrailSnap.SetActive(s.ContextTrailingIncludeSnapshots);
+            _chkTrailVideo.SetActive(s.ContextTrailingIncludeVideoClips);
+            _spinTrailRange.SetValue(s.ContextTrailingRange);
 
-            _radioActorS1.Active = s.Subs[0].ActorsEnabled;
-            _radioActorS2.Active = s.Subs[1].ActorsEnabled;
+            _radioActorS1.SetActive(s.Subs[0].ActorsEnabled);
+            _radioActorS2.SetActive(s.Subs[1].ActorsEnabled);
 
-            _chkKanjiOnly.Active = s.LanguageSpecific.KanjiLinesOnly;
+            _chkKanjiOnly.SetActive(s.LanguageSpecific.KanjiLinesOnly);
 
             // Sensitivity
-            _spinS1Fewer.Sensitive = _chkS1ExclFewer.Active;
-            _spinS1Shorter.Sensitive = _chkS1ExclShorter.Active;
-            _spinS1Longer.Sensitive = _chkS1ExclLonger.Active;
-            _txtS1JoinChars.Sensitive = _chkS1Join.Active;
-            _spinS2Fewer.Sensitive = _chkS2ExclFewer.Active;
-            _spinS2Shorter.Sensitive = _chkS2ExclShorter.Active;
-            _spinS2Longer.Sensitive = _chkS2ExclLonger.Active;
-            _txtS2JoinChars.Sensitive = _chkS2Join.Active;
+            _spinS1Fewer.SetSensitive(_chkS1ExclFewer.GetActive());
+            _spinS1Shorter.SetSensitive(_chkS1ExclShorter.GetActive());
+            _spinS1Longer.SetSensitive(_chkS1ExclLonger.GetActive());
+            _txtS1JoinChars.SetSensitive(_chkS1Join.GetActive());
+            _spinS2Fewer.SetSensitive(_chkS2ExclFewer.GetActive());
+            _spinS2Shorter.SetSensitive(_chkS2ExclShorter.GetActive());
+            _spinS2Longer.SetSensitive(_chkS2ExclLonger.GetActive());
+            _txtS2JoinChars.SetSensitive(_chkS2Join.GetActive());
         }
 
         public void SaveToSettings()
         {
             var s = Settings.Instance;
 
-            s.Subs[0].IncludedWords = SplitSemi(_txtS1Include.Text);
-            s.Subs[0].ExcludedWords = SplitSemi(_txtS1Exclude.Text);
-            s.Subs[0].RemoveStyledLines = _chkS1Styled.Active;
-            s.Subs[0].RemoveNoCounterpart = _chkS1NoCounter.Active;
-            s.Subs[0].ExcludeDuplicateLinesEnabled = _chkS1DupLines.Active;
-            s.Subs[0].ExcludeFewerEnabled = _chkS1ExclFewer.Active;
-            s.Subs[0].ExcludeFewerCount = (int)_spinS1Fewer.Value;
-            s.Subs[0].ExcludeShorterThanTimeEnabled = _chkS1ExclShorter.Active;
-            s.Subs[0].ExcludeShorterThanTime = (int)_spinS1Shorter.Value;
-            s.Subs[0].ExcludeLongerThanTimeEnabled = _chkS1ExclLonger.Active;
-            s.Subs[0].ExcludeLongerThanTime = (int)_spinS1Longer.Value;
-            s.Subs[0].JoinSentencesEnabled = _chkS1Join.Active;
-            s.Subs[0].JoinSentencesCharList = _txtS1JoinChars.Text.Trim();
-            s.Subs[0].ActorsEnabled = _radioActorS1.Active;
+            s.Subs[0].IncludedWords = SplitSemi(_txtS1Include.GetText());
+            s.Subs[0].ExcludedWords = SplitSemi(_txtS1Exclude.GetText());
+            s.Subs[0].RemoveStyledLines = _chkS1Styled.GetActive();
+            s.Subs[0].RemoveNoCounterpart = _chkS1NoCounter.GetActive();
+            s.Subs[0].ExcludeDuplicateLinesEnabled = _chkS1DupLines.GetActive();
+            s.Subs[0].ExcludeFewerEnabled = _chkS1ExclFewer.GetActive();
+            s.Subs[0].ExcludeFewerCount = (int)_spinS1Fewer.GetValue();
+            s.Subs[0].ExcludeShorterThanTimeEnabled = _chkS1ExclShorter.GetActive();
+            s.Subs[0].ExcludeShorterThanTime = (int)_spinS1Shorter.GetValue();
+            s.Subs[0].ExcludeLongerThanTimeEnabled = _chkS1ExclLonger.GetActive();
+            s.Subs[0].ExcludeLongerThanTime = (int)_spinS1Longer.GetValue();
+            s.Subs[0].JoinSentencesEnabled = _chkS1Join.GetActive();
+            s.Subs[0].JoinSentencesCharList = _txtS1JoinChars.GetText().Trim();
+            s.Subs[0].ActorsEnabled = _radioActorS1.GetActive();
 
-            s.Subs[1].IncludedWords = SplitSemi(_txtS2Include.Text);
-            s.Subs[1].ExcludedWords = SplitSemi(_txtS2Exclude.Text);
-            s.Subs[1].RemoveStyledLines = _chkS2Styled.Active;
-            s.Subs[1].RemoveNoCounterpart = _chkS2NoCounter.Active;
-            s.Subs[1].ExcludeDuplicateLinesEnabled = _chkS2DupLines.Active;
-            s.Subs[1].ExcludeFewerEnabled = _chkS2ExclFewer.Active;
-            s.Subs[1].ExcludeFewerCount = (int)_spinS2Fewer.Value;
-            s.Subs[1].ExcludeShorterThanTimeEnabled = _chkS2ExclShorter.Active;
-            s.Subs[1].ExcludeShorterThanTime = (int)_spinS2Shorter.Value;
-            s.Subs[1].ExcludeLongerThanTimeEnabled = _chkS2ExclLonger.Active;
-            s.Subs[1].ExcludeLongerThanTime = (int)_spinS2Longer.Value;
-            s.Subs[1].JoinSentencesEnabled = _chkS2Join.Active;
-            s.Subs[1].JoinSentencesCharList = _txtS2JoinChars.Text.Trim();
-            s.Subs[1].ActorsEnabled = _radioActorS2.Active;
+            s.Subs[1].IncludedWords = SplitSemi(_txtS2Include.GetText());
+            s.Subs[1].ExcludedWords = SplitSemi(_txtS2Exclude.GetText());
+            s.Subs[1].RemoveStyledLines = _chkS2Styled.GetActive();
+            s.Subs[1].RemoveNoCounterpart = _chkS2NoCounter.GetActive();
+            s.Subs[1].ExcludeDuplicateLinesEnabled = _chkS2DupLines.GetActive();
+            s.Subs[1].ExcludeFewerEnabled = _chkS2ExclFewer.GetActive();
+            s.Subs[1].ExcludeFewerCount = (int)_spinS2Fewer.GetValue();
+            s.Subs[1].ExcludeShorterThanTimeEnabled = _chkS2ExclShorter.GetActive();
+            s.Subs[1].ExcludeShorterThanTime = (int)_spinS2Shorter.GetValue();
+            s.Subs[1].ExcludeLongerThanTimeEnabled = _chkS2ExclLonger.GetActive();
+            s.Subs[1].ExcludeLongerThanTime = (int)_spinS2Longer.GetValue();
+            s.Subs[1].JoinSentencesEnabled = _chkS2Join.GetActive();
+            s.Subs[1].JoinSentencesCharList = _txtS2JoinChars.GetText().Trim();
+            s.Subs[1].ActorsEnabled = _radioActorS2.GetActive();
 
-            s.ContextLeadingCount = (int)_spinCtxLeading.Value;
-            s.ContextLeadingIncludeAudioClips = _chkLeadAudio.Active;
-            s.ContextLeadingIncludeSnapshots = _chkLeadSnap.Active;
-            s.ContextLeadingIncludeVideoClips = _chkLeadVideo.Active;
-            s.ContextLeadingRange = (int)_spinLeadRange.Value;
+            s.ContextLeadingCount = (int)_spinCtxLeading.GetValue();
+            s.ContextLeadingIncludeAudioClips = _chkLeadAudio.GetActive();
+            s.ContextLeadingIncludeSnapshots = _chkLeadSnap.GetActive();
+            s.ContextLeadingIncludeVideoClips = _chkLeadVideo.GetActive();
+            s.ContextLeadingRange = (int)_spinLeadRange.GetValue();
 
-            s.ContextTrailingCount = (int)_spinCtxTrailing.Value;
-            s.ContextTrailingIncludeAudioClips = _chkTrailAudio.Active;
-            s.ContextTrailingIncludeSnapshots = _chkTrailSnap.Active;
-            s.ContextTrailingIncludeVideoClips = _chkTrailVideo.Active;
-            s.ContextTrailingRange = (int)_spinTrailRange.Value;
+            s.ContextTrailingCount = (int)_spinCtxTrailing.GetValue();
+            s.ContextTrailingIncludeAudioClips = _chkTrailAudio.GetActive();
+            s.ContextTrailingIncludeSnapshots = _chkTrailSnap.GetActive();
+            s.ContextTrailingIncludeVideoClips = _chkTrailVideo.GetActive();
+            s.ContextTrailingRange = (int)_spinTrailRange.GetValue();
 
-            s.LanguageSpecific.KanjiLinesOnly = _chkKanjiOnly.Active;
+            s.LanguageSpecific.KanjiLinesOnly = _chkKanjiOnly.GetActive();
 
             // Actors
             s.ActorList.Clear();
-            if (_actorStore.GetIterFirst(out var iter))
+            for (int i = 0; i < _actorNames.Count; i++)
             {
-                do
-                {
-                    if ((bool)_actorStore.GetValue(iter, 0))
-                        s.ActorList.Add((string)_actorStore.GetValue(iter, 1));
-                } while (_actorStore.IterNext(ref iter));
+                if (i < _actorSelected.Count && _actorSelected[i])
+                    s.ActorList.Add(_actorNames[i]);
             }
         }
 
         // ── ACTORS LOGIC ────────────────────────────────────────────────────
 
-        private void OnActorCheck(object s, EventArgs e)
+        private void OnActorCheck(Gtk.Button sender, EventArgs e)
         {
-            _actorStore.Clear();
+            _actorNames.Clear();
+            _actorSelected.Clear();
+            // Clear the Gio.ListStore
+            while (_actorStore.GetNItems() > 0)
+                _actorStore.Remove(0);
 
-            string pattern = _radioActorS1.Active ? _subs1FilePattern : _subs2FilePattern;
-            string enc = _radioActorS1.Active ? _subs1Encoding : _subs2Encoding;
-            int subsNum = _radioActorS1.Active ? 1 : 2;
+            string pattern = _radioActorS1.GetActive() ? _subs1FilePattern : _subs2FilePattern;
+            string enc = _radioActorS1.GetActive() ? _subs1Encoding : _subs2Encoding;
+            int subsNum = _radioActorS1.GetActive() ? 1 : 2;
 
             if (string.IsNullOrEmpty(pattern))
             {
@@ -448,7 +531,6 @@ namespace subs2srs
                 }
             }
 
-            var actorList = new List<string>();
             Encoding fileEnc;
             try { fileEnc = Encoding.GetEncoding(InfoEncoding.longToShort(enc)); }
             catch { fileEnc = Encoding.UTF8; }
@@ -460,29 +542,39 @@ namespace subs2srs
                 foreach (var info in lines)
                 {
                     string actor = info.Actor.Trim();
-                    if (!actorList.Contains(actor))
-                        actorList.Add(actor);
+                    if (!_actorNames.Contains(actor))
+                        _actorNames.Add(actor);
                 }
             }
 
-            foreach (string actor in actorList)
-                _actorStore.AppendValues(true, actor);
+            foreach (string actor in _actorNames)
+            {
+                _actorSelected.Add(true);
+                _actorStore.Append(Gtk.StringObject.New(actor));
+            }
         }
 
         private void SetAllActors(bool val)
         {
-            if (!_actorStore.GetIterFirst(out var iter)) return;
-            do { _actorStore.SetValue(iter, 0, val); } while (_actorStore.IterNext(ref iter));
+            for (int i = 0; i < _actorSelected.Count; i++)
+                _actorSelected[i] = val;
+            // Force rebind by removing/re-adding items
+            RefreshActorList();
         }
 
         private void InvertActors()
         {
-            if (!_actorStore.GetIterFirst(out var iter)) return;
-            do
-            {
-                bool cur = (bool)_actorStore.GetValue(iter, 0);
-                _actorStore.SetValue(iter, 0, !cur);
-            } while (_actorStore.IterNext(ref iter));
+            for (int i = 0; i < _actorSelected.Count; i++)
+                _actorSelected[i] = !_actorSelected[i];
+            RefreshActorList();
+        }
+
+        private void RefreshActorList()
+        {
+            while (_actorStore.GetNItems() > 0)
+                _actorStore.Remove(0);
+            foreach (string actor in _actorNames)
+                _actorStore.Append(Gtk.StringObject.New(actor));
         }
 
         // ── HELPERS ─────────────────────────────────────────────────────────
@@ -491,28 +583,33 @@ namespace subs2srs
             UtilsCommon.removeExtraSpaces(
                 text.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries));
 
-        private string LoadSemiFile()
+        private async void LoadSemiFileInto(Gtk.Entry target)
         {
-            var dlg = new FileChooserDialog("Select text file", this,
-                FileChooserAction.Open, "Cancel", ResponseType.Cancel, "Open", ResponseType.Accept);
-            var filter = new FileFilter();
-            filter.AddPattern("*.txt");
-            filter.Name = "Text files";
-            dlg.AddFilter(filter);
+            var dlg = Gtk.FileDialog.New();
+            dlg.SetTitle("Select text file");
 
-            string result = null;
-            if (dlg.Run() == (int)ResponseType.Accept)
+            var filter = Gtk.FileFilter.New();
+            filter.AddPattern("*.txt");
+            filter.SetName("Text files");
+            var filters = Gio.ListStore.New(Gtk.FileFilter.GetGType());
+            filters.Append(filter);
+            dlg.SetFilters(filters);
+
+            try
             {
-                try
+                var file = await dlg.OpenAsync(this);
+                if (file != null)
                 {
-                    string text = File.ReadAllText(dlg.Filename).Trim();
-                    var words = text.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-                    result = UtilsCommon.makeSemiString(words);
+                    string path = file.GetPath() ?? "";
+                    if (path != "")
+                    {
+                        string text = File.ReadAllText(path).Trim();
+                        var words = text.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                        target.SetText(UtilsCommon.makeSemiString(words));
+                    }
                 }
-                catch { UtilsMsg.showErrMsg("Could not open file."); }
             }
-            dlg.Destroy();
-            return result;
+            catch { /* user cancelled */ }
         }
     }
 }

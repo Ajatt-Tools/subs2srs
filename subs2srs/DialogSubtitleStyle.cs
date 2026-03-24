@@ -18,28 +18,39 @@
 //////////////////////////////////////////////////////////////////////////////
 using System;
 using System.Collections.Generic;
-using Gtk;
 
 namespace subs2srs
 {
-    public class DialogSubtitleStyle : Dialog
+    /// <summary>
+    /// Subtitle style editor dialog.
+    /// GTK4: Gtk.Dialog replaced with Gtk.Window + nested main loop.
+    /// FontButton/ColorButton replaced with GTK4 FontDialogButton/ColorDialogButton.
+    /// RadioButton replaced with grouped CheckButtons.
+    /// </summary>
+    public class DialogSubtitleStyle : Gtk.Window
     {
-        private FontButton _fontButton;
-        private CheckButton _chkUnderline, _chkStrikeout;
+        private Gtk.FontDialogButton _fontButton;
+        private Gtk.CheckButton _chkUnderline, _chkStrikeout;
 
-        private ColorButton _colorPrimary, _colorSecondary, _colorOutline, _colorShadow;
-        private SpinButton _opacityPrimary, _opacitySecondary, _opacityOutline, _opacityShadow;
+        private Gtk.ColorDialogButton _colorPrimary, _colorSecondary, _colorOutline, _colorShadow;
+        private Gtk.SpinButton _opacityPrimary, _opacitySecondary, _opacityOutline, _opacityShadow;
 
-        private RadioButton[] _alignRadios = new RadioButton[10]; // index 1-9
+        // Alignment radio group: index 1-9, stored as CheckButtons with grouping
+        private Gtk.CheckButton[] _alignRadios = new Gtk.CheckButton[10];
 
-        private SpinButton _marginLeft, _marginRight, _marginVertical;
-        private SpinButton _spinOutline, _spinShadow;
-        private CheckButton _chkOpaqueBox;
+        private Gtk.SpinButton _marginLeft, _marginRight, _marginVertical;
+        private Gtk.SpinButton _spinOutline, _spinShadow;
+        private Gtk.CheckButton _chkOpaqueBox;
 
-        private SpinButton _scaleX, _scaleY, _rotation, _spacing;
-        private ComboBoxText _comboEncoding;
+        private Gtk.SpinButton _scaleX, _scaleY, _rotation, _spacing;
+        private Gtk.DropDown _dropEncoding;
+        private Gtk.StringList _encodingModel;
 
         private InfoStyle _style = new InfoStyle();
+
+        // Dialog result
+        private bool? _result;
+        private GLib.MainLoop _loop;
 
         public InfoStyle Style
         {
@@ -47,166 +58,276 @@ namespace subs2srs
             set { _style = value; LoadFromStyle(); }
         }
 
-        public DialogSubtitleStyle(Window parent, string title = "Subtitle Style")
-            : base(title, parent, DialogFlags.Modal,
-                "Cancel", ResponseType.Cancel, "OK", ResponseType.Ok)
+        public DialogSubtitleStyle(Gtk.Window parent, string title = "Subtitle Style")
         {
+            SetTitle(title);
             SetDefaultSize(660, 380);
-            Resizable = false;
+            SetModal(true);
+            if (parent != null) SetTransientFor(parent);
+
             BuildUI();
             LoadFromStyle();
         }
 
+        /// <summary>
+        /// Show modally. Returns true if OK was clicked.
+        /// </summary>
+        public bool RunDialog()
+        {
+            _result = null;
+            _loop = GLib.MainLoop.New(null, false);
+            OnCloseRequest += (s, e) =>
+            {
+                if (_result == null) _result = false;
+                _loop.Quit();
+                return false;
+            };
+            Show();
+            _loop.Run();
+            return _result ?? false;
+        }
+
         private void BuildUI()
         {
-            var mainBox = new Box(Orientation.Horizontal, 8) { BorderWidth = 8 };
-            var leftBox = new Box(Orientation.Vertical, 6);
-            var rightBox = new Box(Orientation.Vertical, 6);
+            var mainBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 8);
+            mainBox.SetMarginTop(8);
+            mainBox.SetMarginBottom(8);
+            mainBox.SetMarginStart(8);
+            mainBox.SetMarginEnd(8);
+            var leftBox = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
+            var rightBox = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
 
             // ── Font ──────────────────────────────────────────
-            var fontFrame = new Frame("Font");
-            var fontBox = new Box(Orientation.Vertical, 4) { BorderWidth = 6 };
-            _fontButton = new FontButton { Hexpand = true, Title = "Select Font" };
-            fontBox.PackStart(_fontButton, false, false, 0);
-            var fontOptBox = new Box(Orientation.Horizontal, 8);
-            _chkUnderline = new CheckButton("Underline");
-            _chkStrikeout = new CheckButton("Strikeout");
-            fontOptBox.PackStart(_chkUnderline, false, false, 0);
-            fontOptBox.PackStart(_chkStrikeout, false, false, 0);
-            fontBox.PackStart(fontOptBox, false, false, 0);
-            fontFrame.Add(fontBox);
-            leftBox.PackStart(fontFrame, false, false, 0);
+            var fontFrame = Gtk.Frame.New("Font");
+            var fontBox = Gtk.Box.New(Gtk.Orientation.Vertical, 4);
+            fontBox.SetMarginTop(6); fontBox.SetMarginBottom(6);
+            fontBox.SetMarginStart(6); fontBox.SetMarginEnd(6);
+
+            var fontDialog = Gtk.FontDialog.New();
+            _fontButton = Gtk.FontDialogButton.New(fontDialog);
+            _fontButton.SetHexpand(true);
+            fontBox.Append(_fontButton);
+
+            var fontOptBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 8);
+            _chkUnderline = Gtk.CheckButton.NewWithLabel("Underline");
+            _chkStrikeout = Gtk.CheckButton.NewWithLabel("Strikeout");
+            fontOptBox.Append(_chkUnderline);
+            fontOptBox.Append(_chkStrikeout);
+            fontBox.Append(fontOptBox);
+            fontFrame.SetChild(fontBox);
+            leftBox.Append(fontFrame);
 
             // ── Colors ────────────────────────────────────────
-            var colorFrame = new Frame("Colors");
-            var cg = new Grid { RowSpacing = 4, ColumnSpacing = 6, BorderWidth = 6 };
-            cg.Attach(new Label("Color") { Halign = Align.Center }, 1, 0, 1, 1);
-            cg.Attach(new Label("Opacity") { Halign = Align.Center }, 2, 0, 1, 1);
+            var colorFrame = Gtk.Frame.New("Colors");
+            var cg = Gtk.Grid.New();
+            cg.SetRowSpacing(4); cg.SetColumnSpacing(6);
+            cg.SetMarginTop(6); cg.SetMarginBottom(6);
+            cg.SetMarginStart(6); cg.SetMarginEnd(6);
+
+            var lblColor = Gtk.Label.New("Color");
+            lblColor.SetHalign(Gtk.Align.Center);
+            cg.Attach(lblColor, 1, 0, 1, 1);
+            var lblOpacity = Gtk.Label.New("Opacity");
+            lblOpacity.SetHalign(Gtk.Align.Center);
+            cg.Attach(lblOpacity, 2, 0, 1, 1);
 
             _colorPrimary = NewColorBtn(SrsColor.White);
             _colorSecondary = NewColorBtn(SrsColor.Red);
             _colorOutline = NewColorBtn(SrsColor.Black);
             _colorShadow = NewColorBtn(SrsColor.Black);
-            _opacityPrimary = new SpinButton(0, 255, 1);
-            _opacitySecondary = new SpinButton(0, 255, 1);
-            _opacityOutline = new SpinButton(0, 255, 1);
-            _opacityShadow = new SpinButton(0, 255, 1);
+            _opacityPrimary = Gtk.SpinButton.NewWithRange(0, 255, 1);
+            _opacitySecondary = Gtk.SpinButton.NewWithRange(0, 255, 1);
+            _opacityOutline = Gtk.SpinButton.NewWithRange(0, 255, 1);
+            _opacityShadow = Gtk.SpinButton.NewWithRange(0, 255, 1);
 
             AttachColorRow(cg, 1, "Primary:", _colorPrimary, _opacityPrimary);
             AttachColorRow(cg, 2, "Secondary:", _colorSecondary, _opacitySecondary);
             AttachColorRow(cg, 3, "Outline:", _colorOutline, _opacityOutline);
             AttachColorRow(cg, 4, "Shadow:", _colorShadow, _opacityShadow);
-            colorFrame.Add(cg);
-            leftBox.PackStart(colorFrame, false, false, 0);
+            colorFrame.SetChild(cg);
+            leftBox.Append(colorFrame);
 
             // ── Outline / Shadow ──────────────────────────────
-            var outFrame = new Frame("Outline");
-            var og = new Grid { RowSpacing = 4, ColumnSpacing = 6, BorderWidth = 6 };
-            og.Attach(new Label("Outline:") { Halign = Align.End }, 0, 0, 1, 1);
-            _spinOutline = new SpinButton(0, 4, 1) { Value = 2 };
+            var outFrame = Gtk.Frame.New("Outline");
+            var og = Gtk.Grid.New();
+            og.SetRowSpacing(4); og.SetColumnSpacing(6);
+            og.SetMarginTop(6); og.SetMarginBottom(6);
+            og.SetMarginStart(6); og.SetMarginEnd(6);
+
+            var lblOut = Gtk.Label.New("Outline:");
+            lblOut.SetHalign(Gtk.Align.End);
+            og.Attach(lblOut, 0, 0, 1, 1);
+            _spinOutline = Gtk.SpinButton.NewWithRange(0, 4, 1);
+            _spinOutline.SetValue(2);
             og.Attach(_spinOutline, 1, 0, 1, 1);
-            og.Attach(new Label("px"), 2, 0, 1, 1);
-            og.Attach(new Label("Shadow:") { Halign = Align.End }, 0, 1, 1, 1);
-            _spinShadow = new SpinButton(0, 4, 1) { Value = 2 };
+            og.Attach(Gtk.Label.New("px"), 2, 0, 1, 1);
+
+            var lblShd = Gtk.Label.New("Shadow:");
+            lblShd.SetHalign(Gtk.Align.End);
+            og.Attach(lblShd, 0, 1, 1, 1);
+            _spinShadow = Gtk.SpinButton.NewWithRange(0, 4, 1);
+            _spinShadow.SetValue(2);
             og.Attach(_spinShadow, 1, 1, 1, 1);
-            og.Attach(new Label("px"), 2, 1, 1, 1);
-            _chkOpaqueBox = new CheckButton("Opaque box");
+            og.Attach(Gtk.Label.New("px"), 2, 1, 1, 1);
+
+            _chkOpaqueBox = Gtk.CheckButton.NewWithLabel("Opaque box");
             og.Attach(_chkOpaqueBox, 0, 2, 3, 1);
-            outFrame.Add(og);
-            leftBox.PackStart(outFrame, false, false, 0);
+            outFrame.SetChild(og);
+            leftBox.Append(outFrame);
 
             // ── Alignment ─────────────────────────────────────
-            var alFrame = new Frame("Alignment");
-            var ag = new Grid { RowSpacing = 2, ColumnSpacing = 4, BorderWidth = 6, Halign = Align.Center };
-            ag.Attach(new Label("Top") { Halign = Align.Center }, 1, 0, 1, 1);
-            ag.Attach(new Label("Left") { Halign = Align.End }, 0, 2, 1, 1);
-            ag.Attach(new Label("Right"), 4, 2, 1, 1);
-            ag.Attach(new Label("Bottom") { Halign = Align.Center }, 1, 4, 1, 1);
+            var alFrame = Gtk.Frame.New("Alignment");
+            var ag = Gtk.Grid.New();
+            ag.SetRowSpacing(2); ag.SetColumnSpacing(4);
+            ag.SetMarginTop(6); ag.SetMarginBottom(6);
+            ag.SetMarginStart(6); ag.SetMarginEnd(6);
+            ag.SetHalign(Gtk.Align.Center);
+
+            var lblTop = Gtk.Label.New("Top"); lblTop.SetHalign(Gtk.Align.Center);
+            ag.Attach(lblTop, 1, 0, 1, 1);
+            var lblLeft = Gtk.Label.New("Left"); lblLeft.SetHalign(Gtk.Align.End);
+            ag.Attach(lblLeft, 0, 2, 1, 1);
+            ag.Attach(Gtk.Label.New("Right"), 4, 2, 1, 1);
+            var lblBot = Gtk.Label.New("Bottom"); lblBot.SetHalign(Gtk.Align.Center);
+            ag.Attach(lblBot, 1, 4, 1, 1);
 
             // Top=7,8,9  Mid=4,5,6  Bot=1,2,3
             int[,] map = { { 7, 8, 9 }, { 4, 5, 6 }, { 1, 2, 3 } };
-            RadioButton first = null;
+            Gtk.CheckButton first = null;
             for (int r = 0; r < 3; r++)
                 for (int c = 0; c < 3; c++)
                 {
                     int idx = map[r, c];
-                    var rb = first == null ? new RadioButton("") : new RadioButton(first, "");
-                    if (first == null) first = rb;
+                    var rb = Gtk.CheckButton.New();
+                    if (first != null) rb.SetGroup(first);
+                    else first = rb;
                     _alignRadios[idx] = rb;
                     ag.Attach(rb, c + 1, r + 1, 1, 1);
                 }
-            alFrame.Add(ag);
-            rightBox.PackStart(alFrame, false, false, 0);
+            alFrame.SetChild(ag);
+            rightBox.Append(alFrame);
 
             // ── Margins ───────────────────────────────────────
-            var mFrame = new Frame("Margins");
-            var mg = new Grid { RowSpacing = 4, ColumnSpacing = 6, BorderWidth = 6 };
-            mg.Attach(new Label("Left:") { Halign = Align.End }, 0, 0, 1, 1);
-            _marginLeft = new SpinButton(0, 999, 1) { Value = 10 };
+            var mFrame = Gtk.Frame.New("Margins");
+            var mg = Gtk.Grid.New();
+            mg.SetRowSpacing(4); mg.SetColumnSpacing(6);
+            mg.SetMarginTop(6); mg.SetMarginBottom(6);
+            mg.SetMarginStart(6); mg.SetMarginEnd(6);
+
+            var lblML = Gtk.Label.New("Left:"); lblML.SetHalign(Gtk.Align.End);
+            mg.Attach(lblML, 0, 0, 1, 1);
+            _marginLeft = Gtk.SpinButton.NewWithRange(0, 999, 1); _marginLeft.SetValue(10);
             mg.Attach(_marginLeft, 1, 0, 1, 1);
-            mg.Attach(new Label("px"), 2, 0, 1, 1);
-            mg.Attach(new Label("Right:") { Halign = Align.End }, 0, 1, 1, 1);
-            _marginRight = new SpinButton(0, 999, 1) { Value = 10 };
+            mg.Attach(Gtk.Label.New("px"), 2, 0, 1, 1);
+
+            var lblMR = Gtk.Label.New("Right:"); lblMR.SetHalign(Gtk.Align.End);
+            mg.Attach(lblMR, 0, 1, 1, 1);
+            _marginRight = Gtk.SpinButton.NewWithRange(0, 999, 1); _marginRight.SetValue(10);
             mg.Attach(_marginRight, 1, 1, 1, 1);
-            mg.Attach(new Label("px"), 2, 1, 1, 1);
-            mg.Attach(new Label("Vertical:") { Halign = Align.End }, 0, 2, 1, 1);
-            _marginVertical = new SpinButton(0, 999, 1) { Value = 10 };
+            mg.Attach(Gtk.Label.New("px"), 2, 1, 1, 1);
+
+            var lblMV = Gtk.Label.New("Vertical:"); lblMV.SetHalign(Gtk.Align.End);
+            mg.Attach(lblMV, 0, 2, 1, 1);
+            _marginVertical = Gtk.SpinButton.NewWithRange(0, 999, 1); _marginVertical.SetValue(10);
             mg.Attach(_marginVertical, 1, 2, 1, 1);
-            mg.Attach(new Label("px"), 2, 2, 1, 1);
-            mFrame.Add(mg);
-            rightBox.PackStart(mFrame, false, false, 0);
+            mg.Attach(Gtk.Label.New("px"), 2, 2, 1, 1);
+            mFrame.SetChild(mg);
+            rightBox.Append(mFrame);
 
             // ── Misc ──────────────────────────────────────────
-            var miscFrame = new Frame("Misc");
-            var xg = new Grid { RowSpacing = 4, ColumnSpacing = 6, BorderWidth = 6 };
+            var miscFrame = Gtk.Frame.New("Misc");
+            var xg = Gtk.Grid.New();
+            xg.SetRowSpacing(4); xg.SetColumnSpacing(6);
+            xg.SetMarginTop(6); xg.SetMarginBottom(6);
+            xg.SetMarginStart(6); xg.SetMarginEnd(6);
             int xr = 0;
-            xg.Attach(new Label("Scale X:") { Halign = Align.End }, 0, xr, 1, 1);
-            _scaleX = new SpinButton(30, 150, 1) { Value = 100 };
-            xg.Attach(_scaleX, 1, xr, 1, 1);
-            xg.Attach(new Label("%"), 2, xr, 1, 1);
-            xg.Attach(new Label("Scale Y:") { Halign = Align.End }, 3, xr, 1, 1);
-            _scaleY = new SpinButton(30, 150, 1) { Value = 100 };
-            xg.Attach(_scaleY, 4, xr, 1, 1);
-            xg.Attach(new Label("%"), 5, xr, 1, 1);
-            xr++;
-            xg.Attach(new Label("Rotation:") { Halign = Align.End }, 0, xr, 1, 1);
-            _rotation = new SpinButton(0, 359, 1) { Value = 0 };
-            xg.Attach(_rotation, 1, xr, 1, 1);
-            xg.Attach(new Label("deg"), 2, xr, 1, 1);
-            xg.Attach(new Label("Spacing:") { Halign = Align.End }, 3, xr, 1, 1);
-            _spacing = new SpinButton(0, 10, 1) { Value = 0 };
-            xg.Attach(_spacing, 4, xr, 1, 1);
-            xg.Attach(new Label("px"), 5, xr, 1, 1);
-            xr++;
-            xg.Attach(new Label("Encoding:") { Halign = Align.End }, 0, xr, 1, 1);
-            _comboEncoding = new ComboBoxText();
-            foreach (var enc in StyleEncoding.getDefaultList())
-                _comboEncoding.AppendText(enc.ToString());
-            _comboEncoding.Active = 1;
-            _comboEncoding.Hexpand = true;
-            xg.Attach(_comboEncoding, 1, xr, 5, 1);
-            miscFrame.Add(xg);
-            rightBox.PackStart(miscFrame, false, false, 0);
 
-            mainBox.PackStart(leftBox, true, true, 0);
-            mainBox.PackStart(rightBox, true, true, 0);
-            ContentArea.PackStart(mainBox, true, true, 0);
-            ContentArea.ShowAll();
+            var lblSX = Gtk.Label.New("Scale X:"); lblSX.SetHalign(Gtk.Align.End);
+            xg.Attach(lblSX, 0, xr, 1, 1);
+            _scaleX = Gtk.SpinButton.NewWithRange(30, 150, 1); _scaleX.SetValue(100);
+            xg.Attach(_scaleX, 1, xr, 1, 1);
+            xg.Attach(Gtk.Label.New("%"), 2, xr, 1, 1);
+            var lblSY = Gtk.Label.New("Scale Y:"); lblSY.SetHalign(Gtk.Align.End);
+            xg.Attach(lblSY, 3, xr, 1, 1);
+            _scaleY = Gtk.SpinButton.NewWithRange(30, 150, 1); _scaleY.SetValue(100);
+            xg.Attach(_scaleY, 4, xr, 1, 1);
+            xg.Attach(Gtk.Label.New("%"), 5, xr, 1, 1);
+            xr++;
+
+            var lblRot = Gtk.Label.New("Rotation:"); lblRot.SetHalign(Gtk.Align.End);
+            xg.Attach(lblRot, 0, xr, 1, 1);
+            _rotation = Gtk.SpinButton.NewWithRange(0, 359, 1); _rotation.SetValue(0);
+            xg.Attach(_rotation, 1, xr, 1, 1);
+            xg.Attach(Gtk.Label.New("deg"), 2, xr, 1, 1);
+            var lblSpc = Gtk.Label.New("Spacing:"); lblSpc.SetHalign(Gtk.Align.End);
+            xg.Attach(lblSpc, 3, xr, 1, 1);
+            _spacing = Gtk.SpinButton.NewWithRange(0, 10, 1); _spacing.SetValue(0);
+            xg.Attach(_spacing, 4, xr, 1, 1);
+            xg.Attach(Gtk.Label.New("px"), 5, xr, 1, 1);
+            xr++;
+
+            var lblEnc = Gtk.Label.New("Encoding:"); lblEnc.SetHalign(Gtk.Align.End);
+            xg.Attach(lblEnc, 0, xr, 1, 1);
+            var encList = StyleEncoding.getDefaultList();
+            var encNames = new string[encList.Count];
+            for (int i = 0; i < encList.Count; i++) encNames[i] = encList[i].ToString();
+            _encodingModel = Gtk.StringList.New(encNames);
+            _dropEncoding = Gtk.DropDown.New(_encodingModel, null);
+            _dropEncoding.SetSelected(1);
+            _dropEncoding.SetHexpand(true);
+            xg.Attach(_dropEncoding, 1, xr, 5, 1);
+            miscFrame.SetChild(xg);
+            rightBox.Append(miscFrame);
+
+            leftBox.SetHexpand(true);
+            rightBox.SetHexpand(true);
+            mainBox.Append(leftBox);
+            mainBox.Append(rightBox);
+
+            // Wrap with OK/Cancel buttons at bottom
+            var outerBox = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
+            outerBox.Append(mainBox);
+
+            var btnRow = Gtk.Box.New(Gtk.Orientation.Horizontal, 8);
+            btnRow.SetHalign(Gtk.Align.End);
+            btnRow.SetMarginTop(6);
+            btnRow.SetMarginEnd(8);
+            btnRow.SetMarginBottom(8);
+
+            var btnCancel = Gtk.Button.NewWithLabel("Cancel");
+            btnCancel.OnClicked += (s, e) => { _result = false; Close(); };
+            btnRow.Append(btnCancel);
+
+            var btnOk = Gtk.Button.NewWithLabel("OK");
+            btnOk.OnClicked += (s, e) => { _result = true; Close(); };
+            btnRow.Append(btnOk);
+
+            outerBox.Append(btnRow);
+            SetChild(outerBox);
         }
 
         // ── Helpers ───────────────────────────────────────────
 
-        private static ColorButton NewColorBtn(SrsColor c)
+        private static Gtk.ColorDialogButton NewColorBtn(SrsColor c)
         {
-            var btn = new ColorButton { UseAlpha = false };
-            btn.Rgba = ColorToRgba(c);
+            var dlg = Gtk.ColorDialog.New();
+            var btn = Gtk.ColorDialogButton.New(dlg);
+            var rgba = new Gdk.RGBA();
+            rgba.Red = c.R / 255.0f;
+            rgba.Green = c.G / 255.0f;
+            rgba.Blue = c.B / 255.0f;
+            rgba.Alpha = 1.0f;
+            btn.SetRgba(rgba);
             return btn;
         }
 
-        private static void AttachColorRow(Grid g, int row, string label, ColorButton btn, SpinButton spin)
+        private static void AttachColorRow(Gtk.Grid g, int row, string label,
+            Gtk.ColorDialogButton btn, Gtk.SpinButton spin)
         {
-            g.Attach(new Label(label) { Halign = Align.End }, 0, row, 1, 1);
-            btn.WidthRequest = 50;
+            var lbl = Gtk.Label.New(label);
+            lbl.SetHalign(Gtk.Align.End);
+            g.Attach(lbl, 0, row, 1, 1);
+            btn.SetSizeRequest(50, -1);
             g.Attach(btn, 1, row, 1, 1);
             g.Attach(spin, 2, row, 1, 1);
         }
@@ -214,7 +335,7 @@ namespace subs2srs
         private static Gdk.RGBA ColorToRgba(SrsColor c)
         {
             var r = new Gdk.RGBA();
-            r.Red = c.R / 255.0; r.Green = c.G / 255.0; r.Blue = c.B / 255.0; r.Alpha = 1.0;
+            r.Red = c.R / 255.0f; r.Green = c.G / 255.0f; r.Blue = c.B / 255.0f; r.Alpha = 1.0f;
             return r;
         }
 
@@ -229,18 +350,18 @@ namespace subs2srs
             s += " " + (int)f.Size;
             return s;
         }
-        
-        private static FontInfo DescToFontInfo(string desc)
+
+        private static FontInfo DescToFontInfo(Pango.FontDescription pd)
         {
             try
             {
-                var pd = Pango.FontDescription.FromString(desc);
-                string family = pd.Family ?? "Arial";
-                float size = pd.Size / 1024f;
+                string family = pd.GetFamily() ?? "Arial";
+                float size = pd.GetSize() / (float)Pango.Constants.SCALE;
                 if (size <= 0) size = 20;
                 return new FontInfo(family, size,
-                    bold: pd.Weight >= Pango.Weight.Bold,
-                    italic: pd.Style == Pango.Style.Italic || pd.Style == Pango.Style.Oblique);
+                    bold: pd.GetWeight() >= Pango.Weight.Bold,
+                    italic: pd.GetStyle() == Pango.Style.Italic ||
+                            pd.GetStyle() == Pango.Style.Oblique);
             }
             catch { return new FontInfo(); }
         }
@@ -249,75 +370,77 @@ namespace subs2srs
 
         private void LoadFromStyle()
         {
-            _fontButton.Font = FontInfoToDesc(_style.Font);
-            _chkUnderline.Active = _style.Font.Underline;
-            _chkStrikeout.Active = _style.Font.Strikeout;
+            var fd = Pango.FontDescription.FromString(FontInfoToDesc(_style.Font));
+            _fontButton.SetFontDesc(fd);
+            _chkUnderline.SetActive(_style.Font.Underline);
+            _chkStrikeout.SetActive(_style.Font.Strikeout);
 
-            _colorPrimary.Rgba = ColorToRgba(_style.ColorPrimary);
-            _colorSecondary.Rgba = ColorToRgba(_style.ColorSecondary);
-            _colorOutline.Rgba = ColorToRgba(_style.ColorOutline);
-            _colorShadow.Rgba = ColorToRgba(_style.ColorShadow);
-            _opacityPrimary.Value = _style.OpacityPrimary;
-            _opacitySecondary.Value = _style.OpacitySecondary;
-            _opacityOutline.Value = _style.OpacityOutline;
-            _opacityShadow.Value = _style.OpacityShadow;
+            _colorPrimary.SetRgba(ColorToRgba(_style.ColorPrimary));
+            _colorSecondary.SetRgba(ColorToRgba(_style.ColorSecondary));
+            _colorOutline.SetRgba(ColorToRgba(_style.ColorOutline));
+            _colorShadow.SetRgba(ColorToRgba(_style.ColorShadow));
+            _opacityPrimary.SetValue(_style.OpacityPrimary);
+            _opacitySecondary.SetValue(_style.OpacitySecondary);
+            _opacityOutline.SetValue(_style.OpacityOutline);
+            _opacityShadow.SetValue(_style.OpacityShadow);
 
-            _spinOutline.Value = _style.Outline;
-            _spinShadow.Value = _style.Shadow;
-            _chkOpaqueBox.Active = _style.OpaqueBox;
+            _spinOutline.SetValue(_style.Outline);
+            _spinShadow.SetValue(_style.Shadow);
+            _chkOpaqueBox.SetActive(_style.OpaqueBox);
 
             for (int i = 1; i <= 9; i++)
-                _alignRadios[i].Active = (_style.Alignment == i);
+                _alignRadios[i].SetActive(_style.Alignment == i);
 
-            _marginLeft.Value = _style.MarginLeft;
-            _marginRight.Value = _style.MarginRight;
-            _marginVertical.Value = _style.MarginVertical;
+            _marginLeft.SetValue(_style.MarginLeft);
+            _marginRight.SetValue(_style.MarginRight);
+            _marginVertical.SetValue(_style.MarginVertical);
 
-            _scaleX.Value = _style.ScaleX;
-            _scaleY.Value = _style.ScaleY;
-            _rotation.Value = _style.Rotation;
-            _spacing.Value = _style.Spacing;
+            _scaleX.SetValue(_style.ScaleX);
+            _scaleY.SetValue(_style.ScaleY);
+            _rotation.SetValue(_style.Rotation);
+            _spacing.SetValue(_style.Spacing);
 
             var defaults = StyleEncoding.getDefaultList();
             for (int i = 0; i < defaults.Count; i++)
-                if (defaults[i].Num == _style.Encoding.Num) { _comboEncoding.Active = i; break; }
+                if (defaults[i].Num == _style.Encoding.Num) { _dropEncoding.SetSelected((uint)i); break; }
         }
 
         private void SaveToStyle()
         {
-            var fi = DescToFontInfo(_fontButton.Font);
-            fi.Underline = _chkUnderline.Active;
-            fi.Strikeout = _chkStrikeout.Active;
+            var pd = _fontButton.GetFontDesc();
+            var fi = DescToFontInfo(pd);
+            fi.Underline = _chkUnderline.GetActive();
+            fi.Strikeout = _chkStrikeout.GetActive();
             _style.Font = fi;
 
-            _style.ColorPrimary = RgbaToColor(_colorPrimary.Rgba);
-            _style.ColorSecondary = RgbaToColor(_colorSecondary.Rgba);
-            _style.ColorOutline = RgbaToColor(_colorOutline.Rgba);
-            _style.ColorShadow = RgbaToColor(_colorShadow.Rgba);
-            _style.OpacityPrimary = (int)_opacityPrimary.Value;
-            _style.OpacitySecondary = (int)_opacitySecondary.Value;
-            _style.OpacityOutline = (int)_opacityOutline.Value;
-            _style.OpacityShadow = (int)_opacityShadow.Value;
+            _style.ColorPrimary = RgbaToColor(_colorPrimary.GetRgba());
+            _style.ColorSecondary = RgbaToColor(_colorSecondary.GetRgba());
+            _style.ColorOutline = RgbaToColor(_colorOutline.GetRgba());
+            _style.ColorShadow = RgbaToColor(_colorShadow.GetRgba());
+            _style.OpacityPrimary = (int)_opacityPrimary.GetValue();
+            _style.OpacitySecondary = (int)_opacitySecondary.GetValue();
+            _style.OpacityOutline = (int)_opacityOutline.GetValue();
+            _style.OpacityShadow = (int)_opacityShadow.GetValue();
 
-            _style.Outline = (int)_spinOutline.Value;
-            _style.Shadow = (int)_spinShadow.Value;
-            _style.OpaqueBox = _chkOpaqueBox.Active;
+            _style.Outline = (int)_spinOutline.GetValue();
+            _style.Shadow = (int)_spinShadow.GetValue();
+            _style.OpaqueBox = _chkOpaqueBox.GetActive();
 
             for (int i = 1; i <= 9; i++)
-                if (_alignRadios[i].Active) { _style.Alignment = i; break; }
+                if (_alignRadios[i].GetActive()) { _style.Alignment = i; break; }
 
-            _style.MarginLeft = (int)_marginLeft.Value;
-            _style.MarginRight = (int)_marginRight.Value;
-            _style.MarginVertical = (int)_marginVertical.Value;
+            _style.MarginLeft = (int)_marginLeft.GetValue();
+            _style.MarginRight = (int)_marginRight.GetValue();
+            _style.MarginVertical = (int)_marginVertical.GetValue();
 
-            _style.ScaleX = (int)_scaleX.Value;
-            _style.ScaleY = (int)_scaleY.Value;
-            _style.Rotation = (int)_rotation.Value;
-            _style.Spacing = (int)_spacing.Value;
+            _style.ScaleX = (int)_scaleX.GetValue();
+            _style.ScaleY = (int)_scaleY.GetValue();
+            _style.Rotation = (int)_rotation.GetValue();
+            _style.Spacing = (int)_spacing.GetValue();
 
-            int encIdx = _comboEncoding.Active;
-            if (encIdx >= 0)
-                _style.Encoding = StyleEncoding.getDefaultList()[encIdx];
+            uint encIdx = _dropEncoding.GetSelected();
+            if (encIdx != uint.MaxValue)
+                _style.Encoding = StyleEncoding.getDefaultList()[(int)encIdx];
         }
     }
 }

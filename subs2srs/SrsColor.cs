@@ -62,10 +62,10 @@ namespace subs2srs
 
         public Gdk.RGBA ToGdkRGBA() => new()
         {
-            Red = R / 255.0,
-            Green = G / 255.0,
-            Blue = B / 255.0,
-            Alpha = A / 255.0
+            Red = (float)(R / 255.0),
+            Green = (float)(G / 255.0),
+            Blue = (float)(B / 255.0),
+            Alpha = (float)(A / 255.0)
         };
 
         public static SrsColor FromGdkRGBA(Gdk.RGBA c) => new(
