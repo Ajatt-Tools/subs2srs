@@ -173,8 +173,6 @@ namespace subs2srs
             btnLoadProject.Clicked += OnLoadProject;
             bottomHBox.PackStart(btnLoadProject, false, false, 0);
 
-            bottomHBox.PackStart(btnAbout, false, false, 0);
-
             _btnGo = new Button("Go!") { WidthRequest = 100 };
             _btnGo.Clicked += OnGoClicked;
 
@@ -182,6 +180,7 @@ namespace subs2srs
             _btnCancel.Clicked += (s, e) => { if (_reporter != null) _reporter.Cancel = true; };
 
             bottomHBox.PackStart(btnPreview, false, false, 0);
+            bottomHBox.PackStart(btnAbout, false, false, 0);
             bottomHBox.PackEnd(_btnGo, false, false, 0);
             bottomHBox.PackEnd(_btnCancel, false, false, 0);
 
