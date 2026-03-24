@@ -40,6 +40,12 @@ namespace subs2srs
         private Gtk.SingleSelection _selection;
         private Gtk.Label _descLabel;
 
+        // Search / filter
+        private Gtk.SearchEntry _searchEntry;
+        private Gtk.FilterListModel _filterModel;
+        private Gtk.CustomFilter _customFilter;
+        private string _filterText = "";
+
         // Nested main loop for synchronous Run()
         private GLib.MainLoop _loop;
         private int _responseId;
@@ -703,9 +709,30 @@ namespace subs2srs
             vbox.SetMarginStart(8);
             vbox.SetMarginEnd(8);
 
-            // ListView backed by Gio.ListStore of PrefItem
+            // Search bar for filtering preferences
+            _searchEntry = Gtk.SearchEntry.New();
+            _searchEntry.SetPlaceholderText("Filter preferences…");
+            _searchEntry.OnSearchChanged += OnSearchChanged;
+            vbox.Append(_searchEntry);
+
+            // ListView backed by Gio.ListStore of StringObject, wrapped in FilterListModel
             _store = Gio.ListStore.New(Gtk.StringObject.GetGType());
-            _selection = Gtk.SingleSelection.New(_store);
+
+            // Custom filter that resolves item index from StringObject content
+            _customFilter = Gtk.CustomFilter.New((item) =>
+            {
+                // item is a GObject.Object; cast to StringObject to read the index tag
+                if (item is Gtk.StringObject strObj)
+                {
+                    string? tag = strObj.GetString();
+                    if (tag != null && int.TryParse(tag, out int idx))
+                        return IsItemVisible(idx);
+                }
+                return true;
+            });
+
+            _filterModel = Gtk.FilterListModel.New(_store, _customFilter);
+            _selection = Gtk.SingleSelection.New(_filterModel);
             _selection.OnNotify += (s, e) =>
             {
                 if (e.Pspec.GetName() == "selected") OnSelectionChanged();
@@ -818,10 +845,12 @@ namespace subs2srs
             factory.OnBind += (f, args) =>
             {
                 var listItem = (Gtk.ListItem)args.Object;
-                uint pos = listItem.GetPosition();
-                if (pos >= _items.Count) return;
 
-                var item = _items[(int)pos];
+                // Resolve actual item index from StringObject tag
+                int pos = ResolveItemIndex(listItem);
+                if (pos < 0 || pos >= _items.Count) return;
+
+                var item = _items[pos];
                 var box = (Gtk.Box)listItem.GetChild();
                 if (box == null) return;
 
@@ -863,10 +892,11 @@ namespace subs2srs
             factory.OnUnbind += (f, args) =>
             {
                 var listItem = (Gtk.ListItem)args.Object;
-                uint pos = listItem.GetPosition();
-                if (pos >= _items.Count) return;
 
-                var item = _items[(int)pos];
+                int pos = ResolveItemIndex(listItem);
+                if (pos < 0 || pos >= _items.Count) return;
+
+                var item = _items[pos];
                 if (item.IsCategory || item.IsBool) return;
 
                 var box = (Gtk.Box)listItem.GetChild();
@@ -878,6 +908,22 @@ namespace subs2srs
             };
             return factory;
         }
+
+        /// <summary>
+        /// Extract the _items index stored as string inside the ListItem's StringObject.
+        /// </summary>
+        private int ResolveItemIndex(Gtk.ListItem listItem)
+        {
+            var obj = listItem.GetItem();
+            if (obj is Gtk.StringObject strObj)
+            {
+                string? tag = strObj.GetString();
+                if (tag != null && int.TryParse(tag, out int idx))
+                    return idx;
+            }
+            return -1;
+        }
+
         private void CommitEntryValue(PrefItem item, Gtk.Entry entry)
         {
             string text = entry.GetText();
@@ -911,8 +957,10 @@ namespace subs2srs
 
             foreach (string cat in categories)
             {
+                int idx = _items.Count;
                 _items.Add(PrefItem.CreateCategory(cat));
-                _store.Append(Gtk.StringObject.New(""));
+                // Store item index as string tag inside StringObject
+                _store.Append(Gtk.StringObject.New(idx.ToString()));
 
                 for (int i = 0; i < propTable.Properties.Count; i++)
                 {
@@ -923,6 +971,7 @@ namespace subs2srs
                     bool isBool = val is bool;
                     bool isInt = val is int;
 
+                    idx = _items.Count;
                     _items.Add(PrefItem.CreateProperty(
                         prop.Name,
                         isBool ? "" : (val?.ToString() ?? ""),
@@ -930,7 +979,7 @@ namespace subs2srs
                         isBool, isInt,
                         prop.Description ?? "",
                         prop.Name));
-                    _store.Append(Gtk.StringObject.New(""));
+                    _store.Append(Gtk.StringObject.New(idx.ToString()));
                 }
             }
         }
@@ -940,12 +989,33 @@ namespace subs2srs
         private void OnSelectionChanged()
         {
             uint sel = _selection.GetSelected();
-            if (sel == Gtk.Constants.INVALID_LIST_POSITION || sel >= _items.Count)
+            if (sel == Gtk.Constants.INVALID_LIST_POSITION)
             {
                 _descLabel.SetText("");
                 return;
             }
-            _descLabel.SetText(_items[(int)sel].Description ?? "");
+
+            // Get the StringObject from the filtered model at the selected position
+            var obj = _filterModel.GetObject(sel);
+            if (obj is not Gtk.StringObject strObj)
+            {
+                _descLabel.SetText("");
+                return;
+            }
+
+            string? tag = strObj.GetString();
+            if (tag == null || !int.TryParse(tag, out int itemIdx))
+            {
+                _descLabel.SetText("");
+                return;
+            }
+
+            if (itemIdx < 0 || itemIdx >= _items.Count)
+            {
+                _descLabel.SetText("");
+                return;
+            }
+            _descLabel.SetText(_items[itemIdx].Description ?? "");
         }
 
         // ── BUTTON HANDLERS ────────────────────────────────────────────────
@@ -999,6 +1069,49 @@ namespace subs2srs
             {
                 UtilsMsg.showErrMsg("Help page not found.");
             }
+        }
+
+        // ── SEARCH / FILTER ───────────────────────────────────────────────────
+
+        private void OnSearchChanged(Gtk.SearchEntry sender, EventArgs e)
+        {
+            _filterText = _searchEntry.GetText().Trim().ToLower();
+            // Re-evaluate the filter for all items
+            _customFilter.Changed(Gtk.FilterChange.Different);
+        }
+
+        /// <summary>
+        /// Determine whether item at the given position in _items should be visible.
+        /// A category row is visible if any of its child properties match.
+        /// A property row is visible if its name or description contains the filter text.
+        /// When filter is empty, everything is visible.
+        /// </summary>
+        private bool IsItemVisible(int pos)
+        {
+            if (string.IsNullOrEmpty(_filterText)) return true;
+            if (pos < 0 || pos >= _items.Count) return true;
+
+            var item = _items[pos];
+
+            if (item.IsCategory)
+            {
+                // Show category if any child property matches
+                for (int i = pos + 1; i < _items.Count; i++)
+                {
+                    if (_items[i].IsCategory) break; // reached next category
+                    if (PropertyMatches(_items[i])) return true;
+                }
+                return false;
+            }
+
+            return PropertyMatches(item);
+        }
+
+        private bool PropertyMatches(PrefItem item)
+        {
+            if (item.IsCategory) return false;
+            return item.Name.ToLower().Contains(_filterText)
+                || (item.Description ?? "").ToLower().Contains(_filterText);
         }
 
         // ── SAVE PREFERENCES ───────────────────────────────────────────────
