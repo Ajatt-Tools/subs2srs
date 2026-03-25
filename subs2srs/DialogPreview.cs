@@ -231,8 +231,12 @@ namespace subs2srs
             detailBox.Append(pg);
             detailBox.Append(Gtk.Separator.New(Gtk.Orientation.Horizontal));
 
-            // Action buttons row 1
+            // Action buttons row 1: selection helpers, then activate/deactivate
             var ab1 = Gtk.Box.New(Gtk.Orientation.Horizontal, 4);
+            AppendBtn(ab1, "Select All", OnSelectAll);
+            AppendBtn(ab1, "Select None", OnSelectNone);
+            AppendBtn(ab1, "Invert", OnInvertSelection);
+            ab1.Append(Gtk.Separator.New(Gtk.Orientation.Vertical));
             AppendBtn(ab1, "Activate", OnActivate);
             AppendBtn(ab1, "Deactivate", OnDeactivate);
             detailBox.Append(ab1);
@@ -728,6 +732,75 @@ namespace subs2srs
 
             UpdateStats();
             _changed = true;
+        }
+
+        // ── SELECT ALL / NONE / INVERT ─────────────────────────────────────
+
+        private void OnSelectAll(Gtk.Button s, EventArgs e) => SetActiveAll(true);
+        private void OnSelectNone(Gtk.Button s, EventArgs e) => SetActiveAll(false);
+
+        private void OnInvertSelection(Gtk.Button s, EventArgs e)
+        {
+            if (_wv == null) return;
+            int ep = (int)_comboEp.GetSelected();
+            if (ep < 0 || ep >= _wv.CombinedAll.Count) return;
+
+            var arr = _wv.CombinedAll[ep];
+            for (int i = 0; i < _items.Count; i++)
+            {
+                int idx = _items[i].Index;
+                if (idx >= 0 && idx < arr.Count)
+                {
+                    bool flipped = !arr[idx].Active;
+                    arr[idx].Active = flipped;
+                    _items[i].IsActive = flipped;
+                }
+            }
+
+            RefreshAllRows();
+            UpdateStats();
+            _changed = true;
+        }
+
+        private void SetActiveAll(bool active)
+        {
+            if (_wv == null) return;
+            int ep = (int)_comboEp.GetSelected();
+            if (ep < 0 || ep >= _wv.CombinedAll.Count) return;
+
+            var arr = _wv.CombinedAll[ep];
+            for (int i = 0; i < _items.Count; i++)
+            {
+                int idx = _items[i].Index;
+                if (idx >= 0 && idx < arr.Count)
+                {
+                    arr[idx].Active = active;
+                    _items[i].IsActive = active;
+                }
+            }
+
+            RefreshAllRows();
+            UpdateStats();
+            _changed = true;
+        }
+
+        /// <summary>
+        /// Rebuild the dummy ListStore so that all rows re-bind with updated CSS classes.
+        /// Preserves the current selection position.
+        /// </summary>
+        private void RefreshAllRows()
+        {
+            _guard = true;
+            uint sel = _selection.GetSelected();
+            uint count = _store.GetNItems();
+
+            _store.RemoveAll();
+            for (uint i = 0; i < count; i++)
+                _store.Append(Gtk.StringObject.New(""));
+
+            if (sel < count)
+                _selection.SetSelected(sel);
+            _guard = false;
         }
 
         // ── FIND ────────────────────────────────────────────────────────────
