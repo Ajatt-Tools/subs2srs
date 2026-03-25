@@ -562,7 +562,6 @@ namespace subs2srs
             var rulesSw = Gtk.ScrolledWindow.New();
             rulesSw.SetChild(_shiftRulesListView);
             rulesSw.SetSizeRequest(-1, 120);
-            rulesVBox.Append(rulesSw);
 
             // Header labels for shift rules columns
             var rulesHeader = Gtk.Box.New(Gtk.Orientation.Horizontal, 8);
@@ -570,7 +569,8 @@ namespace subs2srs
             var lh2 = Gtk.Label.New("Subs1 Shift (ms)"); lh2.SetWidthChars(12);
             var lh3 = Gtk.Label.New("Subs2 Shift (ms)"); lh3.SetWidthChars(12);
             rulesHeader.Append(lh1); rulesHeader.Append(lh2); rulesHeader.Append(lh3);
-            // Insert header before scrolled window
+
+            // Wrap header + scrolled list into a single vertical box
             var rulesWithHeader = Gtk.Box.New(Gtk.Orientation.Vertical, 2);
             rulesWithHeader.Append(rulesHeader);
             rulesWithHeader.Append(rulesSw);
