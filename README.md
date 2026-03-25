@@ -73,7 +73,7 @@ make test
 ### AUR
 
 ```sh
-yay -S subs2srs
+yay -S subs2srs-gui
 ```
 
 ### gitpkg
