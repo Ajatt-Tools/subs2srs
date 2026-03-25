@@ -55,6 +55,7 @@
 - `UtilsSubs.timeToString/formatAssTime` — same trailing-dot format specifier bug (`{0:00.}`) produced `"00.:01.:30."` / `"0:00.:36..16."` instead of `"0:01:30"` / `"0:00:36.16"`
 - Audio bitrate combos reset to default instead of showing loaded value on startup
 - Audio stream consistency false positives reduced (relaxed matching logic)
+- `demuxAudioCopy` — input seeking (`-ss` before `-i`) caused keyframe drift; demuxed audio started earlier than `entireClipStartTime`, making `WorkerAudio` shift calculations wrong and clipping the end of every audio clip; fixed by moving `-ss` after `-i` (output seeking)
 
 **Architecture:**
 - `ConstantSettings` → `Settings.Instance` synchronization moved from `MainWindow.LoadSettings()` into `Settings.Reset()` — adding a new preference no longer requires manual sync in 6 places
@@ -72,7 +73,7 @@
 - `WorkerVideo` — skip expensive video conversion when all clips for an episode already exist
 - Audio/snapshot/video clip generation parallelised with `Parallel.ForEach` (configurable via `max_parallel_tasks`)
 - `runProcessWithProgress()` — `Thread.Sleep(100)` polling loop replaced with `WaitForExitAsync(token)` for proper async cancellation
-- Audio extraction pipeline reworked: demux (stream copy) → decode to WAV (PCM) → parallel per-clip encode; sample-accurate cuts (±0.02ms vs ±13ms mp3 frame boundary)
+- Audio extraction pipeline reworked: demux (stream copy) → decode to WAV (PCM) → parallel per-clip encode; sample-accurate cuts (±0.02ms vs ±13ms mp3 frame boundary); output seeking in demux phase for correct timing baseline
 - Snapshot ffmpeg flags — added `-sn -dn -noaccurate_seek -threads 1` for faster single-frame extraction
 
 **Reliability:**
