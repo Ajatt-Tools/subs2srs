@@ -64,6 +64,8 @@ namespace subs2srs
         private bool _guard, _changed;
         private int _findIdx;
         private bool _running;
+        // Path to the current snapshot file for opening in external viewer
+        private string _currentSnapshotPath;
         private bool _destroyed;
 
         /// <summary>Whether this window has been destroyed or hidden permanently.</summary>
@@ -130,6 +132,10 @@ namespace subs2srs
             vbox.SetMarginStart(6);
             vbox.SetMarginEnd(6);
 
+            var mainPane = Gtk.Paned.New(Gtk.Orientation.Vertical);
+            mainPane.SetVexpand(true);
+            mainPane.SetHexpand(true);
+
             // Top bar
             var top = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
             top.Append(Gtk.Label.New("Episode:"));
@@ -161,7 +167,7 @@ namespace subs2srs
             sw.SetVexpand(true);
             // Ensure the list keeps space — minimum height
             sw.SetSizeRequest(-1, 250);
-            vbox.Append(sw);
+            mainPane.SetStartChild(sw);
 
             // === Bottom detail panel — fixed size, never expands ===
             var detailBox = Gtk.Box.New(Gtk.Orientation.Vertical, 4);
@@ -206,18 +212,21 @@ namespace subs2srs
             _imgSnap = Gtk.Picture.New();
             _imgSnap.SetContentFit(Gtk.ContentFit.Contain);
             _imgSnap.SetCanShrink(true);
-            _imgSnap.SetHalign(Gtk.Align.Center);
-            _imgSnap.SetValign(Gtk.Align.Center);
+            _imgSnap.SetHalign(Gtk.Align.Start);
+            _imgSnap.SetValign(Gtk.Align.Start);
+            _imgSnap.SetVexpand(false);
+            _imgSnap.SetHexpand(false);
+            // Cap the picture's natural size request so it does not inflate the panel
+            _imgSnap.SetSizeRequest(32, 32);
 
-            var snapScroll = Gtk.ScrolledWindow.New();
-            snapScroll.SetPolicy(Gtk.PolicyType.Never, Gtk.PolicyType.Never);
-            snapScroll.SetSizeRequest(200, 120);
-            snapScroll.SetHexpand(false);
-            snapScroll.SetVexpand(false);
-            snapScroll.SetHalign(Gtk.Align.Start);
-            snapScroll.SetValign(Gtk.Align.Start);
-            snapScroll.SetChild(_imgSnap);
-            pg.Attach(snapScroll, 1, 3, 1, 1);
+            // Click gesture to open snapshot in external viewer
+            var snapClick = Gtk.GestureClick.New();
+            snapClick.SetButton(1); // primary button only
+            snapClick.OnReleased += OnSnapshotClicked;
+            _imgSnap.AddController(snapClick);
+            _imgSnap.SetCursor(Gdk.Cursor.NewFromName("pointer", null));
+
+            pg.Attach(_imgSnap, 1, 3, 1, 1);
 
             detailBox.Append(pg);
             detailBox.Append(Gtk.Separator.New(Gtk.Orientation.Horizontal));
@@ -286,7 +295,38 @@ namespace subs2srs
             bot.Append(_btnGo);
             detailBox.Append(bot);
 
-            vbox.Append(detailBox);
+            mainPane.SetEndChild(detailBox);
+
+            vbox.Append(mainPane);
+
+            // Allow both children to shrink freely so SetPosition is honored
+            mainPane.SetShrinkStartChild(true);
+            mainPane.SetShrinkEndChild(true);
+
+            // Wait for actual layout before setting divider position
+            mainPane.OnNotify += (s, e) =>
+            {
+                if (e.Pspec.GetName() != "position") return;
+                // Unsubscribe pattern: use a flag to run only once
+            };
+
+            bool panedInitialized = false;
+            mainPane.OnMap += (s, e) =>
+            {
+                if (panedInitialized) return;
+                panedInitialized = true;
+                // OnMap fires when widget is realized; schedule after first full layout
+                GLib.Functions.TimeoutAdd(0, 50, () =>
+                {
+                    int total = mainPane.GetAllocatedHeight();
+                    if (total <= 0) return true; // keep waiting
+                    // Bottom panel gets ~479px
+                    int pos = total - 479;
+                    if (pos < 150) pos = 150;
+                    mainPane.SetPosition(pos);
+                    return false; // stop timer
+                });
+            };
             // Register CSS provider for row background and selection styling
             var cssProvider = Gtk.CssProvider.New();
             cssProvider.LoadFromString(
@@ -570,6 +610,8 @@ namespace subs2srs
                 || Settings.Instance.VideoClips.Files == null
                 || Settings.Instance.VideoClips.Files.Length == 0) return;
 
+            _currentSnapshotPath = null;
+
             int ep = (int)_comboEp.GetSelected();
             if (ep < 0 || ep >= Settings.Instance.VideoClips.Files.Length) return;
 
@@ -601,12 +643,44 @@ namespace subs2srs
                             // GTK4: load texture from file for Gtk.Picture
                             var gfile = Gio.FileHelper.NewForPath(outFile);
                             _imgSnap.SetFile(gfile);
+                            _currentSnapshotPath = outFile;
                         }
                     }
                     catch { }
                     return false;
                 });
             });
+        }
+
+       /// <summary>
+        /// Open the current snapshot in the default system image viewer.
+        /// </summary>
+        private void OnSnapshotClicked(Gtk.GestureClick sender,
+            Gtk.GestureClick.ReleasedSignalArgs args)
+        {
+            if (string.IsNullOrEmpty(_currentSnapshotPath)
+                || !File.Exists(_currentSnapshotPath))
+                return;
+
+            try
+            {
+                string opener;
+                if (OperatingSystem.IsLinux())
+                    opener = "xdg-open";
+                else if (OperatingSystem.IsMacOS())
+                    opener = "open";
+                else
+                    opener = "explorer";
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = opener,
+                    Arguments = $"\"{_currentSnapshotPath}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+            }
+            catch { }
         }
 
         // ── TEXT EDITING ────────────────────────────────────────────────────
