@@ -123,8 +123,9 @@ namespace subs2srs
 
     /// <summary>
     /// Demux (copy) an audio track from a media file without re-encoding.
-    /// Places -ss before -i for fast keyframe-based input seeking.
-    /// Much faster than ripAudioFromVideo for large files.
+    /// Places -ss after -i for accurate decode-based seeking (not keyframe-based).
+    /// This ensures the output starts exactly at startTime, matching the timing
+    /// assumptions in WorkerAudio's shift calculations.
     /// </summary>
     public static void demuxAudioCopy(string inFile, string stream,
       TimeSpan startTime, TimeSpan endTime, string outFile)
@@ -136,11 +137,16 @@ namespace subs2srs
       string startStr = startTime.ToString(@"hh\:mm\:ss\.fff");
       string durationStr = duration.ToString(@"hh\:mm\:ss\.fff");
 
-      // -ss before -i: fast input seeking via keyframes (no decode-to-seek)
-      // -vn: skip video streams, -c:a copy: no audio re-encoding
-      string args = String.Format("-y -ss {0} -i \"{1}\" -t {2} {3} -vn -c:a copy \"{4}\"",
-        startStr,     // {0}
-        inFile,       // {1}
+      // -ss after -i: accurate decode-based seeking (not keyframe-based).
+      // This is slower than input seeking but guarantees the output starts
+      // exactly at the requested time, which is critical because WorkerAudio
+      // shifts per-line timings by subtracting entireClipStartTime.
+      // With input seeking (-ss before -i), ffmpeg would seek to the nearest
+      // preceding keyframe, making the output start earlier than expected
+      // and causing all clips to lose their tails.
+      string args = String.Format("-y -i \"{0}\" -ss {1} -t {2} {3} -vn -c:a copy \"{4}\"",
+        inFile,       // {0}
+        startStr,     // {1}
         durationStr,  // {2}
         audioMapArg,  // {3}
         outFile);     // {4}
