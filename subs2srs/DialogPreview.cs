@@ -49,7 +49,7 @@ namespace subs2srs
         private Gtk.ListView _listView;
         private Gio.ListStore _store;
         private List<PreviewItem> _items = new();
-        private Gtk.SingleSelection _selection;
+        private Gtk.MultiSelection _selection;
         private Gtk.Entry _txtS1, _txtS2, _txtFind;
         private Gtk.Label _lblTime;
         private Gtk.Picture _imgSnap;
@@ -153,7 +153,7 @@ namespace subs2srs
 
             // List view — takes all available vertical space
             _store = Gio.ListStore.New(Gtk.StringObject.GetGType());
-            _selection = Gtk.SingleSelection.New(_store);
+            _selection = Gtk.MultiSelection.New(_store);
             _selection.OnNotify += (s, e) =>
             {
                 if (e.Pspec.GetName() == "selected") OnSelChanged();
@@ -503,9 +503,11 @@ namespace subs2srs
 
             if (_store.GetNItems() > 0)
             {
-                _selection.SetSelected(0);
+                var one = Gtk.Bitset.NewEmpty();
+                one.Add(0);
+                var all = Gtk.Bitset.NewRange(0, _store.GetNItems());
+                _selection.SetSelection(one, all);
                 // Explicitly trigger detail update for the first item
-                // because SetSelected(0) may not fire notify when already 0
                 OnSelChanged();
             }
         }
@@ -576,9 +578,23 @@ namespace subs2srs
         private void OnSelChanged()
         {
             if (_guard) return;
-            var comb = GetSelectedCombined();
-            if (comb == null) return;
 
+            // Show detail for the last item in the selection bitset
+            var bitset = _selection.GetSelection();
+            if (bitset == null || bitset.GetSize() == 0) return;
+
+            // Use the maximum (last-clicked) position for detail panel
+            uint pos = bitset.GetMaximum();
+            if (pos >= _items.Count) return;
+
+            int ep = (int)_comboEp.GetSelected();
+            if (_wv?.CombinedAll == null || ep < 0
+                || ep >= _wv.CombinedAll.Count) return;
+            var arr = _wv.CombinedAll[ep];
+            int idx = _items[(int)pos].Index;
+            if (idx < 0 || idx >= arr.Count) return;
+
+            var comb = arr[idx];
             _cur = comb;
             _guard = true;
             _txtS1.SetText(comb.Subs1.Text);
@@ -593,11 +609,13 @@ namespace subs2srs
 
         private InfoCombined GetSelectedCombined()
         {
-            uint sel = _selection.GetSelected();
-            if (sel == Gtk.Constants.INVALID_LIST_POSITION) return null;
-            if (sel >= _items.Count) return null;
+            var bitset = _selection.GetSelection();
+            if (bitset == null || bitset.GetSize() == 0) return null;
 
-            var item = _items[(int)sel];
+            uint pos = bitset.GetMaximum();
+            if (pos >= _items.Count) return null;
+
+            var item = _items[(int)pos];
             int ep = (int)_comboEp.GetSelected();
             if (_wv?.CombinedAll == null || ep < 0
                 || ep >= _wv.CombinedAll.Count) return null;
@@ -712,22 +730,49 @@ namespace subs2srs
         {
             if (_wv == null) return;
             int ep = (int)_comboEp.GetSelected();
-            if (ep < 0) return;
+            if (ep < 0 || ep >= _wv.CombinedAll.Count) return;
 
-            uint sel = _selection.GetSelected();
-            if (sel == Gtk.Constants.INVALID_LIST_POSITION) return;
-            if (sel >= _items.Count) return;
+            var bitset = _selection.GetSelection();
+            if (bitset == null || bitset.GetSize() == 0) return;
 
-            var item = _items[(int)sel];
-            int idx = item.Index;
-            _wv.CombinedAll[ep][idx].Active = active;
-            item.IsActive = active;
+            var arr = _wv.CombinedAll[ep];
 
-            // Force row rebind so CSS class updates visually
+            // Collect all selected positions
+            var positions = new List<uint>();
+            // Iterate the bitset: first, then walk with GetNth or iterate range
+            uint size = (uint)bitset.GetSize();
+            for (uint n = 0; n < size; n++)
+            {
+                uint pos = bitset.GetNth(n);
+                if (pos < _items.Count)
+                    positions.Add(pos);
+            }
+
+            // Apply active state to all selected items
+            foreach (uint pos in positions)
+            {
+                var item = _items[(int)pos];
+                int idx = item.Index;
+                if (idx >= 0 && idx < arr.Count)
+                {
+                    arr[idx].Active = active;
+                    item.IsActive = active;
+                }
+            }
+
+            // Refresh rows to update CSS classes, preserve selection
             _guard = true;
-            _store.Remove(sel);
-            _store.Insert(sel, Gtk.StringObject.New(""));
-            _selection.SetSelected(sel);
+            var savedBitset = Gtk.Bitset.NewEmpty();
+            foreach (uint pos in positions)
+                savedBitset.Add(pos);
+
+            uint count = _store.GetNItems();
+            _store.RemoveAll();
+            for (uint i = 0; i < count; i++)
+                _store.Append(Gtk.StringObject.New(""));
+
+            // Restore multi-selection
+            _selection.SetSelection(savedBitset, savedBitset);
             _guard = false;
 
             UpdateStats();
@@ -786,20 +831,31 @@ namespace subs2srs
 
         /// <summary>
         /// Rebuild the dummy ListStore so that all rows re-bind with updated CSS classes.
-        /// Preserves the current selection position.
+        /// Preserves the current multi-selection.
         /// </summary>
         private void RefreshAllRows()
         {
             _guard = true;
-            uint sel = _selection.GetSelected();
             uint count = _store.GetNItems();
+
+            // Save current selection bitset
+            var oldSel = _selection.GetSelection();
+            var saveBitset = Gtk.Bitset.NewEmpty();
+            if (oldSel != null)
+            {
+                uint sz = (uint)oldSel.GetSize();
+                for (uint n = 0; n < sz; n++)
+                    saveBitset.Add(oldSel.GetNth(n));
+            }
 
             _store.RemoveAll();
             for (uint i = 0; i < count; i++)
                 _store.Append(Gtk.StringObject.New(""));
 
-            if (sel < count)
-                _selection.SetSelected(sel);
+            // Restore selection
+            if (saveBitset.GetSize() > 0)
+                _selection.SetSelection(saveBitset, saveBitset);
+
             _guard = false;
         }
 
@@ -823,7 +879,11 @@ namespace subs2srs
                     cb.Subs2.Text.ToLower().Contains(text))
                 {
                     _findIdx = i;
-                    _selection.SetSelected((uint)i);
+                    // Clear previous selection, select only the found item
+                    var all = Gtk.Bitset.NewRange(0, _store.GetNItems());
+                    var one = Gtk.Bitset.NewEmpty();
+                    one.Add((uint)i);
+                    _selection.SetSelection(one, all);
                     _listView.ScrollTo((uint)i,
                         Gtk.ListScrollFlags.Focus, null);
                     return;
