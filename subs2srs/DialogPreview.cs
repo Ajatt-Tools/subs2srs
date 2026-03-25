@@ -97,6 +97,8 @@ namespace subs2srs
         public void StartPreview()
         {
             _destroyed = false;
+            // Reset running flag in case previous run was interrupted by hide
+            _running = false;
             Show();
             PopulateEpCombo();
             RunPreviewAsync();
@@ -154,9 +156,10 @@ namespace subs2srs
             // List view — takes all available vertical space
             _store = Gio.ListStore.New(Gtk.StringObject.GetGType());
             _selection = Gtk.MultiSelection.New(_store);
-            _selection.OnNotify += (s, e) =>
+            // MultiSelection emits "selection-changed" signal, not "notify::selected"
+            _selection.OnSelectionChanged += (s, e) =>
             {
-                if (e.Pspec.GetName() == "selected") OnSelChanged();
+                OnSelChanged();
             };
 
             _listView = Gtk.ListView.New(_selection, BuildListItemFactory());
