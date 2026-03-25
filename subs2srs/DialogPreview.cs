@@ -165,12 +165,53 @@ namespace subs2srs
             _listView = Gtk.ListView.New(_selection, BuildListItemFactory());
             _listView.SetVexpand(true);
 
+            // Column header row matching the list item layout
+            var headerBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 8);
+            headerBox.SetMarginStart(4);
+            headerBox.SetMarginEnd(4);
+
+            var hdrS1 = Gtk.Label.New("Subs1");
+            hdrS1.SetHexpand(true);
+            hdrS1.SetHalign(Gtk.Align.Start);
+            hdrS1.SetWidthChars(35);
+            hdrS1.AddCssClass("dim-label");
+            headerBox.Append(hdrS1);
+
+            var hdrS2 = Gtk.Label.New("Subs2");
+            hdrS2.SetHexpand(true);
+            hdrS2.SetHalign(Gtk.Align.Start);
+            hdrS2.SetWidthChars(25);
+            hdrS2.AddCssClass("dim-label");
+            headerBox.Append(hdrS2);
+
+            var hdrStart = Gtk.Label.New("Start");
+            hdrStart.SetWidthChars(14);
+            hdrStart.AddCssClass("dim-label");
+            headerBox.Append(hdrStart);
+
+            var hdrEnd = Gtk.Label.New("End");
+            hdrEnd.SetWidthChars(14);
+            hdrEnd.AddCssClass("dim-label");
+            headerBox.Append(hdrEnd);
+
+            var hdrDur = Gtk.Label.New("Duration");
+            hdrDur.SetWidthChars(14);
+            hdrDur.AddCssClass("dim-label");
+            headerBox.Append(hdrDur);
+
+            // Wrap header + scrolled list in a vertical box
+            var listBox = Gtk.Box.New(Gtk.Orientation.Vertical, 0);
+            listBox.Append(headerBox);
+            listBox.Append(Gtk.Separator.New(Gtk.Orientation.Horizontal));
+
             var sw = Gtk.ScrolledWindow.New();
             sw.SetChild(_listView);
             sw.SetVexpand(true);
             // Ensure the list keeps space — minimum height
             sw.SetSizeRequest(-1, 250);
-            mainPane.SetStartChild(sw);
+            listBox.Append(sw);
+
+            mainPane.SetStartChild(listBox);
 
             // === Bottom detail panel — fixed size, never expands ===
             var detailBox = Gtk.Box.New(Gtk.Orientation.Vertical, 4);
