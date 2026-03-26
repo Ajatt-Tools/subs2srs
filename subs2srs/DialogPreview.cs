@@ -67,7 +67,6 @@ namespace subs2srs
         private WorkerVars _wv;
         private InfoCombined _cur;
         private bool _guard, _changed;
-        private int _findIdx;
         private bool _running;
         // Path to the current snapshot file for opening in external viewer
         private string _currentSnapshotPath;
@@ -951,6 +950,11 @@ namespace subs2srs
 
         // ── FIND ────────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Find next matching line starting from the currently selected row.
+        /// If nothing is selected, search starts from the beginning.
+        /// Wraps around to the start when reaching the end of the list.
+        /// </summary>
         private void FindNext()
         {
             string text = _txtFind.GetText().Trim().ToLower();
@@ -960,15 +964,21 @@ namespace subs2srs
             if (ep < 0) return;
             var arr = _wv.CombinedAll[ep];
             int count = arr.Count;
+            if (count == 0) return;
+
+            // Start searching from the row after the current selection
+            int startFrom = 0;
+            var bitset = _selection.GetSelection();
+            if (bitset != null && bitset.GetSize() > 0)
+                startFrom = (int)bitset.GetMaximum();
 
             for (int offset = 1; offset <= count; offset++)
             {
-                int i = (_findIdx + offset) % count;
+                int i = (startFrom + offset) % count;
                 var cb = arr[i];
                 if (cb.Subs1.Text.ToLower().Contains(text) ||
                     cb.Subs2.Text.ToLower().Contains(text))
                 {
-                    _findIdx = i;
                     // Clear previous selection, select only the found item
                     var all = Gtk.Bitset.NewRange(0, _store.GetNItems());
                     var one = Gtk.Bitset.NewEmpty();
@@ -1062,7 +1072,6 @@ namespace subs2srs
             PopulateList(ep);
             _guard = false;
             UpdateStats();
-            _findIdx = 0;
         }
 
         // ── STATS ───────────────────────────────────────────────────────────
