@@ -145,6 +145,22 @@ namespace subs2srs
 
         private void BuildUI()
         {
+            // Global CSS for ColumnView header structure (borders, padding).
+            // Text color/opacity is applied per-widget via P/Invoke after
+            // the ColumnView is mapped — see deferred call below.
+            GtkColumnViewHelper.ApplyGlobalCss(
+                "columnview > header > button { "
+                + "  background: alpha(currentColor, 0.12); "
+                + "  border-bottom: 1px solid alpha(currentColor, 0.2); "
+                + "  border-right: 1px solid alpha(currentColor, 0.1); "
+                + "  min-height: 28px; "
+                + "  padding: 4px 8px; "
+                + "} "
+                + "columnview > header > button:hover { "
+                + "  background: alpha(currentColor, 0.22); "
+                + "} "
+            );
+
             var mainVBox = Gtk.Box.New(Gtk.Orientation.Vertical, 5);
             mainVBox.SetMarginTop(8);
             mainVBox.SetMarginBottom(8);
@@ -569,6 +585,17 @@ namespace subs2srs
             rulesSw.SetChild(_shiftRulesColumnView);
             rulesSw.SetSizeRequest(-1, 120);
             rulesVBox.Append(rulesSw);
+
+            // Defer header styling until widget tree is fully built.
+            // IdleAdd runs after the current layout pass, ensuring
+            // the ColumnView internal header children exist.
+            GLib.Functions.IdleAdd(0, () =>
+            {
+                GtkColumnViewHelper.StyleColumnViewHeaders(
+                    _shiftRulesColumnView,
+                    "color: @theme_fg_color; opacity: 1.0; font-weight: 700;");
+                return false; // run once
+            });
 
             var rulesBtnBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 4);
             var btnAddRule = Gtk.Button.NewWithLabel("Add Rule");
