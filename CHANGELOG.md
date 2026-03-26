@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.2.3
+
+**Preview dialog — ColumnView + multi-selection:**
+- `Gtk.ListView` replaced with `Gtk.ColumnView` — five resizable columns (Subs1, Subs2, Start, End, Duration) with native drag-resize handles
+- `Gtk.SingleSelection` replaced with `Gtk.MultiSelection` — activate/deactivate now applies to all selected rows
+- "Select All", "Select None", "Invert" buttons added to the action bar
+- Find Next now searches from the currently selected row instead of a separate `_findIdx` counter; wraps around at end of list
+- Column resize uses P/Invoke (`gtk_column_view_column_set_resizable`, `set_fixed_width`, `set_expand`) because gir.core 0.7.0 does not expose these APIs
+- Layout rule: fixed_width columns are resizable, last column uses expand — never both on the same column (prevents GTK4 layout fight during drag)
+- CSS selectors updated from `listview > row` to `columnview listview > row` for correct selection styling; zero-gap cell padding added
+
+**Shift rules — ColumnView with editable cells:**
+- Per-episode shift rules table migrated from `Gtk.ListView` with manual header labels to `Gtk.ColumnView` with three columns ("From Episode", "Subs1 Shift (ms)", "Subs2 Shift (ms)")
+- Editable `Gtk.Entry` cells use `ShiftRuleRef` mutable reference wrapper — `OnChanged` handler installed once in `OnSetup`, target swapped on each `OnBind`, nulled on `OnUnbind` to prevent stale writes
+
+**Episode End # limit:**
+- New `Episode End #` spin button on the Subs tab (0 = process all episodes)
+- `Settings.EpisodeEndNumber` property added, persisted in `.s2s.json` and preferences
+- File arrays (`Subs[0].Files`, `Subs[1].Files`, `VideoClips.Files`, `AudioClips.Files`) truncated to `endNum - startNum + 1` entries when Episode End # is set
+- Preview episode combo uses `Settings.Instance.Subs[0].Files.Length` (already truncated) instead of re-globbing via `getNumSubsFiles()`
+
+**New file:**
+- `GtkColumnViewHelper.cs` — static P/Invoke helpers for `gtk_column_view_column_set_resizable`, `set_fixed_width`, `set_expand`
+
+**Bug fixes:**
+- Preview `_running` flag reset on `StartPreview()` — prevents stale lock when previous run was interrupted by window hide
+- Indentation fix: `OnSnapshotClicked` XML-doc had one-space indent instead of standard eight-space
+
+---
+
 **GTK4 migration**
 - UI toolkit migrated from GTK3 (GtkSharp) to **GTK4** (GirCore.Gtk-4.0 0.7.0)
 - `ComboBoxText` replaced with `Gtk.DropDown` + `Gtk.StringList` throughout

@@ -27,7 +27,7 @@ is carried over from the original with minimal changes.
 | Serialization | `BinaryFormatter` | **System.Text.Json** (`ObjectCloner`) |
 | Preferences format | Custom `key = value` text with regex updates | **JSON** (`preferences.json`) |
 | Progress dialogs | `BackgroundWorker` + modal `DialogProgress` | **`async/await`** + `IProgressReporter` |
-| PropertyGrid (Preferences) | WinForms `PropertyGrid` | **`ListView`** with editable cells |
+| PropertyGrid (Preferences) | WinForms `PropertyGrid` | **`ColumnView`** with editable cells |
 | Preview dialog | `BackgroundWorker` (deadlocked on Wayland) | **`Task.Run` + `async`** |
 | Font/Color pickers | WinForms dialogs | **`FontDialogButton` / `ColorDialogButton`** (native GTK4) |
 | VobSub support | Built-in | **Optional** (compile with `EnableVobSub=true`) |
