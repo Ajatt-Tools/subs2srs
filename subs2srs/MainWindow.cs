@@ -64,11 +64,13 @@ namespace subs2srs
         private Gtk.Entry _txtSpanStart;
         private Gtk.Entry _txtSpanEnd;
 
-        // Shift rules (replaces TreeView/ListStore)
+        // Shift rules — ColumnView with editable Entry cells
+        private Gtk.ColumnView _shiftRulesColumnView;
         private Gio.ListStore _shiftRulesStore;
-        private Gtk.ListView _shiftRulesListView;
         private Gtk.SingleSelection _shiftRulesSel;
         private List<ShiftRuleItem> _shiftItems = new();
+        // Maps Entry widget handle → ShiftRuleRef for OnBind/OnUnbind lookup
+        private readonly Dictionary<nint, ShiftRuleRef> _shiftRefMap = new();
 
         // ── Audio tab fields ────────────────────────────────────────────────
         private Gtk.CheckButton _chkGenerateAudio;
@@ -482,6 +484,7 @@ namespace subs2srs
             _spinEpisodeStart = Gtk.SpinButton.NewWithRange(1, 9999, 1);
             _spinEpisodeStart.Value = 1;
             grid.Attach(_spinEpisodeStart, 1, row, 1, 1);
+
             row++;
 
             vbox.Append(grid);
@@ -517,7 +520,9 @@ namespace subs2srs
             globalShiftRow.Append(_spinTimeShiftSubs2);
             timeShiftBox.Append(globalShiftRow);
 
-            // Per-episode shift rules — ListView + Gio.ListStore
+            // Per-episode shift rules — ColumnView with editable Entry cells.
+            // Each cell Entry syncs to ShiftRuleItem via a mutable reference
+            // wrapper that is nulled on unbind, preventing stale handler writes.
             var rulesFrame = Gtk.Frame.New("Per-Episode Shift Rules (cascading)");
             var rulesVBox = Gtk.Box.New(Gtk.Orientation.Vertical, 4);
             rulesVBox.SetMarginTop(4); rulesVBox.SetMarginBottom(4);
@@ -526,55 +531,33 @@ namespace subs2srs
             _shiftRulesStore = Gio.ListStore.New(Gtk.StringObject.GetGType());
             _shiftRulesSel = Gtk.SingleSelection.New(_shiftRulesStore);
 
-            var rulesFactory = Gtk.SignalListItemFactory.New();
-            rulesFactory.OnSetup += (f, args) =>
-            {
-                var li = (Gtk.ListItem)args.Object;
-                var box = Gtk.Box.New(Gtk.Orientation.Horizontal, 8);
-                var e1 = Gtk.Entry.New(); e1.SetWidthChars(10); box.Append(e1);
-                var e2 = Gtk.Entry.New(); e2.SetWidthChars(12); box.Append(e2);
-                var e3 = Gtk.Entry.New(); e3.SetWidthChars(12); box.Append(e3);
-                li.SetChild(box);
-            };
-            rulesFactory.OnBind += (f, args) =>
-            {
-                var li = (Gtk.ListItem)args.Object;
-                uint pos = li.GetPosition();
-                if (pos >= _shiftItems.Count) return;
-                var item = _shiftItems[(int)pos];
-                var box = (Gtk.Box)li.GetChild();
-                if (box == null) return;
-                var e1 = (Gtk.Entry)box.GetFirstChild();
-                var e2 = (Gtk.Entry)e1.GetNextSibling();
-                var e3 = (Gtk.Entry)e2.GetNextSibling();
-                e1.SetText(item.FromEpisode.ToString());
-                e2.SetText(item.Subs1Shift.ToString());
-                e3.SetText(item.Subs2Shift.ToString());
-                e1.OnActivate += (s, ev) =>
-                { if (int.TryParse(e1.GetText(), out int v)) item.FromEpisode = Math.Max(1, v); };
-                e2.OnActivate += (s, ev) =>
-                { if (int.TryParse(e2.GetText(), out int v)) item.Subs1Shift = v; };
-                e3.OnActivate += (s, ev) =>
-                { if (int.TryParse(e3.GetText(), out int v)) item.Subs2Shift = v; };
-            };
+            _shiftRulesColumnView = Gtk.ColumnView.New(_shiftRulesSel);
+            _shiftRulesColumnView.SetShowColumnSeparators(true);
+            _shiftRulesColumnView.SetShowRowSeparators(false);
 
-            _shiftRulesListView = Gtk.ListView.New(_shiftRulesSel, rulesFactory);
+            // Column: From Episode
+            var colEp = CreateEditableShiftColumn("From Episode", 120,
+                item => item.FromEpisode.ToString(),
+                (item, text) => { if (int.TryParse(text, out int v)) item.FromEpisode = Math.Max(1, v); });
+            _shiftRulesColumnView.AppendColumn(colEp);
+
+            // Column: Subs1 Shift (ms)
+            var colS1 = CreateEditableShiftColumn("Subs1 Shift (ms)", 140,
+                item => item.Subs1Shift.ToString(),
+                (item, text) => { if (int.TryParse(text, out int v)) item.Subs1Shift = v; });
+            _shiftRulesColumnView.AppendColumn(colS1);
+
+            // Column: Subs2 Shift (ms) — expand to fill remaining space
+            var colS2 = CreateEditableShiftColumn("Subs2 Shift (ms)", -1,
+                item => item.Subs2Shift.ToString(),
+                (item, text) => { if (int.TryParse(text, out int v)) item.Subs2Shift = v; });
+            GtkColumnViewHelper.SetExpand(colS2, true);
+            _shiftRulesColumnView.AppendColumn(colS2);
+
             var rulesSw = Gtk.ScrolledWindow.New();
-            rulesSw.SetChild(_shiftRulesListView);
+            rulesSw.SetChild(_shiftRulesColumnView);
             rulesSw.SetSizeRequest(-1, 120);
-
-            // Header labels for shift rules columns
-            var rulesHeader = Gtk.Box.New(Gtk.Orientation.Horizontal, 8);
-            var lh1 = Gtk.Label.New("From Episode"); lh1.SetWidthChars(10);
-            var lh2 = Gtk.Label.New("Subs1 Shift (ms)"); lh2.SetWidthChars(12);
-            var lh3 = Gtk.Label.New("Subs2 Shift (ms)"); lh3.SetWidthChars(12);
-            rulesHeader.Append(lh1); rulesHeader.Append(lh2); rulesHeader.Append(lh3);
-
-            // Wrap header + scrolled list into a single vertical box
-            var rulesWithHeader = Gtk.Box.New(Gtk.Orientation.Vertical, 2);
-            rulesWithHeader.Append(rulesHeader);
-            rulesWithHeader.Append(rulesSw);
-            rulesVBox.Append(rulesWithHeader);
+            rulesVBox.Append(rulesSw);
 
             var rulesBtnBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 4);
             var btnAddRule = Gtk.Button.NewWithLabel("Add Rule");
@@ -583,10 +566,8 @@ namespace subs2srs
                 int nextEp = 1;
                 if (_shiftItems.Count > 0)
                     nextEp = _shiftItems[_shiftItems.Count - 1].FromEpisode + 1;
-                var newItem = ShiftRuleItem.Create(nextEp, 0, 0);
-                _shiftItems.Add(newItem);
+                _shiftItems.Add(ShiftRuleItem.Create(nextEp, 0, 0));
                 _shiftRulesStore.Append(Gtk.StringObject.New(""));
-                _shiftRulesSel.SetSelected(_shiftRulesStore.GetNItems() - 1);
             };
             rulesBtnBox.Append(btnAddRule);
 
@@ -1273,6 +1254,99 @@ namespace subs2srs
         // ═══════════════════════════════════════════════════════════════════
         //  HELPERS
         // ═══════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Mutable reference wrapper used to connect Entry change handlers
+        /// to the current ShiftRuleItem. On unbind, Target is set to null
+        /// so that accumulated handlers from previous binds become no-ops.
+        /// </summary>
+        private class ShiftRuleRef
+        {
+            public ShiftRuleItem? Target;
+        }
+
+        /// <summary>
+        /// Create a ColumnViewColumn with an editable Entry cell for shift rules.
+        /// Uses ShiftRuleRef stored in _shiftRefMap to safely handle
+        /// OnBind/OnUnbind without leaking stale handlers.
+        /// OnChanged is installed once in OnSetup; it writes through
+        /// refHolder.Target which is swapped on each bind cycle.
+        /// </summary>
+        private Gtk.ColumnViewColumn CreateEditableShiftColumn(
+            string title, int fixedWidth,
+            Func<ShiftRuleItem, string> getter,
+            Action<ShiftRuleItem, string> setter)
+        {
+            var factory = Gtk.SignalListItemFactory.New();
+
+            factory.OnSetup += (f, args) =>
+            {
+                var li = (Gtk.ListItem)args.Object;
+                var entry = Gtk.Entry.New();
+                entry.SetWidthChars(10);
+                entry.SetHexpand(true);
+
+                // Create and register the mutable reference holder
+                var refHolder = new ShiftRuleRef();
+                var handle = entry.Handle.DangerousGetHandle();
+                _shiftRefMap[handle] = refHolder;
+
+                // Single handler installed once — survives all rebinds.
+                // Writes through refHolder.Target, updated on each bind.
+                entry.OnChanged += (s, ev) =>
+                {
+                    if (refHolder.Target != null)
+                        setter(refHolder.Target, entry.GetText());
+                };
+
+                li.SetChild(entry);
+            };
+
+            factory.OnBind += (f, args) =>
+            {
+                var li = (Gtk.ListItem)args.Object;
+                uint pos = li.GetPosition();
+                if (pos >= _shiftItems.Count) return;
+
+                var item = _shiftItems[(int)pos];
+                var entry = (Gtk.Entry?)li.GetChild();
+                if (entry == null) return;
+
+                // Point the reference holder to the current item
+                var handle = entry.Handle.DangerousGetHandle();
+                if (_shiftRefMap.TryGetValue(handle, out var refHolder))
+                {
+                    refHolder.Target = item;
+                }
+
+                entry.SetText(getter(item));
+            };
+
+            factory.OnUnbind += (f, args) =>
+            {
+                var li = (Gtk.ListItem)args.Object;
+                var entry = (Gtk.Entry?)li.GetChild();
+                if (entry == null) return;
+
+                // Null out the reference so stale handlers become no-ops
+                var handle = entry.Handle.DangerousGetHandle();
+                if (_shiftRefMap.TryGetValue(handle, out var refHolder))
+                {
+                    refHolder.Target = null;
+                }
+            };
+
+            var col = Gtk.ColumnViewColumn.New(title, factory);
+
+            if (fixedWidth > 0)
+            {
+                GtkColumnViewHelper.SetFixedWidth(col, fixedWidth);
+                GtkColumnViewHelper.SetResizable(col, true);
+                GtkColumnViewHelper.SetExpand(col, false);
+            }
+
+            return col;
+        }
 
         /// <summary>Attach a right-aligned label to a grid cell.</summary>
         private void AttachLabel(Gtk.Grid grid, string text, int col, int row)
