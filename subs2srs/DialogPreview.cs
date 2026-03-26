@@ -31,9 +31,10 @@ namespace subs2srs
     /// Preview window — GTK4/Gir.Core port.
     ///
     /// GTK4 removed TreeView/ListStore. This port uses Gtk.ColumnView
-    /// with resizable columns (via P/Invoke to native GTK4 API not yet
-    /// exposed by gir.core 0.7.0), backed by a Gio.ListStore of dummy
-    /// StringObjects and a parallel List&lt;PreviewItem&gt;.
+    /// with resizable columns (via P/Invoke — gir.core 0.7.0 has managed
+    /// wrappers but they produced unpredictable drag-resize behavior),
+    /// backed by a Gio.ListStore of dummy StringObjects and a parallel
+    /// List&lt;PreviewItem&gt;.
     ///
     /// Column resize works correctly only when fixed_width and expand
     /// are never combined on the same column. Columns with fixed_width

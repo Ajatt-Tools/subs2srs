@@ -21,17 +21,24 @@ using System.Runtime.InteropServices;
 namespace subs2srs
 {
     /// <summary>
-    /// P/Invoke helpers for GTK4 features not exposed by gir.core 0.7.0:
-    ///   - ColumnViewColumn: resizable, fixed_width, expand
-    ///   - CssProvider + StyleContext: global CSS injection
-    ///   - Widget tree traversal: first_child, next_sibling
-    ///   - Widget CSS class manipulation: add_css_class
+    /// P/Invoke helpers for GTK4 ColumnViewColumn, Widget tree traversal,
+    /// and CSS injection.
+    ///
+    /// gir.core 0.7.0 generates managed wrappers for all of these APIs
+    /// (ColumnViewColumn.Resizable/FixedWidth/Expand,
+    /// Widget.GetFirstChild/GetNextSibling/AddCssClass,
+    /// CssProvider.LoadFromData, StyleContext.AddProviderForDisplay, etc.)
+    /// but using the managed ColumnViewColumn properties produced
+    /// unpredictable drag-resize behavior and inter-column gaps.
+    /// Direct P/Invoke gives correct results, so it is used throughout
+    /// for consistency.
     ///
     /// Important: never combine SetExpand(true) with SetFixedWidth on
     /// the same column — GTK4 layout engine will fight the drag-resize,
     /// causing the cursor to drift and wrong columns to move.
     /// Use either fixed_width (for resizable columns) or expand (for
     /// the last column that absorbs remaining space), not both.
+    ///
     /// All symbols live in libgtk-4.so.1 on Linux (GTK, GDK, GSK
     /// are in the same shared library), so "gtk-4" works for
     /// both gtk_ and gdk_ functions via gir.core import resolver.
