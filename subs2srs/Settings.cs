@@ -918,6 +918,13 @@ namespace subs2srs
     [JsonPropertyName("episodeStartNumber")]
     public int EpisodeStartNumber { get; set; }
 
+    /// <summary>
+    /// Last episode number to process (inclusive).
+    /// 0 means no limit — process all matched files.
+    /// </summary>
+    [JsonPropertyName("episodeEndNumber")]
+    public int EpisodeEndNumber { get; set; }
+
     [JsonPropertyName("actorList")]
     public List<string> ActorList { get; set; }
 
@@ -1008,6 +1015,7 @@ namespace subs2srs
 
       DeckName = other.DeckName;
       EpisodeStartNumber = other.EpisodeStartNumber;
+      EpisodeEndNumber = other.EpisodeEndNumber;
 
       ActorList = other.ActorList;
 
@@ -1094,6 +1102,7 @@ namespace subs2srs
       SpanEnd = TimeSpan.FromMilliseconds(1_350_000);
       DeckName = "";
       EpisodeStartNumber = 1;
+      EpisodeEndNumber = 0;
 
       ActorList = new List<string>();
 

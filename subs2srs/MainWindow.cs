@@ -49,6 +49,7 @@ namespace subs2srs
         private Gtk.Entry _txtOutputDir;
         private Gtk.Entry _txtDeckName;
         private Gtk.SpinButton _spinEpisodeStart;
+        private Gtk.SpinButton _spinEpisodeEnd;
         private Gtk.DropDown _comboEncodingSubs1;
         private Gtk.StringList _encModel1;
         private Gtk.DropDown _comboEncodingSubs2;
@@ -485,6 +486,16 @@ namespace subs2srs
             _spinEpisodeStart.Value = 1;
             grid.Attach(_spinEpisodeStart, 1, row, 1, 1);
 
+            // Episode end on same row — 0 means process all
+            var endBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 4);
+            endBox.Append(Gtk.Label.New("End #:"));
+            _spinEpisodeEnd = Gtk.SpinButton.NewWithRange(0, 9999, 1);
+            _spinEpisodeEnd.Value = 0;
+            var lblEndHint = Gtk.Label.New("(0 = all)");
+            lblEndHint.SetOpacity(0.6);
+            endBox.Append(_spinEpisodeEnd);
+            endBox.Append(lblEndHint);
+            grid.Attach(endBox, 2, row, 1, 1);
             row++;
 
             vbox.Append(grid);
@@ -831,6 +842,7 @@ namespace subs2srs
                     ? ConstantSettings.DefaultOutputDir
                     : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
             _spinEpisodeStart.Value = s.EpisodeStartNumber;
+            _spinEpisodeEnd.Value = s.EpisodeEndNumber;
 
             _txtSubs1.SetText(s.Subs[0].FilePattern);
             _txtSubs2.SetText(s.Subs[1].FilePattern);
@@ -926,6 +938,7 @@ namespace subs2srs
                     PrefIO.Write();
                 }
                 Settings.Instance.EpisodeStartNumber = (int)_spinEpisodeStart.Value;
+                Settings.Instance.EpisodeEndNumber = (int)_spinEpisodeEnd.Value;
 
                 // Subs
                 Settings.Instance.Subs[0].FilePattern = _txtSubs1.GetText().Trim();
@@ -1018,6 +1031,30 @@ namespace subs2srs
                 Settings.Instance.VideoClips.PadStart = (int)_spinVideoPadStart.Value;
                 Settings.Instance.VideoClips.PadEnd = (int)_spinVideoPadEnd.Value;
                 Settings.Instance.VideoClips.IPodSupport = _chkIPod.GetActive();
+
+                // Truncate file arrays when Episode End # limits processing
+                int endNum = Settings.Instance.EpisodeEndNumber;
+                int startNum = Settings.Instance.EpisodeStartNumber;
+                if (endNum > 0 && endNum >= startNum)
+                {
+                    int maxCount = endNum - startNum + 1;
+
+                    if (Settings.Instance.Subs[0].Files.Length > maxCount)
+                        Settings.Instance.Subs[0].Files =
+                            Settings.Instance.Subs[0].Files.Take(maxCount).ToArray();
+
+                    if (Settings.Instance.Subs[1].Files.Length > maxCount)
+                        Settings.Instance.Subs[1].Files =
+                            Settings.Instance.Subs[1].Files.Take(maxCount).ToArray();
+
+                    if (Settings.Instance.VideoClips.Files.Length > maxCount)
+                        Settings.Instance.VideoClips.Files =
+                            Settings.Instance.VideoClips.Files.Take(maxCount).ToArray();
+
+                    if (Settings.Instance.AudioClips.Files.Length > maxCount)
+                        Settings.Instance.AudioClips.Files =
+                            Settings.Instance.AudioClips.Files.Take(maxCount).ToArray();
+                }
             }
             catch (Exception e1)
             {

@@ -533,7 +533,8 @@ namespace subs2srs
         {
             _guard = true;
             uint prev = _comboEp.GetSelected();
-            int n = UtilsSubs.getNumSubsFiles(Settings.Instance.Subs[0].FilePattern);
+            // Use already-truncated Files array to respect Episode End # limit
+            int n = Settings.Instance.Subs[0].Files.Length;
             int first = Settings.Instance.EpisodeStartNumber;
             var names = new string[n];
             for (int i = 0; i < n; i++)
