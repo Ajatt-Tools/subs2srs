@@ -396,6 +396,17 @@ namespace subs2srs
                 Gdk.Display.GetDefault()!,
                 cssProvider,
                 800); // Higher priority to override theme defaults
+
+            // Defer per-widget header styling until ColumnView children exist.
+            // The widget tree is only fully built after the first layout pass.
+            GLib.Functions.IdleAdd(0, () =>
+            {
+                GtkColumnViewHelper.StyleColumnViewHeaders(
+                    _columnView,
+                    "color: @theme_fg_color; opacity: 1.0; font-weight: 700;");
+                return false; // run once
+            });
+
             SetChild(vbox);
         }
 
