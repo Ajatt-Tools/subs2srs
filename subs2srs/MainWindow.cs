@@ -536,6 +536,7 @@ namespace subs2srs
             var timeShiftBox = Gtk.Box.New(Gtk.Orientation.Vertical, 6);
 
             var globalShiftRow = Gtk.Box.New(Gtk.Orientation.Horizontal, 6);
+            timeShiftBox.SetVexpand(true);
             globalShiftRow.Append(_chkTimeShift);
             globalShiftRow.Append(Gtk.Label.New("Subs1 (ms):"));
             _spinTimeShiftSubs1 = Gtk.SpinButton.NewWithRange(-99999, 99999, 1);
@@ -551,6 +552,7 @@ namespace subs2srs
             // Each cell Entry syncs to ShiftRuleItem via a mutable reference
             // wrapper that is nulled on unbind, preventing stale handler writes.
             var rulesFrame = Gtk.Frame.New("Per-Episode Shift Rules (cascading)");
+            rulesFrame.SetVexpand(true);
             var rulesVBox = Gtk.Box.New(Gtk.Orientation.Vertical, 4);
             rulesVBox.SetMarginTop(4); rulesVBox.SetMarginBottom(4);
             rulesVBox.SetMarginStart(4); rulesVBox.SetMarginEnd(4);
@@ -584,6 +586,8 @@ namespace subs2srs
             var rulesSw = Gtk.ScrolledWindow.New();
             rulesSw.SetChild(_shiftRulesColumnView);
             rulesSw.SetSizeRequest(-1, 120);
+            // Allow the shift rules list to grow when the window is resized
+            rulesSw.SetVexpand(true);
             rulesVBox.Append(rulesSw);
 
             // Defer header styling until widget tree is fully built.
