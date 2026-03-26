@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.4
+
+**ColumnView header styling:**
+- Global CSS for ColumnView headers applied via `GtkColumnViewHelper.ApplyGlobalCss()` in `MainWindow.BuildUI()` — background tint, bottom/right borders, hover highlight, consistent padding
+- Per-widget header text styling (color, opacity, font-weight) applied via `GtkColumnViewHelper.StyleColumnViewHeaders()` deferred with `GLib.Functions.IdleAdd()` — ensures widget tree is fully built before traversal
+- Preview dialog and shift rules ColumnView both use deferred header styling
+
+**GtkColumnViewHelper — expanded P/Invoke surface:**
+- Widget tree traversal: `gtk_widget_get_first_child`, `gtk_widget_get_next_sibling`, `gtk_widget_get_last_child`
+- Widget CSS class manipulation: `gtk_widget_add_css_class`
+- Per-widget inline CSS: `gtk_widget_get_style_context`, `gtk_style_context_add_provider` — creates a CssProvider per widget with `* { ... }` selector at priority 900
+- Global CSS injection: `gtk_css_provider_new`, `gtk_css_provider_load_from_data`, `gtk_style_context_add_provider_for_display`, `gdk_display_get_default`
+- `ApplyInlineCss(IntPtr widget, string css)` — attach inline CSS to a single widget's StyleContext
+- `StyleColumnViewHeaders(Gtk.ColumnView, string css)` — walk ColumnView internal tree (header → row widgets → buttons) and apply inline CSS to each header button
+- `ApplyGlobalCss(string css)` — register a display-wide CSS stylesheet at priority 800
+
+**Shift rules layout:**
+- `timeShiftBox` and `rulesFrame` set to `SetVexpand(true)` — shift rules list grows when window is resized
+- `rulesSw` (ScrolledWindow) set to `SetVexpand(true)` — allows the rules list to fill available vertical space
+
+---
+
 ## 0.2.3
 
 **Preview dialog — ColumnView + multi-selection:**
@@ -7,7 +29,7 @@
 - `Gtk.SingleSelection` replaced with `Gtk.MultiSelection` — activate/deactivate now applies to all selected rows
 - "Select All", "Select None", "Invert" buttons added to the action bar
 - Find Next now searches from the currently selected row instead of a separate `_findIdx` counter; wraps around at end of list
-- Column resize uses P/Invoke (`gtk_column_view_column_set_resizable`, `set_fixed_width`, `set_expand`) because gir.core 0.7.0 does not expose these APIs
+- Column resize uses P/Invoke — gir.core 0.7.0 has managed wrappers (`ColumnViewColumn.Resizable`, `.FixedWidth`, `.Expand`) but using them produced unpredictable drag behavior and inter-column gaps; direct P/Invoke to `gtk_column_view_column_set_resizable`, `set_fixed_width`, `set_expand` gives correct results
 - Layout rule: fixed_width columns are resizable, last column uses expand — never both on the same column (prevents GTK4 layout fight during drag)
 - CSS selectors updated from `listview > row` to `columnview listview > row` for correct selection styling; zero-gap cell padding added
 
@@ -22,7 +44,7 @@
 - Preview episode combo uses `Settings.Instance.Subs[0].Files.Length` (already truncated) instead of re-globbing via `getNumSubsFiles()`
 
 **New file:**
-- `GtkColumnViewHelper.cs` — static P/Invoke helpers for `gtk_column_view_column_set_resizable`, `set_fixed_width`, `set_expand`
+- `GtkColumnViewHelper.cs` — static P/Invoke helpers for ColumnViewColumn, Widget tree traversal, and CSS injection (bypasses gir.core managed wrappers that produced incorrect layout behavior)
 
 **Bug fixes:**
 - Preview `_running` flag reset on `StartPreview()` — prevents stale lock when previous run was interrupted by window hide
