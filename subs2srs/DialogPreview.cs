@@ -31,8 +31,13 @@ namespace subs2srs
     /// Preview window — GTK4/Gir.Core port.
     ///
     /// GTK4 removed TreeView/ListStore. This port uses Gtk.ColumnView
-    /// backed by a Gio.ListStore of PreviewItem GObject wrappers,
-    /// providing a sortable, scrollable multi-column list.
+    /// with resizable columns (via P/Invoke to native GTK4 API not yet
+    /// exposed by gir.core 0.7.0), backed by a Gio.ListStore of dummy
+    /// StringObjects and a parallel List&lt;PreviewItem&gt;.
+    ///
+    /// Column resize works correctly only when fixed_width and expand
+    /// are never combined on the same column. Columns with fixed_width
+    /// are resizable; the last column uses expand to fill remaining space.
     ///
     /// Snapshot preview uses Gtk.Picture (replaces Gtk.Image with Pixbuf).
     /// </summary>
@@ -46,7 +51,7 @@ namespace subs2srs
         // Widgets
         private Gtk.DropDown _comboEp;
         private Gtk.StringList _epModel;
-        private Gtk.ListView _listView;
+        private Gtk.ColumnView _columnView;
         private Gio.ListStore _store;
         private List<PreviewItem> _items = new();
         private Gtk.MultiSelection _selection;
@@ -153,7 +158,13 @@ namespace subs2srs
             top.Append(btnRegen);
             vbox.Append(top);
 
-            // List view — takes all available vertical space
+            // ColumnView with resizable columns — replaces ListView + manual header.
+            // Each column gets its own SignalListItemFactory via CreateColumn().
+            //
+            // Layout strategy to avoid broken drag-resize:
+            //   - Subs1, Subs2, Start, End: fixed_width + resizable, NO expand
+            //   - Duration (last column): expand=true, NO fixed_width
+            // This ensures the layout engine does not fight user drag.
             _store = Gio.ListStore.New(Gtk.StringObject.GetGType());
             _selection = Gtk.MultiSelection.New(_store);
             // MultiSelection emits "selection-changed" signal, not "notify::selected"
@@ -162,56 +173,41 @@ namespace subs2srs
                 OnSelChanged();
             };
 
-            _listView = Gtk.ListView.New(_selection, BuildListItemFactory());
-            _listView.SetVexpand(true);
+            _columnView = Gtk.ColumnView.New(_selection);
+            _columnView.SetVexpand(true);
+            _columnView.SetHexpand(true);
+            // Show built-in column headers; disable separators for zero-gap look
+            _columnView.SetShowColumnSeparators(false);
+            _columnView.SetShowRowSeparators(false);
 
-            // Column header row matching the list item layout
-            var headerBox = Gtk.Box.New(Gtk.Orientation.Horizontal, 8);
-            headerBox.SetMarginStart(4);
-            headerBox.SetMarginEnd(4);
+            // Fixed-width resizable columns (no expand)
+            var colS1 = CreateColumn("Subs1", 280,
+                (item) => item.Subs1Text, ellipsize: true);
+            var colS2 = CreateColumn("Subs2", 200,
+                (item) => item.Subs2Text, ellipsize: true);
+            var colStart = CreateColumn("Start", 120,
+                (item) => item.StartText, ellipsize: false);
+            var colEnd = CreateColumn("End", 120,
+                (item) => item.EndText, ellipsize: false);
 
-            var hdrS1 = Gtk.Label.New("Subs1");
-            hdrS1.SetHexpand(true);
-            hdrS1.SetHalign(Gtk.Align.Start);
-            hdrS1.SetWidthChars(35);
-            hdrS1.AddCssClass("dim-label");
-            headerBox.Append(hdrS1);
+            // Last column: expand to fill remaining space, no fixed_width
+            var colDur = CreateExpandColumn("Duration",
+                (item) => item.DurText);
 
-            var hdrS2 = Gtk.Label.New("Subs2");
-            hdrS2.SetHexpand(true);
-            hdrS2.SetHalign(Gtk.Align.Start);
-            hdrS2.SetWidthChars(25);
-            hdrS2.AddCssClass("dim-label");
-            headerBox.Append(hdrS2);
+            _columnView.AppendColumn(colS1);
+            _columnView.AppendColumn(colS2);
+            _columnView.AppendColumn(colStart);
+            _columnView.AppendColumn(colEnd);
+            _columnView.AppendColumn(colDur);
 
-            var hdrStart = Gtk.Label.New("Start");
-            hdrStart.SetWidthChars(14);
-            hdrStart.AddCssClass("dim-label");
-            headerBox.Append(hdrStart);
-
-            var hdrEnd = Gtk.Label.New("End");
-            hdrEnd.SetWidthChars(14);
-            hdrEnd.AddCssClass("dim-label");
-            headerBox.Append(hdrEnd);
-
-            var hdrDur = Gtk.Label.New("Duration");
-            hdrDur.SetWidthChars(14);
-            hdrDur.AddCssClass("dim-label");
-            headerBox.Append(hdrDur);
-
-            // Wrap header + scrolled list in a vertical box
-            var listBox = Gtk.Box.New(Gtk.Orientation.Vertical, 0);
-            listBox.Append(headerBox);
-            listBox.Append(Gtk.Separator.New(Gtk.Orientation.Horizontal));
-
+            // Wrap ColumnView in ScrolledWindow
             var sw = Gtk.ScrolledWindow.New();
-            sw.SetChild(_listView);
+            sw.SetChild(_columnView);
             sw.SetVexpand(true);
             // Ensure the list keeps space — minimum height
             sw.SetSizeRequest(-1, 250);
-            listBox.Append(sw);
 
-            mainPane.SetStartChild(listBox);
+            mainPane.SetStartChild(sw);
 
             // === Bottom detail panel — fixed size, never expands ===
             var detailBox = Gtk.Box.New(Gtk.Orientation.Vertical, 4);
@@ -375,7 +371,9 @@ namespace subs2srs
                     return false; // stop timer
                 });
             };
-            // Register CSS provider for row background and selection styling
+
+            // Register CSS provider for row background, selection styling,
+            // and zero-gap between ColumnView cells
             var cssProvider = Gtk.CssProvider.New();
             cssProvider.LoadFromString(
                 // Normal state
@@ -384,12 +382,17 @@ namespace subs2srs
                 ".preview-row-active  label { color: inherit; }" +
                 ".preview-row-inactive label { color: inherit; }" +
                 // Selected state — darker shade + visible outline
-                "listview > row:selected .preview-row-active  " +
+                "columnview listview > row:selected .preview-row-active  " +
                     "{ background-color: #F0F0E5; outline: 2px solid #3584E4; outline-offset: -2px; }" +
-                "listview > row:selected .preview-row-inactive " +
+                "columnview listview > row:selected .preview-row-inactive " +
                     "{ background-color: #E8849A; outline: 2px solid #3584E4; outline-offset: -2px; }" +
-                "listview > row:selected .preview-row-active  label { color: inherit; }" +
-                "listview > row:selected .preview-row-inactive label { color: inherit; }");
+                "columnview listview > row:selected .preview-row-active  label { color: inherit; }" +
+                "columnview listview > row:selected .preview-row-inactive label { color: inherit; }" +
+                // Zero-gap: remove padding/margin on ColumnView cells
+                "columnview > listview > row > cell { padding: 0; margin: 0; }" +
+                // Compact column headers with no border-radius for seamless look
+                "columnview > header > button { padding: 2px 6px; margin: 0; " +
+                    "border-radius: 0; min-height: 0; }");
             Gtk.StyleContext.AddProviderForDisplay(
                 Gdk.Display.GetDefault()!,
                 cssProvider,
@@ -398,45 +401,36 @@ namespace subs2srs
         }
 
         /// <summary>
-        /// Build a SignalListItemFactory that renders each PreviewItem
-        /// as a horizontal box with multiple labels.
+        /// Create a fixed-width, resizable column (no expand).
+        /// Each cell renders a Label whose text comes from textSelector.
+        /// The row-level CSS class (active/inactive) is applied to a
+        /// wrapper Box so the background fills the entire cell area.
+        ///
+        /// Important: this column does NOT use expand, only fixed_width.
+        /// Mixing expand + fixed_width causes broken drag-resize behavior.
         /// </summary>
-        private Gtk.SignalListItemFactory BuildListItemFactory()
+        private Gtk.ColumnViewColumn CreateColumn(
+            string title, int fixedWidth,
+            Func<PreviewItem, string> textSelector, bool ellipsize)
         {
             var factory = Gtk.SignalListItemFactory.New();
 
             factory.OnSetup += (f, args) =>
             {
                 var listItem = (Gtk.ListItem)args.Object;
-                var box = Gtk.Box.New(Gtk.Orientation.Horizontal, 8);
-                box.SetHexpand(true); // Ensure background fills entire row width
+                // Wrap label in a box so CSS background fills the entire cell
+                var box = Gtk.Box.New(Gtk.Orientation.Horizontal, 0);
+                box.SetHexpand(true);
 
-                var lblS1 = Gtk.Label.New("");
-                lblS1.SetHexpand(true);
-                lblS1.SetHalign(Gtk.Align.Start);
-                lblS1.SetEllipsize(Pango.EllipsizeMode.End);
-                lblS1.SetWidthChars(35);
-                box.Append(lblS1);
+                var lbl = Gtk.Label.New("");
+                lbl.SetHalign(Gtk.Align.Start);
+                lbl.SetHexpand(true);
+                lbl.SetMarginStart(4);
+                lbl.SetMarginEnd(4);
+                if (ellipsize)
+                    lbl.SetEllipsize(Pango.EllipsizeMode.End);
 
-                var lblS2 = Gtk.Label.New("");
-                lblS2.SetHexpand(true);
-                lblS2.SetHalign(Gtk.Align.Start);
-                lblS2.SetEllipsize(Pango.EllipsizeMode.End);
-                lblS2.SetWidthChars(25);
-                box.Append(lblS2);
-
-                var lblStart = Gtk.Label.New("");
-                lblStart.SetWidthChars(14);
-                box.Append(lblStart);
-
-                var lblEnd = Gtk.Label.New("");
-                lblEnd.SetWidthChars(14);
-                box.Append(lblEnd);
-
-                var lblDur = Gtk.Label.New("");
-                lblDur.SetWidthChars(14);
-                box.Append(lblDur);
-
+                box.Append(lbl);
                 listItem.SetChild(box);
             };
 
@@ -455,20 +449,71 @@ namespace subs2srs
                 box.RemoveCssClass(RowInactiveCss);
                 box.AddCssClass(item.IsActive ? RowActiveCss : RowInactiveCss);
 
-                var lblS1 = (Gtk.Label)box.GetFirstChild();
-                var lblS2 = (Gtk.Label)lblS1.GetNextSibling();
-                var lblStart = (Gtk.Label)lblS2.GetNextSibling();
-                var lblEnd = (Gtk.Label)lblStart.GetNextSibling();
-                var lblDur = (Gtk.Label)lblEnd.GetNextSibling();
-
-                lblS1.SetText(item.Subs1Text);
-                lblS2.SetText(item.Subs2Text);
-                lblStart.SetText(item.StartText);
-                lblEnd.SetText(item.EndText);
-                lblDur.SetText(item.DurText);
+                var lbl = (Gtk.Label)box.GetFirstChild();
+                lbl.SetText(textSelector(item));
             };
 
-            return factory;
+            var col = Gtk.ColumnViewColumn.New(title, factory);
+
+            // Fixed width + resizable, NO expand — clean drag behavior
+            GtkColumnViewHelper.SetResizable(col, true);
+            GtkColumnViewHelper.SetFixedWidth(col, fixedWidth);
+            GtkColumnViewHelper.SetExpand(col, false);
+
+            return col;
+        }
+
+        /// <summary>
+        /// Create the last column that expands to fill remaining width.
+        /// No fixed_width is set — only expand=true. This column is also
+        /// resizable but will absorb/release space as the window resizes.
+        /// </summary>
+        private Gtk.ColumnViewColumn CreateExpandColumn(
+            string title, Func<PreviewItem, string> textSelector)
+        {
+            var factory = Gtk.SignalListItemFactory.New();
+
+            factory.OnSetup += (f, args) =>
+            {
+                var listItem = (Gtk.ListItem)args.Object;
+                var box = Gtk.Box.New(Gtk.Orientation.Horizontal, 0);
+                box.SetHexpand(true);
+
+                var lbl = Gtk.Label.New("");
+                lbl.SetHalign(Gtk.Align.Start);
+                lbl.SetHexpand(true);
+                lbl.SetMarginStart(4);
+                lbl.SetMarginEnd(4);
+
+                box.Append(lbl);
+                listItem.SetChild(box);
+            };
+
+            factory.OnBind += (f, args) =>
+            {
+                var listItem = (Gtk.ListItem)args.Object;
+                uint pos = listItem.GetPosition();
+                if (pos >= _items.Count) return;
+
+                var item = _items[(int)pos];
+                var box = (Gtk.Box)listItem.GetChild();
+                if (box == null) return;
+
+                box.RemoveCssClass(RowActiveCss);
+                box.RemoveCssClass(RowInactiveCss);
+                box.AddCssClass(item.IsActive ? RowActiveCss : RowInactiveCss);
+
+                var lbl = (Gtk.Label)box.GetFirstChild();
+                lbl.SetText(textSelector(item));
+            };
+
+            var col = Gtk.ColumnViewColumn.New(title, factory);
+
+            // Expand only, no fixed_width — absorbs remaining space
+            GtkColumnViewHelper.SetExpand(col, true);
+            GtkColumnViewHelper.SetResizable(col, true);
+
+            return col;
         }
 
         /// <summary>
@@ -555,6 +600,7 @@ namespace subs2srs
                 OnSelChanged();
             }
         }
+
         private WorkerVars DoPreviewWork(IProgressReporter rpt)
         {
             string dir = SysPath.Combine(SysPath.GetTempPath(),
@@ -718,7 +764,7 @@ namespace subs2srs
             });
         }
 
-       /// <summary>
+        /// <summary>
         /// Open the current snapshot in the default system image viewer.
         /// </summary>
         private void OnSnapshotClicked(Gtk.GestureClick sender,
@@ -928,8 +974,7 @@ namespace subs2srs
                     var one = Gtk.Bitset.NewEmpty();
                     one.Add((uint)i);
                     _selection.SetSelection(one, all);
-                    _listView.ScrollTo((uint)i,
-                        Gtk.ListScrollFlags.Focus, null);
+                    // ColumnView auto-scrolls to the focused/selected item
                     return;
                 }
             }
