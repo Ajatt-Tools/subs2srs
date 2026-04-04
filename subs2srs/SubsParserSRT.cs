@@ -55,7 +55,7 @@ namespace subs2srs
     override public List<InfoLine> parse()
     {
       List<InfoLine> lineInfos = new List<InfoLine>(2000);
-      StreamReader subFile = new StreamReader(this.File, this.SubsEncoding);
+      using var subFile = new StreamReader(this.File, this.SubsEncoding);
       string rawLine;
       ParseStep parseStep = ParseStep.LineNum;
       Match match;
@@ -71,7 +71,7 @@ namespace subs2srs
           case ParseStep.LineNum:
             // Skip past line number and anything before it
             match = Regex.Match(rawLine, @"^\d+$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    
+
             if (match.Success)
             {
               parseStep = ParseStep.Time;
@@ -115,7 +115,7 @@ namespace subs2srs
               lineText += text + " ";
             }
 
-            continue; 
+            continue;
 
           default:
             // Should never get here
@@ -159,7 +159,7 @@ namespace subs2srs
     {
       TimeSpan time = TimeSpan.Zero;
 
-      // Format: 
+      // Format:
       // "hour:min:sec,msec" (00:00:00,000)
 
       Match match = Regex.Match(rawTime,

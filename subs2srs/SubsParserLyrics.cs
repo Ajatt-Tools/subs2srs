@@ -45,7 +45,8 @@ namespace subs2srs
     {
       List<string> rawLines = new List<string>(100);
       List<InfoLine> lineInfos = new List<InfoLine>(100);
-      StreamReader subFile = new StreamReader(this.File, this.SubsEncoding);
+
+      using var subFile = new StreamReader(this.File, this.SubsEncoding);
       string fileLine;
 
       // Store all of the file's lines in a list
@@ -53,8 +54,6 @@ namespace subs2srs
       {
         rawLines.Add(fileLine.Trim());
       }
-
-      subFile.Close();
 
       // Extract info from each dialog line
       foreach (string rawLine in rawLines)
@@ -65,7 +64,7 @@ namespace subs2srs
           @"\[(?<Min>\d\d):(?<Sec>\d\d)\.(?<HSec>\d\d)\]",
           RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-        string text = Regex.Replace(curLine, @"\[(?<Min>\d\d):(?<Sec>\d\d)\.(?<HSec>\d\d)\]", 
+        string text = Regex.Replace(curLine, @"\[(?<Min>\d\d):(?<Sec>\d\d)\.(?<HSec>\d\d)\]",
           "", RegexOptions.Compiled).Trim();
 
         foreach (Match timestampMatch in timestampMatches)
@@ -128,16 +127,5 @@ namespace subs2srs
 
       return lineInfos;
     }
-
-
-
-
-
-
-
-
-
-
-
   }
 }

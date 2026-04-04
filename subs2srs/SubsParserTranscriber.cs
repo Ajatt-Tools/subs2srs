@@ -44,9 +44,9 @@ namespace subs2srs
     override public List<InfoLine> parse()
     {
       List<InfoLine> lineInfos = new List<InfoLine>();
-      StreamReader subFile = new StreamReader(this.File, this.SubsEncoding);
 
-      XmlTextReader xmlReader = new XmlTextReader(subFile);
+      using var subFile = new StreamReader(this.File, this.SubsEncoding);
+      using var xmlReader = new XmlTextReader(subFile);
       xmlReader.XmlResolver = null; // Ignore dtd
 
       TimeSpan startTime = TimeSpan.Zero;
@@ -145,8 +145,6 @@ namespace subs2srs
           }
         }
       }
-
-      subFile.Close();
 
       // Since the dialog lines don't have to be in chronological order, sort by the start time
       lineInfos.Sort();
