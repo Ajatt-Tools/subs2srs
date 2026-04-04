@@ -47,7 +47,8 @@ namespace subs2srs
     {
       List<string> rawLines = new List<string>(2000);
       List<InfoLine> lineInfos = new List<InfoLine>(2000);
-      StreamReader subFile = new StreamReader(this.File, this.SubsEncoding);
+
+      using var subFile = new StreamReader(this.File, this.SubsEncoding);
       string fileLine;
 
       // Store all of the file's lines in a list
@@ -55,8 +56,6 @@ namespace subs2srs
       {
         rawLines.Add(fileLine.Trim());
       }
-
-      subFile.Close();
 
       // Get the regex to use with the dialog lines
       string assDialogRegex = getAssDialogRegex(rawLines);
@@ -120,7 +119,7 @@ namespace subs2srs
     {
       TimeSpan time = TimeSpan.Zero;
 
-      // Format: 
+      // Format:
       // "hour:min:sec.hsec" (0:00:00.00)
 
       Match match = Regex.Match(rawTime,
