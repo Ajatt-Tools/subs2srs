@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.5
+
+**Bug fixes:**
+- Parser resource leaks fixed — `StreamReader` and `XmlTextReader` in `SubsParserASS`, `SubsParserSRT`, `SubsParserLyrics`, and `SubsParserTranscriber` are now wrapped in `using` statements. Prevents file descriptor leaks and potential file locks when parsing throws exceptions.
+
+---
+
 ## 0.2.4
 
 **ColumnView header styling:**
