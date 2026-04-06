@@ -3,7 +3,7 @@
  *  PropertyBag.cs
  *  --------------
  *  Copyright (C) 2002  Tony Allowatt
- *  Copyright (C) 2026  fkzys (GTK3/.NET 10 port)
+ *  Copyright (C) 2026  fkzys (GTK4/.NET 10 port)
  *  Last Update: 12/14/2002
  * 
  *  THE SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS", WITHOUT WARRANTY

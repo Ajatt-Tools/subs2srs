@@ -3,9 +3,9 @@ subs2srs — Generate Anki flashcards from media with subtitles.
 Copyright (C) 2009-2016  Christopher Brochtrup
                          https://sourceforge.net/projects/subs2srs/
 
-GTK3/.NET 10 port:
+GTK4/.NET 10 port:
 Copyright (C) 2026       fkzys
-                         https://gitlab.com/fkzys/subs2srs-gtk3
+                         https://gitlab.com/fkzys/subs2srs
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

@@ -1,5 +1,5 @@
 ﻿//  Copyright (C) 2009-2016 Christopher Brochtrup
-//  Copyright (C) 2026 fkzys (GTK3/.NET 10 port)
+//  Copyright (C) 2026 fkzys (GTK4/.NET 10 port)
 //
 //  This file is part of subs2srs.
 //
