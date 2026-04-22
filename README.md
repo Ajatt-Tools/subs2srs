@@ -1,6 +1,6 @@
 # subs2srs (GTK4 port)
 
-[![CI](https://github.com/rpPH4kQocMjkm2Ve/subs2srs/actions/workflows/ci.yml/badge.svg)](https://github.com/rpPH4kQocMjkm2Ve/subs2srs/actions/workflows/ci.yml)
+[![CI](https://github.com/ajatt-tools/subs2srs/actions/workflows/ci.yml/badge.svg)](https://github.com/ajatt-tools/subs2srs/actions/workflows/ci.yml)
 [![Chat](https://img.shields.io/badge/chat-join-green)](https://tatsumoto-ren.github.io/blog/join-our-community.html)
 ![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
 [![Spec](https://img.shields.io/endpoint?url=https://gitlab.com/fkzys/specs/-/raw/main/version.json&maxAge=300)](https://gitlab.com/fkzys/specs)
