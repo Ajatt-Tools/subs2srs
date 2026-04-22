@@ -1,7 +1,7 @@
 # subs2srs (GTK4 port)
 
 [![CI](https://github.com/rpPH4kQocMjkm2Ve/subs2srs/actions/workflows/ci.yml/badge.svg)](https://github.com/rpPH4kQocMjkm2Ve/subs2srs/actions/workflows/ci.yml)
-![License](https://img.shields.io/gitlab/license/fkzys/subs2srs)
+![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
 [![Spec](https://img.shields.io/endpoint?url=https://gitlab.com/fkzys/specs/-/raw/main/version.json&maxAge=300)](https://gitlab.com/fkzys/specs)
 
 ![screenshot](assets/screenshot.png)
