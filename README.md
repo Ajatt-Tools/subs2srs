@@ -1,5 +1,6 @@
 # subs2srs (GTK4 port)
 
+[![AUR](https://img.shields.io/badge/AUR-install-blue.svg)](https://aur.archlinux.org/packages/subs2srs-gui)
 [![CI](https://github.com/ajatt-tools/subs2srs/actions/workflows/ci.yml/badge.svg)](https://github.com/ajatt-tools/subs2srs/actions/workflows/ci.yml)
 [![Chat](https://img.shields.io/badge/chat-join-green)](https://tatsumoto-ren.github.io/blog/join-our-community.html)
 ![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
