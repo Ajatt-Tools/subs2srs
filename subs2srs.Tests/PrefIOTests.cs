@@ -211,7 +211,41 @@ namespace subs2srs.Tests
             Assert.True(ConstantSettings.DefaultIphoneSupport);
         }
 
-        // ── Int prefs round-trip ────────────────────────────────────────
+        // ── AudioFormat round-trip ───────────────────────────────────────
+
+        [Fact]
+        public void ReadAfterWrite_AudioFormat_RoundTrip()
+        {
+            ConstantSettings.Prefs = new PreferencesData
+            {
+                AudioFormat = "Opus",
+            };
+            PrefIO.Write();
+
+            ConstantSettings.Prefs = new PreferencesData();
+            PrefIO.read();
+
+            Assert.Equal("Opus", ConstantSettings.AudioFormat);
+        }
+
+        // ── AudioFormat MP3 round-trip ────────────────────────────────
+
+        [Fact]
+        public void ReadAfterWrite_AudioFormatMp3_RoundTrip()
+        {
+            ConstantSettings.Prefs = new PreferencesData
+            {
+                AudioFormat = "MP3",
+            };
+            PrefIO.Write();
+
+            ConstantSettings.Prefs = new PreferencesData();
+            PrefIO.read();
+
+            Assert.Equal("MP3", ConstantSettings.AudioFormat);
+        }
+
+        // ── Int prefs round-trip ──────────────────────────────────────
 
         [Fact]
         public void ReadAfterWrite_IntPrefs_RoundTrip()

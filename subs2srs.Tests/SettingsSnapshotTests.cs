@@ -173,6 +173,7 @@ namespace subs2srs.Tests
 
             Assert.Equal(256, snapshot.AudioClips.Bitrate);
             Assert.True(snapshot.AudioClips.Normalize);
+            Assert.Equal("Opus", snapshot.AudioClips.AudioFormat);
             Assert.Equal(1500, snapshot.VideoClips.BitrateVideo);
             Assert.Equal(10, snapshot.Snapshots.Quality);
         }
