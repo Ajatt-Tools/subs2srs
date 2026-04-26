@@ -42,6 +42,7 @@ namespace subs2srs
     public const int LongClipWarningSeconds = 10;
     public const int DefaultAudioClipBitrate = 128;
     public const string DefaultAudioFormat = "Opus";
+    public static readonly string[] AudioFormats = { "Opus", "MP3" };
     public const bool DefaultAudioNormalize = false;
     public const int DefaultVideoClipVideoBitrate = 800;
     public const int DefaultVideoClipAudioBitrate = 128;
