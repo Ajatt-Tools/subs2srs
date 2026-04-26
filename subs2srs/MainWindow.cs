@@ -118,10 +118,7 @@ namespace subs2srs
 
         // Bitrate options shared by audio and video tabs
         private static readonly string[] BitrateOptions =
-            { "64", "96", "112", "128", "160", "192", "256", "320" };
-
-        private static readonly string[] AudioFormatOptions =
-            { "Opus", "MP3" };
+            { "32", "40", "48", "56", "64", "80", "96", "112", "128", "144", "160", "192", "224", "256", "320" };
 
         public MainWindow(Gtk.Application app) : base()
         {
