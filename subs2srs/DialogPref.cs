@@ -887,11 +887,10 @@ namespace subs2srs
                 else
                 {
                     chk.SetVisible(false);
-                    entry.SetVisible(true);
-                    entry.SetText(item.StrValue);
-                    entry.OnActivate += (s, e) =>
+                    entry.SetVisible(true);                    entry.SetText(item.StrValue);
+                    entry.OnChanged += (s, ev) =>
                     {
-                        CommitEntryValue(item, entry);
+                        item.StrValue = entry.GetText();
                     };
                 }
             };
@@ -1125,6 +1124,21 @@ namespace subs2srs
 
         private void SavePreferences()
         {
+            // Commit all pending entry values (user may have typed but not pressed Enter)
+            foreach (var item in _items)
+            {
+                if (item.IsCategory || item.IsBool) continue;
+                if (item.IsInt)
+                {
+                    if (int.TryParse(item.StrValue, out int val))
+                        propTable[item.PropKey] = val;
+                }
+                else
+                {
+                    propTable[item.PropKey] = item.StrValue;
+                }
+            }
+
             ConstantSettings.MainWindowWidth =
                 UtilsCommon.checkRange((int)propTable["Main Window Width"], 0, 9999, PrefDefaults.MainWindowWidth);
             ConstantSettings.MainWindowHeight =
