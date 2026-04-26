@@ -1,4 +1,4 @@
-﻿//  Copyright (C) 2009-2016 Christopher Brochtrup
+//  Copyright (C) 2009-2016 Christopher Brochtrup
 //
 //  This file is part of subs2srs.
 //
@@ -49,7 +49,8 @@ namespace subs2srs
     {
       COPY,  // Copy, don't re-encode
       AAC,
-      MP3
+      MP3,
+      Opus
     }
 
     /// <summary>
@@ -124,6 +125,10 @@ namespace subs2srs
 
         case AudioCodec.MP3:
           audioCodecArg = command + "mp3";
+          break;
+
+        case AudioCodec.Opus:
+          audioCodecArg = command + "libopus";
           break;
 
         default: audioCodecArg = "";

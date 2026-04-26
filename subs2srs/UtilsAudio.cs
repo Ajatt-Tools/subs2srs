@@ -1,4 +1,4 @@
-﻿//  Copyright (C) 2009-2016 Christopher Brochtrup
+//  Copyright (C) 2009-2016 Christopher Brochtrup
 //
 //  This file is part of subs2srs.
 //
@@ -36,17 +36,19 @@ namespace subs2srs
     /// Rip (and re-encode) a portion of the audio from a video file.
     /// </summary>
     public static void ripAudioFromVideo(string inFile, string stream, TimeSpan startTime,
-      TimeSpan endTime, int bitrate, string outFile, IProgressReporter dialogProgress)
+      TimeSpan endTime, int bitrate, string outFile, IProgressReporter dialogProgress,
+      UtilsVideo.AudioCodec audioCodec = UtilsVideo.AudioCodec.MP3)
     {
       string audioBitrateArg = UtilsVideo.formatAudioBitrateArg(bitrate);
       string audioMapArg = UtilsVideo.formatAudioMapArg(stream);
       string timeArg = UtilsVideo.formatStartTimeAndDurationArg(startTime, endTime);
+      string audioCodecArg = UtilsVideo.formatAudioCodecArg(audioCodec);
 
       string ffmpegAudioProgArgs = "";
 
       // Example format:
-      // -vn -y -i "G:\Temp\inputs.mkv" -ac 2 -map 0:1 -ss 00:03:32.420 -t 00:02:03.650 -b:a 128k -threads 0 "output.mp3"
-      ffmpegAudioProgArgs = String.Format("-vn -y -i \"{0}\" -ac 2 {1} {2} {3} -threads 0 \"{4}\"",
+      // -vn -y -i "G:\Temp\inputs.mkv" -ac 2 -map 0:1 -ss 00:03:32.420 -t 00:02:03.650 -codec:a libopus -b:a 128k -threads 0 "output.opus"
+      ffmpegAudioProgArgs = String.Format("-vn -y -i \"{0}\" -ac 2 {1} {2} {3} {4} -threads 0 \"{5}\"",
                                           // Video file
                                           inFile,              // {0}
 
@@ -56,11 +58,14 @@ namespace subs2srs
                                           // Time span
                                           timeArg,             // {2}
 
+                                          // Codec
+                                          audioCodecArg,       // {3}
+
                                           // Bitrate
-                                          audioBitrateArg,     // {3}
+                                          audioBitrateArg,     // {4}
 
                                           // Output file name
-                                          outFile);            // {4}
+                                          outFile);            // {5}
 
       if (dialogProgress == null)
       {

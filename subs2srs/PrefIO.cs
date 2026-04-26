@@ -1,4 +1,4 @@
-﻿//  Copyright (C) 2009-2016 Christopher Brochtrup
+//  Copyright (C) 2009-2016 Christopher Brochtrup
 //  Copyright (C) 2026 fkzys (GTK4/.NET 10 port)
 //
 //  This file is part of subs2srs.
@@ -152,6 +152,7 @@ namespace subs2srs
                 prefs.AudioNormalizeArgs = getStr("audio_normalize_args", PrefDefaults.AudioNormalizeArgs);
                 prefs.LongClipWarningSeconds = getI("long_clip_warning_seconds", PrefDefaults.LongClipWarningSeconds);
                 prefs.MaxParallelTasks = getI("max_parallel_tasks", PrefDefaults.MaxParallelTasks);
+                prefs.AudioFormat = getStr("default_audio_format", PrefDefaults.DefaultAudioFormat);
                 prefs.DefaultAudioClipBitrate = getI("default_audio_clip_bitrate", PrefDefaults.DefaultAudioClipBitrate);
                 prefs.DefaultAudioNormalize = getBl("default_audio_normalize", PrefDefaults.DefaultAudioNormalize);
                 prefs.DefaultVideoClipVideoBitrate = getI("default_video_clip_video_bitrate", PrefDefaults.DefaultVideoClipVideoBitrate);

@@ -50,6 +50,7 @@ namespace subs2srs
 
         // ── Audio clips ──────────────────────────────────────────────────────
         public int DefaultAudioClipBitrate { get; set; } = PrefDefaults.DefaultAudioClipBitrate;
+        public string AudioFormat { get; set; } = PrefDefaults.DefaultAudioFormat;
         public bool DefaultAudioNormalize { get; set; } = PrefDefaults.DefaultAudioNormalize;
 
         // ── Video clips ──────────────────────────────────────────────────────

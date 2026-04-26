@@ -1,4 +1,4 @@
-﻿//  Copyright (C) 2009-2016 Christopher Brochtrup
+//  Copyright (C) 2009-2016 Christopher Brochtrup
 //  Copyright (C) 2026 fkzys (GTK4/.NET 10 port)
 //
 //  This file is part of subs2srs.
@@ -397,7 +397,7 @@ namespace subs2srs
       string prefixStr = name.createName(ConstantSettings.SrsAudioFilenamePrefix, episodeIndex + Settings.Instance.EpisodeStartNumber,
          progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
       
-      string nameStr = name.createName(ConstantSettings.AudioFilenameFormat, episodeIndex + Settings.Instance.EpisodeStartNumber,
+      string nameStr = name.createName(ConstantSettings.AudioFilenameFormatWithExt, episodeIndex + Settings.Instance.EpisodeStartNumber,
          progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
 
       string suffixStr = name.createName(ConstantSettings.SrsAudioFilenameSuffix, episodeIndex + Settings.Instance.EpisodeStartNumber,

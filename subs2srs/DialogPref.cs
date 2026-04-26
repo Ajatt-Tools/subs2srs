@@ -135,6 +135,13 @@ namespace subs2srs
                 PrefDefaults.DefaultAudioClipBitrate));
             propTable["Audio Clip Bitrate"] = ConstantSettings.DefaultAudioClipBitrate;
 
+            // default_audio_format
+            propTable.Properties.Add(new PropertySpec("Audio Clip Format", typeof(string),
+                "User Interface Defaults",
+                "The default audio clip format.\n\nSupported: Opus, MP3.",
+                PrefDefaults.DefaultAudioFormat));
+            propTable["Audio Clip Format"] = ConstantSettings.AudioFormat;
+
             // default_audio_normalize
             propTable.Properties.Add(new PropertySpec("Normalize Audio", typeof(bool),
                 "User Interface Defaults",
@@ -1131,6 +1138,11 @@ namespace subs2srs
                 UtilsCommon.checkRangeInSet((int)propTable["Audio Clip Bitrate"],
                     new List<int>(new[] { 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256, 320 }),
                     PrefDefaults.DefaultAudioClipBitrate);
+
+            string audioFormat = (string)propTable["Audio Clip Format"];
+            if (audioFormat == "Opus" || audioFormat == "MP3")
+                ConstantSettings.AudioFormat = audioFormat;
+
             ConstantSettings.DefaultAudioNormalize = (bool)propTable["Normalize Audio"];
 
             ConstantSettings.DefaultVideoClipVideoBitrate =

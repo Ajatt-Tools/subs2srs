@@ -1,4 +1,4 @@
-﻿//  Copyright (C) 2009-2016 Christopher Brochtrup
+//  Copyright (C) 2009-2016 Christopher Brochtrup
 //  Copyright (C) 2026 fkzys (GTK4/.NET 10 port)
 //
 //  This file is part of subs2srs.
@@ -233,7 +233,7 @@ namespace subs2srs
             lyricSubs2 = item.comb.Subs2.Text.Trim();
           }
 
-          string nameStr = name.createName(ConstantSettings.AudioFilenameFormat,
+          string nameStr = name.createName(ConstantSettings.AudioFilenameFormatWithExt,
             epNum + Settings.Instance.EpisodeStartNumber - 1,
             item.seqNum, filenameStartTime, filenameEndTime, item.comb.Subs1.Text, lyricSubs2);
 
@@ -335,7 +335,7 @@ namespace subs2srs
           lyricSubs2 = comb.Subs2.Text.Trim();
         }
 
-        string nameStr = name.createName(ConstantSettings.AudioFilenameFormat,
+        string nameStr = name.createName(ConstantSettings.AudioFilenameFormatWithExt,
           episodeCount + Settings.Instance.EpisodeStartNumber - 1,
           tempCount, filenameStartTime, filenameEndTime, comb.Subs1.Text, lyricSubs2);
 
@@ -386,10 +386,10 @@ namespace subs2srs
 
 
     /// <summary>
-    /// Convert audio or video to mp3 and display progress dialog.
+    /// Convert audio or video to audio file and display progress dialog.
     /// </summary>
-    private bool convertToMp3(string file, string stream, string progressText, IProgressReporter dialogProgress,
-      TimeSpan entireClipStartTime, TimeSpan entireClipEndTime, string tempMp3Filename)
+    private bool convertToAudio(string file, string stream, string progressText, IProgressReporter dialogProgress,
+      TimeSpan entireClipStartTime, TimeSpan entireClipEndTime, string tempAudioFilename)
     {
       TimeSpan entireClipDuration = UtilsSubs.getDurationTime(entireClipStartTime, entireClipEndTime);
 
@@ -400,12 +400,24 @@ namespace subs2srs
       UtilsAudio.ripAudioFromVideo(file,
         stream,
         entireClipStartTime, entireClipEndTime,
-        Settings.Instance.AudioClips.Bitrate, tempMp3Filename, dialogProgress);
+        Settings.Instance.AudioClips.Bitrate, tempAudioFilename, dialogProgress,
+        GetAudioCodec(Settings.Instance.AudioClips.AudioFormat));
 
       dialogProgress.EnableDetail(false);
 
-      FileInfo fileInfo = new FileInfo(tempMp3Filename);
-      return File.Exists(tempMp3Filename) && fileInfo.Length > 0;
+      FileInfo fileInfo = new FileInfo(tempAudioFilename);
+      return File.Exists(tempAudioFilename) && fileInfo.Length > 0;
+    }
+
+    private static UtilsVideo.AudioCodec GetAudioCodec(string format)
+    {
+      return format.ToUpper() switch
+      {
+        "OPUS" => UtilsVideo.AudioCodec.Opus,
+        "MP3" => UtilsVideo.AudioCodec.MP3,
+        "AAC" => UtilsVideo.AudioCodec.AAC,
+        _ => UtilsVideo.AudioCodec.MP3
+      };
     }
   }
 }
