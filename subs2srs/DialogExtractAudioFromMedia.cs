@@ -55,7 +55,6 @@ namespace subs2srs
         // Format
         private Gtk.DropDown _comboFormat;
         private Gtk.StringList _formatModel;
-        private static readonly string[] FormatValues = { "Opus", "MP3" };
 
         // Format
         private Gtk.CheckButton _radioSingle, _radioMultiple;
@@ -312,7 +311,7 @@ namespace subs2srs
             bitrateBox.Append(_comboBitrate);
             bitrateBox.Append(Gtk.Label.New("kb/s"));
             bitrateBox.Append(Gtk.Label.New("format:"));
-            _formatModel = Gtk.StringList.New(FormatValues);
+            _formatModel = Gtk.StringList.New(PrefDefaults.AudioFormats);
             _comboFormat = Gtk.DropDown.New(_formatModel, null);
             _comboFormat.SetSelected(0); // Opus
             bitrateBox.Append(_comboFormat);
@@ -794,7 +793,7 @@ namespace subs2srs
                 string tempMp3 = IOPath.Combine(IOPath.GetTempPath(),
                     ConstantSettings.TempAudioFilename);
 
-                var audioFormat = FormatValues[_comboFormat.GetSelected()];
+                var audioFormat = PrefDefaults.AudioFormats[_comboFormat.GetSelected()];
                 var audioCodec = audioFormat.ToUpper() switch
                 {
                     "OPUS" => UtilsVideo.AudioCodec.Opus,

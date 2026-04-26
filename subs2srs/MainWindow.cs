@@ -685,7 +685,7 @@ namespace subs2srs
             bitrateBox.Append(_comboAudioBitrate);
             bitrateBox.Append(Gtk.Label.New("kbps,"));
             bitrateBox.Append(Gtk.Label.New("format:"));
-            _audioFormatModel = Gtk.StringList.New(AudioFormatOptions);
+            _audioFormatModel = Gtk.StringList.New(PrefDefaults.AudioFormats);
             _comboAudioFormat = Gtk.DropDown.New(_audioFormatModel, null);
             _comboAudioFormat.SetSelected(0); // Opus
             bitrateBox.Append(_comboAudioFormat);
@@ -926,7 +926,7 @@ namespace subs2srs
                 _radioAudioFromVideo.SetActive(true);
             _txtAudioFile.SetText(s.AudioClips.FilePattern);
             SetBitrateDropDown(_comboAudioBitrate, _audioBitrateModel, s.AudioClips.Bitrate);
-            var formatIdx = Array.IndexOf(AudioFormatOptions, s.AudioClips.AudioFormat);
+            var formatIdx = Array.IndexOf(PrefDefaults.AudioFormats, s.AudioClips.AudioFormat);
             _comboAudioFormat.SetSelected((uint)(formatIdx >= 0 ? formatIdx : 0));
             _chkAudioPad.SetActive(s.AudioClips.PadEnabled);
             _spinAudioPadStart.Value = s.AudioClips.PadStart;
@@ -1045,7 +1045,7 @@ namespace subs2srs
                 Settings.Instance.AudioClips.UseExistingAudio = _radioAudioExisting.GetActive();
                 Settings.Instance.AudioClips.Bitrate = GetSelectedBitrate(
                     _comboAudioBitrate, _audioBitrateModel, 128);
-                Settings.Instance.AudioClips.AudioFormat = AudioFormatOptions[_comboAudioFormat.GetSelected()];
+                Settings.Instance.AudioClips.AudioFormat = PrefDefaults.AudioFormats[_comboAudioFormat.GetSelected()];
                 ConstantSettings.AudioFormat = Settings.Instance.AudioClips.AudioFormat;
 
                 Settings.Instance.AudioClips.PadEnabled = _chkAudioPad.GetActive();
