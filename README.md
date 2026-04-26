@@ -88,7 +88,7 @@ gitpkg install subs2srs
 ### Manual
 
 ```sh
-git clone https://gitlab.com/fkzys/subs2srs.git
+git clone https://github.com/ajatt-tools/subs2srs.git
 cd subs2srs
 sudo make install
 ```
