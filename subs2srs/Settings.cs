@@ -154,14 +154,16 @@ namespace subs2srs
     public static string TempImageFilename { get; } = $"subs2srs_temp_{Guid.NewGuid()}.jpg";
     public static string TempVideoFilename { get; } = $"subs2srs_temp_{Guid.NewGuid()}";
     public static string TempAudioFilename { get; } = $"subs2srs_temp_{Guid.NewGuid()}.tmp";
-public static string AudioFilenameFormatWithExt { get; private set; } = PrefDefaults.AudioFilenameFormat;
-        public static string ExtractMediaAudioFilenameFormatWithExt { get; private set; } = PrefDefaults.ExtractMediaAudioFilenameFormat;
 
-        public static void UpdateAudioFilenameFormats()
-        {
-            AudioFilenameFormatWithExt = PrefDefaults.AudioFilenameFormat.Replace(".mp3", $".{Settings.Instance.AudioClips.AudioFormat?.ToLower() ?? "mp3"}");
-            ExtractMediaAudioFilenameFormatWithExt = PrefDefaults.ExtractMediaAudioFilenameFormat.Replace(".mp3", $".{Settings.Instance.AudioClips.AudioFormat?.ToLower() ?? "mp3"}");
-        }
+    public static string AudioFilenameFormatWithExt { get; private set; } = PrefDefaults.AudioFilenameFormat;
+    public static string ExtractMediaAudioFilenameFormatWithExt { get; private set; } = PrefDefaults.ExtractMediaAudioFilenameFormat;
+
+    public static void UpdateAudioFilenameFormats()
+    {
+        AudioFilenameFormatWithExt = PrefDefaults.AudioFilenameFormat.Replace(".mp3", $".{Settings.Instance.AudioClips.AudioFormat?.ToLower() ?? "mp3"}");
+        ExtractMediaAudioFilenameFormatWithExt = PrefDefaults.ExtractMediaAudioFilenameFormat.Replace(".mp3", $".{Settings.Instance.AudioClips.AudioFormat?.ToLower() ?? "mp3"}");
+    }
+
     public static string TempAudioPreviewFilename { get; } = $"subs2srs_temp_{Guid.NewGuid()}.wav";
     public static string TempPreviewDirName { get; } = $"subs2srs_preview_{Guid.NewGuid()}";
     public static string TempMkvExtractSubs1Filename { get; } = $"subs2srs_mkv_extract_subs1_{Guid.NewGuid()}";
