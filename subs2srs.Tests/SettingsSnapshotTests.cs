@@ -166,6 +166,7 @@ namespace subs2srs.Tests
         {
             Settings.Instance.AudioClips.Bitrate = 256;
             Settings.Instance.AudioClips.Normalize = true;
+            Settings.Instance.AudioClips.AudioFormat = "MP3";
             Settings.Instance.VideoClips.BitrateVideo = 1500;
             Settings.Instance.Snapshots.Quality = 10;
 
@@ -173,9 +174,19 @@ namespace subs2srs.Tests
 
             Assert.Equal(256, snapshot.AudioClips.Bitrate);
             Assert.True(snapshot.AudioClips.Normalize);
-            Assert.Equal("Opus", snapshot.AudioClips.AudioFormat);
+            Assert.Equal("MP3", snapshot.AudioClips.AudioFormat);
             Assert.Equal(1500, snapshot.VideoClips.BitrateVideo);
             Assert.Equal(10, snapshot.Snapshots.Quality);
+        }
+
+        [Fact]
+        public void Snapshot_PreservesOpusFormat()
+        {
+            Settings.Instance.AudioClips.AudioFormat = "Opus";
+
+            var snapshot = Settings.Instance.Snapshot();
+
+            Assert.Equal("Opus", snapshot.AudioClips.AudioFormat);
         }
     }
 }
