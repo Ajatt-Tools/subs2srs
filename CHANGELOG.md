@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.6
+
+**Features:**
+- **Opus audio format support** — audio clips can now be exported as Opus (libopus) in addition to MP3; format selector added to Audio tab and Extract Audio dialog; `TempAudioFilename` changed to `.tmp` extension (actual codec determined at runtime)
+
+**Bug fixes:**
+- Audio bitrate dropdown missing values (32, 40, 48, 56, 80, 144, 224) — full range now available
+- Preferences string entries committed on every keystroke (`OnChanged`) instead of only on Enter (`OnActivate`)
+- Audio format persisted as `audio_format` in JSON preferences (was using wrong key)
+- `AudioFormat` synchronized in `Settings.Reset()` when resetting to defaults
+- Indentation fix in `PrefIOTests.cs` XML-doc (was one-space, now eight-space)
+
+---
+
 ## 0.2.5
 
 **Bug fixes:**
