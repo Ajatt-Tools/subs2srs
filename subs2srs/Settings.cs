@@ -1100,6 +1100,7 @@ namespace subs2srs
       AudioClips = new AudioClips();
       AudioClips.Enabled = ConstantSettings.DefaultEnableAudioClipGeneration;
       AudioClips.Bitrate = ConstantSettings.DefaultAudioClipBitrate;
+      AudioClips.AudioFormat = ConstantSettings.AudioFormat;
       AudioClips.Normalize = ConstantSettings.DefaultAudioNormalize;
 
       Snapshots = new Snapshots();
