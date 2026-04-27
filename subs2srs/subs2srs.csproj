@@ -9,11 +9,11 @@
     <DefineConstants Condition="'$(EnableVobSub)' == 'true'">$(DefineConstants);ENABLE_VOBSUB</DefineConstants>
 
     <!-- Assembly info — UtilsAssembly reads these -->
-    <Authors>Christopher Brochtrup;fkzys</Authors>
+    <Authors>Christopher Brochtrup;fkzys and contributors</Authors>
     <Company>Christopher Brochtrup</Company>
-    <Copyright>Copyright © 2009-2016 Christopher Brochtrup. GTK4 port © 2026 fkzys</Copyright>
+    <Copyright>Copyright © 2009-2016 Christopher Brochtrup. © 2026 fkzys and contributors</Copyright>
     <Description>subs2srs GTK4/.NET 10 port — generate Anki cards from media with subtitles</Description>
-    <PackageProjectUrl>https://gitlab.com/fkzys/subs2srs</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/ajatt-tools/subs2srs</PackageProjectUrl>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <Version>0.2.5</Version>
   </PropertyGroup>
