@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.7
+
+**Chores:**
+- Updated repository URLs from gitlab.com/fkzys to github.com/ajatt-tools
+- Removed gitpkg installation instructions from README.md
+- Updated spec source from GitLab to GitHub
+- Updated copyright headers to credit contributors
+
+---
+
 ## 0.2.6
 
 **Features:**
