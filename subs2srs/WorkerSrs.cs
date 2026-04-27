@@ -1,5 +1,5 @@
 //  Copyright (C) 2009-2016 Christopher Brochtrup
-//  Copyright (C) 2026 fkzys (GTK4/.NET 10 port)
+//  Copyright (C) 2026 fkzys and contributors
 //
 //  This file is part of subs2srs.
 //
@@ -66,7 +66,7 @@ namespace subs2srs
 
         for (int i = baseLineIndex; i > curContextIdx; i--)
         {
-          int durationMs = (int)UtilsSubs.getDurationTime(combArray[i - 1].Subs1.EndTime, 
+          int durationMs = (int)UtilsSubs.getDurationTime(combArray[i - 1].Subs1.EndTime,
             combArray[i].Subs1.StartTime).TotalMilliseconds;
 
           if (durationMs > (Settings.Instance.ContextLeadingRange * 1000))
@@ -118,13 +118,13 @@ namespace subs2srs
 
       string nameStr = name.createName(ConstantSettings.SrsFilenameFormat, 0,
         0, TimeSpan.Zero, TimeSpan.Zero, "", "");
-      
+
       // Create filename
       // Example: <outdir>\Toki_wo_Kakeru_Shoujo.tsv
       string srsFilename = Path.Combine(Settings.Instance.OutputDir, nameStr);
 
       using var srsWriter = new StreamWriter(srsFilename, false, Encoding.UTF8);
-      
+
       // For each episode
       foreach (List<InfoCombined> combArray in workerVars.CombinedAll)
       {
@@ -229,7 +229,7 @@ namespace subs2srs
 
       if (Settings.Instance.AudioClips.Enabled)
       {
-        if (((formatType == FormatType.Leading) && Settings.Instance.ContextLeadingIncludeAudioClips) 
+        if (((formatType == FormatType.Leading) && Settings.Instance.ContextLeadingIncludeAudioClips)
           || ((formatType == FormatType.Trailing) && Settings.Instance.ContextTrailingIncludeAudioClips))
         {
           outText += ConstantSettings.SrsDelimiter;
@@ -396,7 +396,7 @@ namespace subs2srs
 
       string prefixStr = name.createName(ConstantSettings.SrsAudioFilenamePrefix, episodeIndex + Settings.Instance.EpisodeStartNumber,
          progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
-      
+
       string nameStr = name.createName(ConstantSettings.AudioFilenameFormatWithExt, episodeIndex + Settings.Instance.EpisodeStartNumber,
          progressCount, startTime, endTime, comb.Subs1.Text, comb.Subs2.Text);
 

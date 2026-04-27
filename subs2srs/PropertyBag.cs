@@ -3,15 +3,15 @@
  *  PropertyBag.cs
  *  --------------
  *  Copyright (C) 2002  Tony Allowatt
- *  Copyright (C) 2026  fkzys (GTK4/.NET 10 port)
+ *  Copyright (C) 2026  fkzys and contributors
  *  Last Update: 12/14/2002
- * 
+ *
  *  THE SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS", WITHOUT WARRANTY
  *  OF ANY KIND, EXPRESS OR IMPLIED. IN NO EVENT SHALL THE AUTHOR BE
  *  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM,
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OF THIS
  *  SOFTWARE.
- * 
+ *
  *  Public types defined in this file:
  *  ----------------------------------
  *  namespace Flobbster.Windows.Forms

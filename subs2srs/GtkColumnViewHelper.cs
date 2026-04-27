@@ -1,4 +1,4 @@
-//  Copyright (C) 2026 fkzys
+//  Copyright (C) 2026 fkzys and contributors
 //
 //  This file is part of subs2srs.
 //

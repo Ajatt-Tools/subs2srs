@@ -1,4 +1,4 @@
-//  Copyright (C) 2026 fkzys
+//  Copyright (C) 2026 fkzys and contributors
 //  SPDX-License-Identifier: GPL-3.0-or-later
 
 using System;

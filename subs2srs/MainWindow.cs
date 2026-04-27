@@ -1,4 +1,4 @@
-//  Copyright (C) 2026 fkzys
+//  Copyright (C) 2026 fkzys and contributors
 //
 //  This file is part of subs2srs.
 //
@@ -1240,8 +1240,8 @@ namespace subs2srs
             // Source code link
             var linkLabel = Gtk.Label.New(null);
             linkLabel.SetMarkup(
-                "<a href=\"https://gitlab.com/fkzys/subs2srs\">"
-                + "https://gitlab.com/fkzys/subs2srs</a>");
+                "<a href=\"https://github.com/ajatt-tools/subs2srs\">"
+                + "https://github.com/ajatt-tools/subs2srs</a>");
             linkLabel.SetUseMarkup(true);
             box.Append(linkLabel);
 
