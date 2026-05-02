@@ -4,7 +4,7 @@
 [![CI](https://github.com/ajatt-tools/subs2srs/actions/workflows/ci.yml/badge.svg)](https://github.com/ajatt-tools/subs2srs/actions/workflows/ci.yml)
 [![Chat](https://img.shields.io/badge/chat-join-green)](https://tatsumoto-ren.github.io/blog/join-our-community.html)
 ![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
-[![Spec](https://img.shields.io/endpoint?url=https://gitlab.com/fkzys/specs/-/raw/main/version.json&maxAge=300)](https://gitlab.com/fkzys/specs)
+[![Spec](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/fkzys/specs/refs/heads/main/version.json&maxAge=300)](https://github.com/fkzys/specs)
 
 ![screenshot](assets/screenshot.png)
 
@@ -80,15 +80,10 @@ make test
 yay -S subs2srs-gui
 ```
 
-### gitpkg
-```sh
-gitpkg install subs2srs
-```
-
 ### Manual
 
 ```sh
-git clone https://gitlab.com/fkzys/subs2srs.git
+git clone https://github.com/ajatt-tools/subs2srs.git
 cd subs2srs
 sudo make install
 ```
