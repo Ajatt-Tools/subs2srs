@@ -1,4 +1,4 @@
-﻿//  Copyright (C) 2009-2016 Christopher Brochtrup
+//  Copyright (C) 2009-2016 Christopher Brochtrup
 //  Copyright (C) 2026 fkzys and contributors
 //
 //  This file is part of subs2srs.
@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace subs2srs
 {
@@ -173,7 +174,7 @@ namespace subs2srs
     /// <summary>
     /// Try to call an exe with provided arguments. Returns true on success.
     /// </summary>
-    private static bool callExe(string exe, string args, bool useShellExecute, bool createNoWindow)
+    private static string? callExe(string exe, string args, bool useShellExecute, bool createNoWindow)
     {
       try
       {
@@ -182,11 +183,15 @@ namespace subs2srs
         process.StartInfo.Arguments = args;
         process.StartInfo.UseShellExecute = useShellExecute;
         process.StartInfo.CreateNoWindow = createNoWindow;
+        var stderr = new StringBuilder();
         if (!useShellExecute)
         {
           process.StartInfo.RedirectStandardError = true;
           process.StartInfo.RedirectStandardOutput = true;
-          process.ErrorDataReceived += (s, e) => { };
+          process.ErrorDataReceived += (s, e) =>
+          {
+            if (e.Data != null) stderr.AppendLine(e.Data);
+          };
           process.OutputDataReceived += (s, e) => { };
         }
         process.Start();
@@ -196,12 +201,34 @@ namespace subs2srs
           process.BeginOutputReadLine();
         }
         process.WaitForExit();
-        return true;
+        if (!useShellExecute && process.ExitCode != 0)
+        {
+          string full = stderr.ToString();
+          if (full.Length > 0)
+            Console.Error.WriteLine($"[ffmpeg stderr]\n{full}");
+          string lastLine = GetLastNonEmptyLine(full);
+          return $"ffmpeg exited with code {process.ExitCode}: {lastLine}";
+        }
+        return null;
       }
-      catch
+      catch (Exception ex)
       {
-        return false;
+        return ex.Message;
       }
+    }
+
+    private static string GetLastNonEmptyLine(string text)
+    {
+      if (string.IsNullOrWhiteSpace(text))
+        return "(no output)";
+      var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+      for (int i = lines.Length - 1; i >= 0; i--)
+      {
+        string line = lines[i].Trim();
+        if (line.Length > 0)
+          return line;
+      }
+      return "(no output)";
     }
 
 
@@ -296,24 +323,29 @@ namespace subs2srs
 
     /// <summary>
     /// Call an exe with the provided arguments, trying multiple paths.
+    /// Returns null on success, error message on failure.
     /// </summary>
-    public static void startProcess(string relExePath, string fullExePath, string args,
+    public static string? startProcess(string relExePath, string fullExePath, string args,
       bool useShellExecute, bool createNoWindow)
     {
+      string? lastError = null;
       foreach (string exe in getExePaths(relExePath, fullExePath))
       {
-        if (callExe(exe, args, useShellExecute, createNoWindow))
-          return;
+        lastError = callExe(exe, args, useShellExecute, createNoWindow);
+        if (lastError == null)
+          return null;
       }
+      return lastError;
     }
 
 
     /// <summary>
     /// Call an exe with the provided arguments. Don't open a window.
+    /// Returns null on success, error message on failure.
     /// </summary>
-    public static void startProcess(string relExePath, string fullExePath, string args)
+    public static string? startProcess(string relExePath, string fullExePath, string args)
     {
-      startProcess(relExePath, fullExePath, args, false, true);
+      return startProcess(relExePath, fullExePath, args, false, true);
     }
 
 
@@ -335,11 +367,14 @@ namespace subs2srs
 
     /// <summary>
     /// Call ffmpeg with provided arguments. Blocking.
+    /// Throws Exception on ffmpeg failure.
     /// </summary>
     public static void startFFmpeg(string ffmpegArgs, bool useShellExecute, bool createNoWindow)
     {
-      startProcess(ConstantSettings.PathFFmpegExe, ConstantSettings.PathFFmpegFullExe,
+      string? error = startProcess(ConstantSettings.PathFFmpegExe, ConstantSettings.PathFFmpegFullExe,
         ffmpegArgs, useShellExecute, createNoWindow);
+      if (error != null)
+        throw new Exception(error);
     }
 
 

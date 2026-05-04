@@ -1020,6 +1020,8 @@ namespace subs2srs
             string wav = SysPath.Combine(_wv.MediaDir,
                 ConstantSettings.TempAudioPreviewFilename);
 
+            string errorMsg = null;
+
             await Task.Run(() =>
             {
                 try { if (File.Exists(mp3)) File.Delete(mp3); } catch { }
@@ -1043,20 +1045,72 @@ namespace subs2srs
                         || streamNum == "-" || !streamNum.Contains(":"))
                         streamNum = "0:a:0";
 
-                    UtilsAudio.ripAudioFromVideo(
-                        Settings.Instance.VideoClips.Files[ep],
-                        streamNum, st, en,
-                        Settings.Instance.AudioClips.Bitrate, mp3, null);
+                    try
+                    {
+                        var audioFormat = Settings.Instance.AudioClips.AudioFormat;
+                        var audioCodec = audioFormat == "Opus"
+                            ? UtilsVideo.AudioCodec.Opus
+                            : UtilsVideo.AudioCodec.MP3;
+
+                        UtilsAudio.ripAudioFromVideo(
+                            Settings.Instance.VideoClips.Files[ep],
+                            streamNum, st, en,
+                            Settings.Instance.AudioClips.Bitrate, mp3, null,
+                            audioCodec);
+
+                        if (!File.Exists(mp3) || new FileInfo(mp3).Length == 0)
+                            errorMsg = "Failed to extract audio: output file not created or empty.";
+                    }
+                    catch (Exception ex)
+                    {
+                        errorMsg = "Failed to extract audio from video: " + ex.Message;
+                    }
+                }
+                else if (Settings.Instance.AudioClips.UseExistingAudio &&
+                         Settings.Instance.AudioClips.Files?.Length > ep)
+                {
+                    try
+                    {
+                        string existingAudio = Settings.Instance.AudioClips.Files[ep];
+                        UtilsAudio.cutAudio(existingAudio, st, en, mp3);
+
+                        if (!File.Exists(mp3) || new FileInfo(mp3).Length == 0)
+                            errorMsg = "Failed to cut audio: output file not created or empty.";
+                    }
+                    catch (Exception ex)
+                    {
+                        errorMsg = "Failed to cut audio from existing file: " + ex.Message;
+                    }
+                }
+                else
+                {
+                    errorMsg = "No audio source available. Check Video/Audio file settings in Preferences.";
                 }
 
-                if (File.Exists(mp3) && new FileInfo(mp3).Length > 0)
-                    UtilsAudio.convertAudioFormat(mp3, wav, 2);
+                if (string.IsNullOrEmpty(errorMsg) &&
+                    File.Exists(mp3) && new FileInfo(mp3).Length > 0)
+                {
+                    try
+                    {
+                        UtilsAudio.convertAudioFormat(mp3, wav, 2);
+                    }
+                    catch (Exception ex)
+                    {
+                        errorMsg = "Failed to convert audio to WAV: " + ex.Message;
+                    }
+                }
             });
 
             if (_destroyed) return;
 
             _btnAudio.SetSensitive(true);
             _btnAudio.SetLabel("Preview Audio");
+
+            if (!string.IsNullOrEmpty(errorMsg))
+            {
+                UtilsMsg.showErrMsg(errorMsg + "\n\nCheck terminal for full ffmpeg output.");
+                return;
+            }
 
             if (File.Exists(wav))
             {
@@ -1070,7 +1124,14 @@ namespace subs2srs
                     p.StartInfo.CreateNoWindow = true;
                     p.Start();
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    UtilsMsg.showErrMsg("Failed to play audio: " + ex.Message);
+                }
+            }
+            else
+            {
+                UtilsMsg.showErrMsg("Audio preview file was not created. Check ffmpeg output.");
             }
         }
 

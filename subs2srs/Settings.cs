@@ -153,15 +153,17 @@ namespace subs2srs
 
     public static string TempImageFilename { get; } = $"subs2srs_temp_{Guid.NewGuid()}.jpg";
     public static string TempVideoFilename { get; } = $"subs2srs_temp_{Guid.NewGuid()}";
-    public static string TempAudioFilename { get; } = $"subs2srs_temp_{Guid.NewGuid()}.tmp";
+    public static string TempAudioFilename { get; set; } = $"subs2srs_temp_{Guid.NewGuid()}.{PrefDefaults.DefaultAudioFormat.ToLower()}";
 
     public static string AudioFilenameFormatWithExt { get; private set; } = PrefDefaults.AudioFilenameFormat;
     public static string ExtractMediaAudioFilenameFormatWithExt { get; private set; } = PrefDefaults.ExtractMediaAudioFilenameFormat;
 
     public static void UpdateAudioFilenameFormats()
     {
-        AudioFilenameFormatWithExt = PrefDefaults.AudioFilenameFormat.Replace(".mp3", $".{Settings.Instance.AudioClips.AudioFormat?.ToLower() ?? "mp3"}");
-        ExtractMediaAudioFilenameFormatWithExt = PrefDefaults.ExtractMediaAudioFilenameFormat.Replace(".mp3", $".{Settings.Instance.AudioClips.AudioFormat?.ToLower() ?? "mp3"}");
+        string ext = Settings.Instance.AudioClips.AudioFormat?.ToLower() ?? "mp3";
+        TempAudioFilename = $"subs2srs_temp_{Guid.NewGuid()}.{ext}";
+        AudioFilenameFormatWithExt = PrefDefaults.AudioFilenameFormat.Replace(".mp3", $".{ext}");
+        ExtractMediaAudioFilenameFormatWithExt = PrefDefaults.ExtractMediaAudioFilenameFormat.Replace(".mp3", $".{ext}");
     }
 
     public static string TempAudioPreviewFilename { get; } = $"subs2srs_temp_{Guid.NewGuid()}.wav";
@@ -278,7 +280,7 @@ namespace subs2srs
     public static string AudioFormat
     {
         get => Prefs.AudioFormat;
-        set => Prefs.AudioFormat = value;
+        set { Prefs.AudioFormat = value; UpdateAudioFilenameFormats(); }
     }
 
     public static bool DefaultAudioNormalize
