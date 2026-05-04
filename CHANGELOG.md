@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.8
+
+**Bug fixes**:
+-Audio preview now respects the selected audio format (Opus/MP3) and the “Use existing audio” setting.
+-Audio preview failures now show a clear error instead of silently doing nothing.
+
+---
+
 ## 0.2.7
 
 **Chores:**
