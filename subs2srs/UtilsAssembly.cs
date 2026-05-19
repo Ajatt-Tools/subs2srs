@@ -54,7 +54,7 @@ namespace subs2srs
     {
       get
       {
-        return Assembly.GetExecutingAssembly().GetName().Version.ToString();
+        return Assembly.GetExecutingAssembly().GetName().Version.ToString(3);
       }
     }
 

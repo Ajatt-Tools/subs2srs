@@ -1222,7 +1222,7 @@ namespace subs2srs
         {
             var dlg = Gtk.Window.New();
             dlg.SetTitle("About subs2srs");
-            dlg.SetDefaultSize(400, 300);
+            dlg.SetDefaultSize(380, -1);
             dlg.SetModal(true);
             dlg.SetTransientFor(this);
 
@@ -1230,12 +1230,19 @@ namespace subs2srs
             box.SetMarginTop(20); box.SetMarginBottom(20);
             box.SetMarginStart(20); box.SetMarginEnd(20);
 
-            box.Append(Gtk.Label.New(UtilsAssembly.Title));
-            box.Append(Gtk.Label.New($"Version {UtilsAssembly.Version}"));
-            box.Append(Gtk.Label.New(UtilsAssembly.Product));
-            box.Append(Gtk.Label.New("Original author: Christopher Brochtrup"));
-            box.Append(Gtk.Label.New(UtilsAssembly.Copyright));
-            box.Append(Gtk.Label.New("GNU General Public License v3"));
+            Gtk.Label MakeLabel(string text)
+            {
+                var label = Gtk.Label.New(text);
+                label.SetSelectable(true);
+                label.SetCanFocus(false);
+                return label;
+            }
+
+            box.Append(MakeLabel(UtilsAssembly.Title));
+            box.Append(MakeLabel($"Version {UtilsAssembly.Version}"));
+            box.Append(MakeLabel("Original author: Christopher Brochtrup"));
+            box.Append(MakeLabel(UtilsAssembly.Copyright));
+            box.Append(MakeLabel("GNU General Public License v3"));
 
             // Source code link
             var linkLabel = Gtk.Label.New(null);
@@ -1243,7 +1250,14 @@ namespace subs2srs
                 "<a href=\"https://github.com/ajatt-tools/subs2srs\">"
                 + "https://github.com/ajatt-tools/subs2srs</a>");
             linkLabel.SetUseMarkup(true);
+            linkLabel.SetSelectable(true);
+            linkLabel.SetCanFocus(false);
             box.Append(linkLabel);
+
+            // Push OK button to the bottom of the dialog
+            var spacer = Gtk.Label.New(null);
+            spacer.SetVexpand(true);
+            box.Append(spacer);
 
             var btn = Gtk.Button.NewWithLabel("OK");
             btn.SetHalign(Gtk.Align.Center);
